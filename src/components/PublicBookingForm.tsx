@@ -31,9 +31,31 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     observaciones: '',
   });
 
+  const [calendarMonth, setCalendarMonth] = useState(() => {
+    const d = new Date();
+    d.setDate(1);
+    return d;
+  });
+
+  const monthDays = (() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const days: Array<{ day: number; dateStr: string }> = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      const d = new Date(year, month, i);
+      const dateStr = d.toISOString().slice(0, 10);
+      days.push({ day: i, dateStr });
+    }
+    return { firstDay, days };
+  })();
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const handleClienteSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validar datos del cliente
     if (!clienteData.nombre || !clienteData.email || !clienteData.telefono) {
       toast.error('Por favor completa todos los campos');
@@ -79,13 +101,19 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     addClienteTemporal(newClienteTemporal);
 
     // Crear cita
+    const firstServiceId = (bookingData.id_servicios || []).length
+      ? parseInt((bookingData.id_servicios || [])[0])
+      : parseInt(bookingData.id_servicio || '0');
+
     const newCita: Cita = {
       id_cita: getNextCitaId(),
       id_cliente: 0, // No tiene cliente registrado
       id_cliente_temporal: newClienteTemporal.id_cliente_temporal,
-      id_servicio: (bookingData.id_servicios || []).length ? parseInt((bookingData.id_servicios || [])[0]) : (bookingData.id_servicio ? parseInt(bookingData.id_servicio) : undefined),
-      id_servicios: (bookingData.id_servicios || []).length ? (bookingData.id_servicios || []).map(s => parseInt(s)) : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []),
-      id_empleado: bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined,
+      id_servicio: firstServiceId,
+      id_servicios: (bookingData.id_servicios || []).length
+        ? (bookingData.id_servicios || []).map(s => parseInt(s))
+        : [firstServiceId],
+      id_empleado: bookingData.id_empleado && bookingData.id_empleado !== '0' ? parseInt(bookingData.id_empleado) : undefined,
       fecha: bookingData.fecha,
       hora: bookingData.hora,
       estado: 'pendiente',
@@ -100,7 +128,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   const handleClose = () => {
     setStep('info');
     setClienteData({ nombre: '', email: '', telefono: '' });
-    setBookingData({ id_servicio: '', id_empleado: '', fecha: '', hora: '', observaciones: '' });
+    setBookingData({
+      id_servicio: '',
+      id_servicios: [],
+      id_empleado: '',
+      fecha: '',
+      hora: '',
+      observaciones: ''
+    });
     onClose();
   };
 
@@ -190,7 +225,6 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* DialogHeader siempre presente para accesibilidad */}
         <DialogHeader>
           {step === 'info' && (
             <>
@@ -229,7 +263,6 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           )}
         </DialogHeader>
 
-        {/* Contenido por step */}
         {step === 'info' && (
           <form onSubmit={handleClienteSubmit}>
             <div className="space-y-4 py-4">
@@ -282,14 +315,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
         {step === 'booking' && (
           <form onSubmit={handleBookingSubmit}>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2 md:col-span-2">
+            <div className="space-y-6 py-4">
+              <div className="space-y-2">
                 <Label>Servicios *</Label>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-48 overflow-y-auto p-2 border rounded">
                   {mockServicios.map(servicio => {
                     const checked = (bookingData.id_servicios || []).includes(servicio.id_servicio.toString());
                     return (
-                      <label key={servicio.id_servicio} className="flex items-center gap-2 text-sm">
+                      <label key={servicio.id_servicio} className="flex items-center gap-2 text-sm cursor-pointer">
                         <input
                           type="checkbox"
                           checked={checked}
@@ -330,41 +363,105 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="fecha">Fecha *</Label>
-                  <Input
-                    id="fecha"
-                    type="date"
-                    min={new Date().toISOString().split('T')[0]}
-                    value={bookingData.fecha}
-                    onChange={(e) => setBookingData({ ...bookingData, fecha: e.target.value })}
-                    required
-                  />
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label>Fecha de tu Cita *</Label>
+                  <div className="flex items-center gap-2 bg-muted/50 rounded-lg p-1">
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        const d = new Date(calendarMonth);
+                        d.setMonth(d.getMonth() - 1);
+                        setCalendarMonth(d);
+                      }}
+                    >
+                      ‹
+                    </Button>
+                    <div className="px-2 font-medium text-xs min-w-24 text-center capitalize">
+                      {calendarMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-7 w-7"
+                      onClick={() => {
+                        const d = new Date(calendarMonth);
+                        d.setMonth(d.getMonth() + 1);
+                        setCalendarMonth(d);
+                      }}
+                    >
+                      ›
+                    </Button>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="hora">Hora *</Label>
-                  <Select
-                    value={bookingData.hora}
-                    onValueChange={(value) => setBookingData({ ...bookingData, hora: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecciona hora" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(() => {
-                        const empleadoId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined;
-                        const occupied = getOccupiedTimesPublic(bookingData.fecha, empleadoId) || [];
-                        return timeSlots.map((time) => (
-                          <SelectItem key={time} value={time} disabled={occupied.includes(time)} className={occupied.includes(time) ? 'opacity-50 cursor-not-allowed' : ''}>
-                            {time}{occupied.includes(time) ? ' — ocupado' : ''}
-                          </SelectItem>
-                        ));
-                      })()}
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-7 gap-1 bg-muted/20 p-2 rounded-lg border border-[#D4AF37]/20">
+                  {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map(d => (
+                    <div key={d} className="text-center text-[10px] font-bold text-muted-foreground uppercase py-1">{d}</div>
+                  ))}
+
+                  {(() => {
+                    const cells: Array<{ day?: number; dateStr?: string } | null> = [];
+                    for (let i = 0; i < monthDays.firstDay; i++) cells.push(null);
+                    monthDays.days.forEach(d => cells.push({ day: d.day, dateStr: d.dateStr }));
+
+                    return cells.map((cell, idx) => {
+                      if (!cell) return <div key={`empty-${idx}`} />;
+
+                      const day = cell.day;
+                      const dateStr = cell.dateStr;
+                      if (!day || !dateStr) return <div key={`empty-${idx}`} />;
+
+                      const isToday = dateStr === todayStr;
+                      const isSelected = bookingData.fecha === dateStr;
+                      const isPast = dateStr < todayStr;
+
+                      return (
+                        <button
+                          key={dateStr}
+                          type="button"
+                          disabled={isPast}
+                          onClick={() => setBookingData({ ...bookingData, fecha: dateStr })}
+                          className={`
+                            h-8 w-full rounded-md text-xs font-medium transition-all
+                            ${isSelected ? 'bg-[#D4AF37] text-black scale-105 shadow-lg shadow-[#D4AF37]/20' : 'hover:bg-[#D4AF37]/20'}
+                            ${isToday && !isSelected ? 'border border-[#D4AF37] text-[#D4AF37]' : ''}
+                            ${isPast ? 'opacity-20 cursor-not-allowed text-muted-foreground' : 'cursor-pointer px-1'}
+                          `}
+                        >
+                          {day}
+                        </button>
+                      );
+                    });
+                  })()}
                 </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="hora">Hora *</Label>
+                <Select
+                  value={bookingData.hora}
+                  onValueChange={(value) => setBookingData({ ...bookingData, hora: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona hora" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(() => {
+                      const empleadoId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined;
+                      const occupied = getOccupiedTimesPublic(bookingData.fecha, empleadoId) || [];
+                      return timeSlots.map((time) => (
+                        <SelectItem key={time} value={time} disabled={occupied.includes(time)} className={occupied.includes(time) ? 'opacity-50 cursor-not-allowed' : ''}>
+                          {time}{occupied.includes(time) ? ' — ocupado' : ''}
+                        </SelectItem>
+                      ));
+                    })()}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -378,33 +475,32 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                 />
               </div>
 
-              {(bookingData.id_servicios || bookingData.id_servicio) && (
+              {((bookingData.id_servicios || []).length > 0 || bookingData.id_servicio) && (
                 <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-lg">
-                  <p className="font-semibold mb-2">Resumen de tu cita:</p>
-                  <p className="text-sm">
-                    <strong>Servicios:</strong> {formatSelectedServicesPublic(bookingData)}
-                  </p>
-                  <p className="text-sm">
-                    <strong>Precio total:</strong> ${computeSelectedServicesPrice().toFixed(2)}
-                  </p>
-                  <p className="text-sm">
-                    <strong>Duración total:</strong> {formatDurationPublic(computeSelectedServicesDuration())}
-                  </p>
-                  {bookingData.fecha && (
-                    <p className="text-sm">
-                      <strong>Fecha:</strong> {new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
+                  <p className="font-semibold mb-2 text-sm text-[#D4AF37]">Resumen de tu cita:</p>
+                  <div className="space-y-1">
+                    <p className="text-xs">
+                      <span className="text-muted-foreground mr-1">Servicios:</span> {formatSelectedServicesPublic(bookingData)}
                     </p>
-                  )}
-                  {bookingData.hora && (
-                    <p className="text-sm">
-                      <strong>Hora:</strong> {bookingData.hora}
+                    <p className="text-xs">
+                      <span className="text-muted-foreground mr-1">Precio total:</span> ${computeSelectedServicesPrice().toFixed(2)}
                     </p>
-                  )}
+                    <p className="text-xs">
+                      <span className="text-muted-foreground mr-1">Duración total:</span> {formatDurationPublic(computeSelectedServicesDuration())}
+                    </p>
+                    {bookingData.fecha && (
+                      <p className="text-xs">
+                        <span className="text-muted-foreground mr-1">Fecha:</span> {new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
+                          weekday: 'long', day: 'numeric', month: 'long'
+                        })}
+                      </p>
+                    )}
+                    {bookingData.hora && (
+                      <p className="text-xs">
+                        <span className="text-muted-foreground mr-1">Hora:</span> {bookingData.hora}
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
@@ -420,54 +516,49 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         )}
 
         {step === 'success' && (
-          <>
-            <div className="py-6">
-              <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white p-6 rounded-lg space-y-3">
-                <div className="flex items-start gap-3">
-                  <Scissors className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-300">Servicio</p>
-                    <p className="font-semibold">{getServiceName(parseInt(bookingData.id_servicio))}</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Calendar className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-300">Fecha</p>
-                    <p className="font-semibold">
-                      {new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
-                  <div>
-                    <p className="text-sm text-gray-300">Hora</p>
-                    <p className="font-semibold">{bookingData.hora}</p>
-                  </div>
+          <div className="py-6">
+            <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white p-6 rounded-lg space-y-3">
+              <div className="flex items-start gap-3">
+                <Scissors className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Servicios</p>
+                  <p className="font-medium text-sm">{formatSelectedServicesPublic(bookingData)}</p>
                 </div>
               </div>
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm text-blue-900">
-                  <strong>Nota:</strong> Te enviaremos un recordatorio por correo 24 horas antes de tu cita.
-                  Si necesitas cancelar o reprogramar, por favor contáctanos al (555) 123-4567.
-                </p>
+              <div className="flex items-start gap-3">
+                <Calendar className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Fecha</p>
+                  <p className="font-medium text-sm">
+                    {new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
+                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-start gap-3">
+                <Clock className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
+                <div>
+                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Hora</p>
+                  <p className="font-medium text-sm">{bookingData.hora}</p>
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button 
-                onClick={handleClose} 
+            <div className="mt-6 p-4 bg-muted/30 border border-muted rounded-lg">
+              <p className="text-xs text-muted-foreground">
+                <strong className="text-foreground">Nota:</strong> Te enviaremos un recordatorio por correo 24 horas antes de tu cita.
+                Si necesitas cancelar o reprogramar, por favor contáctanos al (555) 123-4567.
+              </p>
+            </div>
+            <DialogFooter className="mt-6">
+              <Button
+                onClick={handleClose}
                 className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black"
               >
                 Cerrar
               </Button>
             </DialogFooter>
-          </>
+          </div>
         )}
       </DialogContent>
     </Dialog>

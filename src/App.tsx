@@ -19,7 +19,7 @@ import { ClientesView } from './features/clientes';
 import { ClientesTemporalesView } from './features/clientes-temporales';
 import { PagosView } from './features/pagos';
 import { VentasView } from './features/ventas';
-import { LandingPage } from '../components/LandingPage';
+import { LandingPage } from './components/LandingPage';
 import { MiPerfilView } from './features/mi-perfil';
 import { ConfiguracionLandingView } from './features/configuracion-landing';
 import { ReportesVentasView, RendimientoEmpleadosView } from './features/medicion-desempeno';
@@ -36,7 +36,7 @@ function AuthPages() {
   return (
     <div className="min-h-screen relative flex items-center justify-center p-4">
       {/* Background Image with Overlay - mismo que landing */}
-      <div 
+      <div
         className="absolute inset-0 z-0"
         style={{
           backgroundImage: `url('https://images.unsplash.com/photo-1667539916671-b9e7039ccee5?w=1600')`,
@@ -47,24 +47,24 @@ function AuthPages() {
       >
         <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black"></div>
       </div>
-      
+
       {/* Content */}
       <div className="w-full max-w-md relative z-10">
         {authView === 'login' && (
-          <LoginForm 
+          <LoginForm
             onRegisterClick={() => setAuthView('register')}
             onRecoverClick={() => setAuthView('recover')}
             onBackToLanding={() => setAuthView('landing')}
           />
         )}
         {authView === 'register' && (
-          <RegisterForm 
+          <RegisterForm
             onBackToLogin={() => setAuthView('login')}
             onBackToLanding={() => setAuthView('landing')}
           />
         )}
         {authView === 'recover' && (
-          <RecoverPasswordForm 
+          <RecoverPasswordForm
             onBackToLogin={() => setAuthView('login')}
             onBackToLanding={() => setAuthView('landing')}
           />
@@ -99,12 +99,12 @@ function AppContent() {
 
   const renderView = () => {
     const isCliente = user?.id_rol === 3;
-    
+
     // Función para manejar la reserva de cita desde cualquier vista
     const handleReservarCita = (_empleadoId?: number, _servicioId?: number) => {
       handleNavigate('citas');
     };
-    
+
     switch (currentView) {
       case 'dashboard':
         return <Dashboard />;

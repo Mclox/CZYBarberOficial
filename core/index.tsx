@@ -1,1 +1,0 @@
-export { MainLayoutPorProcesos as MainLayout } from './layout/MainLayoutPorProcesos';
