@@ -114,11 +114,13 @@ export interface Cita {
   id_cliente_temporal?: number; // Para clientes no registrados
   id_servicio: number;
   id_servicios?: number[];
+  id_productos?: number[]; // Productos vinculados a la cita
   id_empleado?: number;
   fecha: string;
   hora: string;
-  estado: 'pendiente' | 'confirmada' | 'completada' | 'cancelada';
+  estado: 'pendiente' | 'confirmada' | 'en-ejecucion' | 'completada' | 'cancelada';
   observaciones?: string;
+  precios_personalizados?: Record<number, number>; // id_servicio/id_producto -> precio
 }
 
 export interface Empleado {

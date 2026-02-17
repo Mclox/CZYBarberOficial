@@ -10,6 +10,7 @@ import { Cita, mockServicios } from '../../shared/lib/mockData';
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
     pendiente: { bg: '#eab308', border: '#ca8a04', text: '#000000' },
     confirmada: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
+    'en-ejecucion': { bg: '#f97316', border: '#ea580c', text: '#ffffff' }, // Naranja vibrante
     completada: { bg: '#22c55e', border: '#16a34a', text: '#000000' },
     cancelada: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
 };
