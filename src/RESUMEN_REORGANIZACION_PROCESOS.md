@@ -62,7 +62,7 @@ He reorganizado completamente la aplicación de gestión de barbería para aline
 
 💰 VENTAS ▼
    • Gestión de Clientes
-   • Gestión de Pagos
+   • Gestión de pagos en consignación
    • Gestión de Ventas
    • Devoluciones a Clientes
 
@@ -346,7 +346,7 @@ Seguir el **`PLAN_MIGRACION_PROCESOS.md`** paso a paso:
 ├────────────────────────────┤
 │ 💰 VENTAS ▼               │
 │   • Gestión de Clientes    │
-│   • Gestión de Pagos       │
+│   • Gestión de pagos en consignación       │
 │   • Gestión de Ventas      │
 │   • Dev. a Clientes        │
 ├────────────────────────────┤
@@ -374,7 +374,7 @@ Seguir el **`PLAN_MIGRACION_PROCESOS.md`** paso a paso:
 ├────────────────────────────┤
 │ 💰 VENTAS ▼               │
 │   • Gestión de Clientes    │
-│   • Gestión de Pagos       │
+│   • Gestión de pagos en consignación       │
 │   • Gestión de Ventas      │
 │   • Dev. a Clientes        │
 ├────────────────────────────┤

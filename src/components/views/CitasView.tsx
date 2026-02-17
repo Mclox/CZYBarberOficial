@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { CitasCalendar } from './CitasCalendar';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -47,8 +48,6 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  ChevronLeft,
-  ChevronRight,
   Calendar,
   User
 } from 'lucide-react';
@@ -186,11 +185,7 @@ export function CitasView() {
     observaciones: '',
   });
 
-  const [calendarMonth, setCalendarMonth] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    return d;
-  });
+  // calendarMonth state removed — FullCalendar manages its own month navigation
 
   const [calendarEmpleadoFilter, setCalendarEmpleadoFilter] = useState<string>(() => {
     try {
@@ -267,9 +262,6 @@ export function CitasView() {
       const d = new Date(targetDate + 'T00:00:00');
       if (!isNaN(d.getTime())) {
         setSelectedDate(targetDate);
-        if (d.getMonth() !== calendarMonth.getMonth() || d.getFullYear() !== calendarMonth.getFullYear()) {
-          setCalendarMonth(new Date(d.getFullYear(), d.getMonth(), 1));
-        }
       }
     }
   }, [editingCita?.fecha, formData.fecha]);
@@ -511,20 +503,6 @@ export function CitasView() {
     }
   };
 
-  const monthDays = useMemo(() => {
-    const year = calendarMonth.getFullYear();
-    const month = calendarMonth.getMonth();
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const days: Array<{ day: number; dateStr: string }> = [];
-    for (let i = 1; i <= daysInMonth; i++) {
-      const d = new Date(year, month, i);
-      const dateStr = d.toISOString().slice(0, 10);
-      days.push({ day: i, dateStr });
-    }
-    return { firstDay, days };
-  }, [calendarMonth]);
-
   const todayStr = new Date().toISOString().slice(0, 10);
 
   return (
@@ -608,154 +586,34 @@ export function CitasView() {
       {/* Sección Calendario y Agenda */}
       <section className="space-y-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
-          {/* Calendario (3 columnas) */}
+          {/* Calendario (3 columnas) — FullCalendar */}
           <Card className="lg:col-span-3 h-fit">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle>Calendario</CardTitle>
-                <div className="flex items-center gap-2">
-                  <div>
-                    <Label className="text-xs mb-1">Filtrar Barbero</Label>
-                    <Select value={calendarEmpleadoFilter} onValueChange={(v) => setCalendarEmpleadoFilter(v)}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos los barberos</SelectItem>
-                        {mockEmpleados.map(e => (
-                          <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre} {e.apellido}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="hidden md:flex border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-all"
-                      onClick={() => setCalendarMonth(new Date())}
-                    >
-                      Hoy
-                    </Button>
-                    <div className="flex items-center bg-muted/50 rounded-lg p-1">
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 hover:bg-[#D4AF37] hover:text-black transition-colors"
-                        onClick={() => {
-                          const d = new Date(calendarMonth);
-                          d.setMonth(d.getMonth() - 1);
-                          setCalendarMonth(d);
-                        }}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <div className="px-4 font-semibold min-w-32 text-center capitalize">
-                        {calendarMonth.toLocaleString('es-ES', { month: 'long', year: 'numeric' })}
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 hover:bg-[#D4AF37] hover:text-black transition-colors"
-                        onClick={() => {
-                          const d = new Date(calendarMonth);
-                          d.setMonth(d.getMonth() + 1);
-                          setCalendarMonth(d);
-                        }}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
+                <div>
+                  <Label className="text-xs mb-1">Filtrar Barbero</Label>
+                  <Select value={calendarEmpleadoFilter} onValueChange={(v) => setCalendarEmpleadoFilter(v)}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos los barberos</SelectItem>
+                      {mockEmpleados.map(e => (
+                        <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre} {e.apellido}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <div className="w-full">
-                <div
-                  className="grid grid-cols-7 gap-px md:gap-2 bg-muted/30 p-px md:p-2 rounded-xl h-[500px] md:h-[640px]"
-                  style={{
-                    gridTemplateRows: 'auto repeat(6, 1fr)',
-                  }}
-                >
-                  {/* Day cells */}
-                  {(() => {
-                    const totalCells = 42;
-                    const cells: Array<{ day: number; dateStr: string } | null> = [];
-                    for (let i = 0; i < monthDays.firstDay; i++) cells.push(null);
-                    monthDays.days.forEach((d: { day: number; dateStr: string }) => cells.push({ day: d.day, dateStr: d.dateStr }));
-                    while (cells.length < totalCells) cells.push(null);
-
-                    return cells.map((cell, idx) => {
-                      if (!cell) return (
-                        <div key={`empty-${idx}`} className="bg-muted/10 rounded-lg" />
-                      );
-
-                      const { day, dateStr } = cell;
-                      const citasDay = citasByDate[dateStr] || [];
-                      const shown = citasDay.slice(0, 3);
-                      const more = Math.max(0, citasDay.length - 3);
-                      const isToday = dateStr === todayStr;
-                      const isSelected = selectedDate === dateStr;
-
-                      return (
-                        <div
-                          key={dateStr}
-                          onClick={() => handleSelectDay(dateStr)}
-                          className={`
-                          relative group flex flex-col p-1 md:p-2 rounded-lg transition-all duration-200 cursor-pointer
-                          ${isSelected ? 'bg-[#D4AF37]/20 ring-1 ring-[#D4AF37]' : 'bg-background hover:bg-muted/50'}
-                          ${isToday ? 'border border-[#D4AF37]/50' : 'border border-transparent'}
-                        `}
-                        >
-                          <div className="flex items-center justify-between pointer-events-none">
-                            <span className={`
-                            text-xs md:text-sm font-semibold flex items-center justify-center w-6 h-6 rounded-full transition-colors
-                            ${isToday ? 'bg-[#D4AF37] text-black' : 'text-foreground'}
-                            ${isSelected && !isToday ? 'text-[#D4AF37]' : ''}
-                          `}>
-                              {day}
-                            </span>
-                            {citasDay.length > 0 && (
-                              <Badge variant="outline" className="h-4 px-1 text-[8px] md:text-[10px] bg-[#D4AF37]/10 text-[#D4AF37] border-none">
-                                {citasDay.length}
-                              </Badge>
-                            )}
-                          </div>
-
-                          <div className="mt-1 flex-1 overflow-hidden hidden md:block pointer-events-none">
-                            <div className="flex flex-col gap-1">
-                              {shown.map((c: Cita) => (
-                                <div key={c.id_cita} className="flex items-center gap-1 text-[10px] leading-tight truncate">
-                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${c.estado === 'completada' ? 'bg-green-500' :
-                                    c.estado === 'pendiente' ? 'bg-yellow-500' : 'bg-blue-500'
-                                    }`} />
-                                  <span className="font-medium text-muted-foreground">{c.hora}</span>
-                                  <span className="truncate">{getServicioName(c.id_servicio)}</span>
-                                </div>
-                              ))}
-                            </div>
-                            {more > 0 && (
-                              <div className="text-[10px] text-muted-foreground mt-1 font-medium italic">
-                                + {more} más...
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Spark indicator for mobile */}
-                          <div className="md:hidden flex justify-center mt-auto gap-0.5 pointer-events-none">
-                            {shown.map((c: Cita) => (
-                              <div key={c.id_cita} className={`w-1 h-1 rounded-full ${c.estado === 'completada' ? 'bg-green-500' :
-                                c.estado === 'pendiente' ? 'bg-yellow-500' : 'bg-blue-500'
-                                }`} />
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    });
-                  })()}
-                </div>
-              </div>
+              <CitasCalendar
+                citasByDate={citasByDate}
+                selectedDate={selectedDate}
+                onSelectDay={handleSelectDay}
+                onEventClick={handleViewDetails}
+              />
             </CardContent>
           </Card>
 

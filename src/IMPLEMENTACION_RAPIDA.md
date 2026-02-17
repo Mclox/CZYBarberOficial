@@ -93,7 +93,7 @@ Devoluciones
 
 💰 VENTAS ▼
    • Gestión de Clientes
-   • Gestión de Pagos
+   • Gestión de pagos en consignación
    • Gestión de Ventas
    • Devoluciones a Clientes
 

@@ -155,11 +155,15 @@ export interface ClienteTemporal {
 export interface Pago {
   id_pago: number;
   id_venta?: number;
+  id_consignacion?: number;
   monto: number;
   metodo: 'efectivo' | 'tarjeta' | 'transferencia';
   fecha: string;
   referencia?: string;
-  estado: 'pendiente' | 'aprobado' | 'rechazado';
+  estado: 'pendiente' | 'aprobado' | 'rechazado' | 'anulado';
+  tipo: 'consignacion' | 'general';
+  motivo_anulacion?: string;
+  fecha_anulacion?: string;
 }
 
 export interface Venta {
@@ -856,7 +860,7 @@ export const mockCitas: Cita[] = [
     fecha: '2026-02-04',
     hora: '10:30',
     estado: 'pendiente',
-    observaciones: null,
+    observaciones: undefined,
   },
   {
     id_cita: 3,
@@ -889,7 +893,7 @@ export const mockCitas: Cita[] = [
     fecha: '2026-02-06',
     hora: '16:00',
     estado: 'pendiente',
-    observaciones: null,
+    observaciones: undefined,
   },
   {
     id_cita: 6,
@@ -900,7 +904,7 @@ export const mockCitas: Cita[] = [
     fecha: '2026-02-07',
     hora: '11:00',
     estado: 'confirmada',
-    observaciones: null,
+    observaciones: undefined,
   },
 ];
 
@@ -998,6 +1002,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-05',
     referencia: 'PAY-1730808000000-001',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 2,
@@ -1006,6 +1011,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-08',
     referencia: 'PAY-1731024000000-002',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 3,
@@ -1014,6 +1020,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-10',
     referencia: 'PAY-1731196800000-003',
     estado: 'pendiente',
+    tipo: 'general',
   },
   {
     id_pago: 4,
@@ -1022,6 +1029,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-11',
     referencia: 'PAY-1731283200000-004',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 5,
@@ -1030,6 +1038,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-11',
     referencia: 'PAY-1731283200000-005',
     estado: 'rechazado',
+    tipo: 'general',
   },
   {
     id_pago: 6,
@@ -1038,6 +1047,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-12',
     referencia: 'PAY-1731369600000-006',
     estado: 'pendiente',
+    tipo: 'general',
   },
   {
     id_pago: 7,
@@ -1046,6 +1056,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-12',
     referencia: 'PAY-1731369600000-007',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 8,
@@ -1054,6 +1065,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-13',
     referencia: 'PAY-1731456000000-008',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 9,
@@ -1062,6 +1074,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-13',
     referencia: 'PAY-1731456000000-009',
     estado: 'rechazado',
+    tipo: 'general',
   },
   {
     id_pago: 10,
@@ -1070,6 +1083,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-14',
     referencia: 'PAY-1731542400000-010',
     estado: 'pendiente',
+    tipo: 'general',
   },
   {
     id_pago: 11,
@@ -1078,6 +1092,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-15',
     referencia: 'PAY-1731628800000-011',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 12,
@@ -1086,6 +1101,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-15',
     referencia: 'PAY-1731628800000-012',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 13,
@@ -1094,6 +1110,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-16',
     referencia: 'PAY-1731715200000-013',
     estado: 'pendiente',
+    tipo: 'general',
   },
   {
     id_pago: 14,
@@ -1102,6 +1119,7 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-17',
     referencia: 'PAY-1731801600000-014',
     estado: 'aprobado',
+    tipo: 'general',
   },
   {
     id_pago: 15,
@@ -1110,6 +1128,30 @@ export const mockPagos: Pago[] = [
     fecha: '2025-11-18',
     referencia: 'PAY-1731888000000-015',
     estado: 'rechazado',
+    tipo: 'general',
+  },
+  // Pagos de consignación
+  {
+    id_pago: 16,
+    id_consignacion: 1,
+    monto: 2250.00,
+    metodo: 'transferencia',
+    fecha: '2025-11-20',
+    referencia: 'CON-1732060800000-001',
+    estado: 'aprobado',
+    tipo: 'consignacion',
+  },
+  {
+    id_pago: 17,
+    id_consignacion: 1,
+    monto: 2250.00,
+    metodo: 'efectivo',
+    fecha: '2025-11-22',
+    referencia: 'CON-1732233600000-002',
+    estado: 'anulado',
+    tipo: 'consignacion',
+    motivo_anulacion: 'Error en el monto consignado, se generará un nuevo pago con el monto correcto.',
+    fecha_anulacion: '2025-11-23',
   },
 ];
 
@@ -1222,7 +1264,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 3.00,
     subtotal: 3.00,
   },
-  
+
   // Venta 2 - Aceite para Barba + Cepillo
   {
     id_venta_prod_detalle: 6,
@@ -1248,7 +1290,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 2.25,
     subtotal: 4.50,
   },
-  
+
   // Venta 3 - Bálsamo + Shampoo + Talco
   {
     id_venta_prod_detalle: 9,
@@ -1298,7 +1340,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 2.25,
     subtotal: 6.75,
   },
-  
+
   // Venta 4 - Cera para Bigote + Loción
   {
     id_venta_prod_detalle: 15,
@@ -1332,7 +1374,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 3.00,
     subtotal: 3.00,
   },
-  
+
   // Venta 5 - Máquina Cortapelo
   {
     id_venta_prod_detalle: 19,
@@ -1342,7 +1384,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 120.00,
     subtotal: 120.00,
   },
-  
+
   // Venta 6 - Cera Moldeadora + Gel Wet + Bebidas
   {
     id_venta_prod_detalle: 20,
@@ -1384,7 +1426,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 3.00,
     subtotal: 9.00,
   },
-  
+
   // Venta 7 - Navaja + Brocha + Crema de Afeitar + Productos varios
   {
     id_venta_prod_detalle: 25,
@@ -1434,7 +1476,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     precio_unitario: 4.50,
     subtotal: 4.50,
   },
-  
+
   // Venta 8 - Tijeras + Peine + Talco
   {
     id_venta_prod_detalle: 31,

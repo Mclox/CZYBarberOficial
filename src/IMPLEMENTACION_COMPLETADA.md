@@ -115,7 +115,7 @@ const confirmBaja = () => {
 
 ### 💰 PROCESO 5: VENTAS
 - Gestión de Clientes ✅ (búsqueda completa)
-- Gestión de Pagos
+- Gestión de pagos en consignación
 - Gestión de Ventas
 - Devoluciones a Clientes
 

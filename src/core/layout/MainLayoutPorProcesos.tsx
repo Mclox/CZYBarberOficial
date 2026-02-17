@@ -5,15 +5,13 @@ import { Sheet, SheetContent, SheetTrigger } from '../../components/ui/sheet';
 import { ScrollArea } from '../../components/ui/scroll-area';
 import { Separator } from '../../components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '../../components/ui/collapsible';
-import { 
+import {
   Bell,
   Search,
   Plus,
-  TrendingUp,
   AlertCircle,
   Clock,
   CheckCircle2,
-  XCircle,
   Menu,
   Home,
   Users,
@@ -39,13 +37,13 @@ import {
   DollarSign
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger
 } from '../../components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import ErrorBoundary from '../../components/ErrorBoundary';
@@ -86,7 +84,7 @@ const processMenuItems: ProcessItem[] = [
       { id: 'configuracion-landing', label: 'Config. Landing Page', icon: Settings },
     ]
   },
-  
+
   // PROCESO DE USUARIOS
   {
     id: 'usuarios-proceso',
@@ -97,7 +95,7 @@ const processMenuItems: ProcessItem[] = [
       { id: 'usuarios', label: 'Gestión de Usuarios', icon: Users },
     ]
   },
-  
+
   // PROCESO DE COMPRAS
   {
     id: 'compras-proceso',
@@ -112,7 +110,7 @@ const processMenuItems: ProcessItem[] = [
       { id: 'devoluciones-proveedor', label: 'Devoluciones a Proveedor', icon: PackageOpen },
     ]
   },
-  
+
   // PROCESO DE AGENDAMIENTO
   {
     id: 'agendamiento-proceso',
@@ -126,7 +124,7 @@ const processMenuItems: ProcessItem[] = [
       { id: 'citas', label: 'Gestión de Citas', icon: Calendar },
     ]
   },
-  
+
   // PROCESO DE VENTAS
   {
     id: 'ventas-proceso',
@@ -136,12 +134,12 @@ const processMenuItems: ProcessItem[] = [
     barberoAccess: true,
     subItems: [
       { id: 'clientes', label: 'Gestión de Clientes', icon: UserCircle },
-      { id: 'pagos', label: 'Gestión de Pagos', icon: CreditCard },
+      { id: 'pagos', label: 'Gestión de pagos en consignación', icon: CreditCard },
       { id: 'ventas', label: 'Gestión de Ventas', icon: Receipt },
       { id: 'devoluciones', label: 'Devolución al Stock', icon: RotateCcw },
     ]
   },
-  
+
   // PROCESO DE MEDICIÓN DE DESEMPEÑO
   {
     id: 'medicion-proceso',
@@ -159,25 +157,23 @@ const processMenuItems: ProcessItem[] = [
 ];
 
 // Items individuales (fuera de procesos)
-const individualMenuItems = [];
+const individualMenuItems: any[] = [];
 
-function ProcessMenuItem({ 
-  process, 
-  currentView, 
+function ProcessMenuItem({
+  process,
+  currentView,
   onNavigate,
   isOpen,
   onToggle,
-  user,
   isAdmin,
   isBarbero,
   isCliente
-}: { 
+}: {
   process: ProcessItem;
   currentView: string;
   onNavigate: (view: string) => void;
   isOpen: boolean;
   onToggle: () => void;
-  user: any;
   isAdmin: boolean;
   isBarbero: boolean;
   isCliente: boolean;
@@ -186,7 +182,7 @@ function ProcessMenuItem({
   const filteredSubItems = process.subItems.filter(subItem => {
     // Admin tiene acceso a todo dentro de procesos permitidos
     if (isAdmin) return true;
-    
+
     // Para Barbero
     if (isBarbero) {
       // Proveedores solo lectura (se manejará en la vista)
@@ -198,7 +194,7 @@ function ProcessMenuItem({
       // Todo lo demás con acceso normal
       return true;
     }
-    
+
     // Para Cliente
     if (isCliente) {
       // Solo ver servicios y agendar citas
@@ -206,7 +202,7 @@ function ProcessMenuItem({
         return true;
       }
     }
-    
+
     return false;
   });
 
@@ -238,7 +234,7 @@ function ProcessMenuItem({
         {filteredSubItems.map((subItem) => {
           const SubIcon = subItem.icon;
           const isSubActive = currentView === subItem.id;
-          
+
           return (
             <Button
               key={subItem.id}
@@ -269,10 +265,10 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
   const isAdmin = roleName === 'Admin';
   const isBarbero = roleName === 'Barbero';
   const isCliente = roleName === 'Cliente';
-  
+
   // Usar el usuario de auth si no se proporciona uno por props
   const currentUser = user || authUser;
-  
+
   // Estado para controlar qué procesos están abiertos (ahora todos cerrados por defecto)
   const [openProcesses, setOpenProcesses] = useState<Record<string, boolean>>({
     'configuracion': false,
@@ -357,7 +353,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
           {filteredIndividualItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
-            
+
             return (
               <Button
                 key={item.id}
@@ -385,7 +381,6 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
               onNavigate={handleNavigate}
               isOpen={openProcesses[process.id] ?? false}
               onToggle={() => toggleProcess(process.id)}
-              user={currentUser}
               isAdmin={isAdmin}
               isBarbero={isBarbero}
               isCliente={isCliente}
@@ -417,7 +412,6 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
   if (!user) return null;
 
   const isAdmin = roleName === 'Admin';
-  const isBarbero = roleName === 'Barbero';
   const isCliente = roleName === 'Cliente';
 
   // Notificaciones dinámicas por rol
@@ -450,7 +444,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
         }
       ];
     }
-    
+
     // Admin y Barbero comparten notificaciones operativas
     return [
       {
@@ -514,8 +508,8 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
             <div className="flex items-center gap-4 flex-1">
               <div className="relative max-w-md w-full hidden md:block">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   placeholder={isCliente ? "Buscar servicios, barberos, citas..." : "Buscar clientes, citas, productos..."}
                   className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
                 />

@@ -332,7 +332,7 @@
 ✅ Ventas
    ✅ Gestión de Clientes
    ✅ Gestión Catálogo de Productos
-   ✅ Gestión de Pagos
+   ✅ Gestión de pagos en consignación
    ✅ Gestión de Ventas
    ✅ Devoluciones a Clientes
 
@@ -363,7 +363,7 @@
 ✅ Ventas
    ✅ Gestión de Clientes
    ✅ Gestión Catálogo de Productos (solo lectura)
-   ✅ Gestión de Pagos
+   ✅ Gestión de pagos en consignación
    ✅ Gestión de Ventas
    ✅ Devoluciones a Clientes
 
