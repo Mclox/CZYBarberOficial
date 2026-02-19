@@ -73,6 +73,12 @@ export interface Devolucion {
   fecha: string;
   remitido: 'stock' | 'proveedor';
   estado: 'pendiente' | 'aprobada' | 'rechazada';
+  cantidad_devuelta?: number;
+  estado_producto?: 'bueno' | 'defectuoso' | 'perdida';
+  accion_tomada?: 'cambio_mismo' | 'cambio_otro' | 'reembolso';
+  id_producto_cambio?: number;
+  nombre_producto_cambio?: string;
+  precio_producto_cambio?: number;
 }
 
 export interface DevolucionProveedor {
@@ -680,6 +686,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-06',
     remitido: 'stock',
     estado: 'aprobada',
+    cantidad_devuelta: 1,
+    estado_producto: 'defectuoso',
+    accion_tomada: 'reembolso',
   },
   {
     id_devolucion: 2,
@@ -688,6 +697,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-07',
     remitido: 'proveedor',
     estado: 'pendiente',
+    cantidad_devuelta: 1,
+    estado_producto: 'bueno',
+    accion_tomada: 'cambio_mismo',
   },
   {
     id_devolucion: 3,
@@ -696,6 +708,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-08',
     remitido: 'proveedor',
     estado: 'aprobada',
+    cantidad_devuelta: 2,
+    estado_producto: 'defectuoso',
+    accion_tomada: 'reembolso',
   },
   {
     id_devolucion: 4,
@@ -704,6 +719,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-09',
     remitido: 'stock',
     estado: 'rechazada',
+    cantidad_devuelta: 1,
+    estado_producto: 'bueno',
+    accion_tomada: 'cambio_otro',
   },
   {
     id_devolucion: 5,
@@ -712,6 +730,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-10',
     remitido: 'stock',
     estado: 'aprobada',
+    cantidad_devuelta: 1,
+    estado_producto: 'bueno',
+    accion_tomada: 'reembolso',
   },
   {
     id_devolucion: 6,
@@ -720,6 +741,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-11',
     remitido: 'proveedor',
     estado: 'pendiente',
+    cantidad_devuelta: 1,
+    estado_producto: 'defectuoso',
+    accion_tomada: 'cambio_mismo',
   },
   {
     id_devolucion: 7,
@@ -728,6 +752,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-12',
     remitido: 'stock',
     estado: 'pendiente',
+    cantidad_devuelta: 3,
+    estado_producto: 'bueno',
+    accion_tomada: 'cambio_otro',
   },
   {
     id_devolucion: 8,
@@ -736,6 +763,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-13',
     remitido: 'stock',
     estado: 'aprobada',
+    cantidad_devuelta: 1,
+    estado_producto: 'bueno',
+    accion_tomada: 'reembolso',
   },
   {
     id_devolucion: 9,
@@ -744,6 +774,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-14',
     remitido: 'stock',
     estado: 'rechazada',
+    cantidad_devuelta: 1,
+    estado_producto: 'bueno',
+    accion_tomada: 'cambio_mismo',
   },
   {
     id_devolucion: 10,
@@ -752,6 +785,9 @@ export const mockDevoluciones: Devolucion[] = [
     fecha: '2025-11-15',
     remitido: 'proveedor',
     estado: 'aprobada',
+    cantidad_devuelta: 1,
+    estado_producto: 'defectuoso',
+    accion_tomada: 'cambio_mismo',
   },
 ];
 

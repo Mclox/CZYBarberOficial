@@ -84,8 +84,11 @@ function AppContent() {
     }
   });
 
-  const handleNavigate = (view: string) => {
+  const [navigationData, setNavigationData] = useState<any>(null);
+
+  const handleNavigate = (view: string, data?: any) => {
     setCurrentView(view);
+    setNavigationData(data || null);
     try {
       localStorage.setItem('currentView', view);
     } catch (e) {
@@ -119,7 +122,7 @@ function AppContent() {
       case 'compras':
         return <ComprasView />;
       case 'devoluciones':
-        return <DevolucionesStockView />;
+        return <DevolucionesStockView preSelectedSale={navigationData?.sale} />;
       case 'devoluciones-proveedor':
         return <DevolucionesProveedorView />;
       case 'consignaciones':
@@ -137,7 +140,7 @@ function AppContent() {
       case 'pagos':
         return <PagosView />;
       case 'ventas':
-        return <VentasView />;
+        return <VentasView onNavigate={handleNavigate} />;
       case 'mi-perfil':
         return <MiPerfilView />;
       case 'configuracion-landing':
