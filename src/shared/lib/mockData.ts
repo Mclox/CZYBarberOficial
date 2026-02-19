@@ -180,13 +180,15 @@ export interface Venta {
   id_usuario: number;
   fecha: string;
   total: number;
-  estado: 'pendiente' | 'pagada' | 'cancelada';
+  estado: 'pagada' | 'cancelada';
 }
 
 export interface VentaProductoDetalle {
   id_venta_prod_detalle: number;
   id_venta: number;
-  id_producto: number;
+  tipo: 'producto' | 'servicio';
+  id_producto?: number;
+  id_servicio?: number;
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
@@ -1208,7 +1210,7 @@ export const mockVentas: Venta[] = [
     id_usuario: 2,
     fecha: '2025-11-06',
     total: 48.49,
-    estado: 'pendiente',
+    estado: 'pagada',
   },
   {
     id_venta: 3,
@@ -1240,7 +1242,7 @@ export const mockVentas: Venta[] = [
     id_usuario: 2,
     fecha: '2025-11-10',
     total: 87.96,
-    estado: 'pendiente',
+    estado: 'pagada',
   },
   {
     id_venta: 7,
@@ -1265,6 +1267,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 1,
     id_venta: 1,
+    tipo: 'producto',
     id_producto: 1,
     cantidad: 2,
     precio_unitario: 15.99,
@@ -1273,6 +1276,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 2,
     id_venta: 1,
+    tipo: 'producto',
     id_producto: 2,
     cantidad: 3,
     precio_unitario: 12.99,
@@ -1281,6 +1285,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 3,
     id_venta: 1,
+    tipo: 'producto',
     id_producto: 17,
     cantidad: 2,
     precio_unitario: 1.00,
@@ -1289,6 +1294,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 4,
     id_venta: 1,
+    tipo: 'producto',
     id_producto: 16,
     cantidad: 2,
     precio_unitario: 1.50,
@@ -1297,6 +1303,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 5,
     id_venta: 1,
+    tipo: 'producto',
     id_producto: 20,
     cantidad: 1,
     precio_unitario: 3.00,
@@ -1307,6 +1314,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 6,
     id_venta: 2,
+    tipo: 'producto',
     id_producto: 3,
     cantidad: 2,
     precio_unitario: 18.50,
@@ -1315,6 +1323,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 7,
     id_venta: 2,
+    tipo: 'producto',
     id_producto: 14,
     cantidad: 1,
     precio_unitario: 6.99,
@@ -1323,6 +1332,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 8,
     id_venta: 2,
+    tipo: 'producto',
     id_producto: 19,
     cantidad: 2,
     precio_unitario: 2.25,
@@ -1333,6 +1343,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 9,
     id_venta: 3,
+    tipo: 'producto',
     id_producto: 4,
     cantidad: 2,
     precio_unitario: 16.99,
@@ -1341,6 +1352,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 10,
     id_venta: 3,
+    tipo: 'producto',
     id_producto: 6,
     cantidad: 3,
     precio_unitario: 11.99,
@@ -1349,6 +1361,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 11,
     id_venta: 3,
+    tipo: 'producto',
     id_producto: 13,
     cantidad: 1,
     precio_unitario: 8.50,
@@ -1357,6 +1370,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 12,
     id_venta: 3,
+    tipo: 'producto',
     id_producto: 17,
     cantidad: 3,
     precio_unitario: 1.00,
@@ -1365,6 +1379,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 13,
     id_venta: 3,
+    tipo: 'producto',
     id_producto: 18,
     cantidad: 2,
     precio_unitario: 1.50,
@@ -1373,6 +1388,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 14,
     id_venta: 3,
+    tipo: 'producto',
     id_producto: 19,
     cantidad: 3,
     precio_unitario: 2.25,
@@ -1383,6 +1399,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 15,
     id_venta: 4,
+    tipo: 'producto',
     id_producto: 5,
     cantidad: 1,
     precio_unitario: 14.50,
@@ -1391,6 +1408,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 16,
     id_venta: 4,
+    tipo: 'producto',
     id_producto: 7,
     cantidad: 1,
     precio_unitario: 13.99,
@@ -1399,6 +1417,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 17,
     id_venta: 4,
+    tipo: 'producto',
     id_producto: 16,
     cantidad: 2,
     precio_unitario: 1.50,
@@ -1407,6 +1426,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 18,
     id_venta: 4,
+    tipo: 'producto',
     id_producto: 20,
     cantidad: 1,
     precio_unitario: 3.00,
@@ -1417,6 +1437,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 19,
     id_venta: 5,
+    tipo: 'producto',
     id_producto: 10,
     cantidad: 1,
     precio_unitario: 120.00,
@@ -1427,6 +1448,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 20,
     id_venta: 6,
+    tipo: 'producto',
     id_producto: 22,
     cantidad: 2,
     precio_unitario: 19.99,
@@ -1435,6 +1457,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 21,
     id_venta: 6,
+    tipo: 'producto',
     id_producto: 23,
     cantidad: 2,
     precio_unitario: 14.99,
@@ -1443,6 +1466,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 22,
     id_venta: 6,
+    tipo: 'producto',
     id_producto: 17,
     cantidad: 5,
     precio_unitario: 1.00,
@@ -1451,6 +1475,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 23,
     id_venta: 6,
+    tipo: 'producto',
     id_producto: 16,
     cantidad: 3,
     precio_unitario: 1.50,
@@ -1459,6 +1484,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 24,
     id_venta: 6,
+    tipo: 'producto',
     id_producto: 20,
     cantidad: 3,
     precio_unitario: 3.00,
@@ -1469,6 +1495,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 25,
     id_venta: 7,
+    tipo: 'producto',
     id_producto: 8,
     cantidad: 2,
     precio_unitario: 45.00,
@@ -1477,6 +1504,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 26,
     id_venta: 7,
+    tipo: 'producto',
     id_producto: 11,
     cantidad: 1,
     precio_unitario: 22.00,
@@ -1485,6 +1513,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 27,
     id_venta: 7,
+    tipo: 'producto',
     id_producto: 12,
     cantidad: 3,
     precio_unitario: 10.99,
@@ -1493,6 +1522,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 28,
     id_venta: 7,
+    tipo: 'producto',
     id_producto: 17,
     cantidad: 4,
     precio_unitario: 1.00,
@@ -1501,6 +1531,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 29,
     id_venta: 7,
+    tipo: 'producto',
     id_producto: 18,
     cantidad: 2,
     precio_unitario: 1.50,
@@ -1509,6 +1540,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 30,
     id_venta: 7,
+    tipo: 'producto',
     id_producto: 21,
     cantidad: 1,
     precio_unitario: 4.50,
@@ -1519,6 +1551,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 31,
     id_venta: 8,
+    tipo: 'producto',
     id_producto: 9,
     cantidad: 1,
     precio_unitario: 65.00,
@@ -1527,6 +1560,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 32,
     id_venta: 8,
+    tipo: 'producto',
     id_producto: 15,
     cantidad: 1,
     precio_unitario: 8.99,
@@ -1535,6 +1569,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 33,
     id_venta: 8,
+    tipo: 'producto',
     id_producto: 13,
     cantidad: 2,
     precio_unitario: 8.50,
@@ -1543,6 +1578,7 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
   {
     id_venta_prod_detalle: 34,
     id_venta: 8,
+    tipo: 'producto',
     id_producto: 19,
     cantidad: 1,
     precio_unitario: 2.50,

@@ -11,7 +11,7 @@ import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
-import { RotateCcw, Receipt, Plus, Pencil, Trash2, Search, Eye, FileDown, ShoppingCart, TrendingUp, CheckCircle2, XCircle, Clock, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Briefcase, Scissors, Package } from 'lucide-react';
+import { RotateCcw, Receipt, Plus, Pencil, Trash2, Search, Eye, FileDown, ShoppingCart, TrendingUp, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Briefcase, Scissors, Package } from 'lucide-react';
 import { mockDevoluciones, mockVentas, mockClientes, mockUsuarios, mockVentasDetalle, mockProductos, mockServicios, Venta } from '../../shared/lib/mockData';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth';
@@ -78,7 +78,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
   const [viewingVenta, setViewingVenta] = useState<any | null>(null);
   const [ventaToDelete, setVentaToDelete] = useState<number | null>(null);
   const [ventaToChangeStatus, setVentaToChangeStatus] = useState<Venta | null>(null);
-  const [newStatus, setNewStatus] = useState<'pendiente' | 'pagada' | 'cancelada'>('pendiente');
+  const [newStatus, setNewStatus] = useState<'pagada' | 'cancelada'>('pagada');
   const [searchTerm, setSearchTerm] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -91,7 +91,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
     id_cliente: '',
     id_usuario: user?.id_usuario.toString() || '',
     fecha: new Date().toISOString().split('T')[0],
-    estado: 'pendiente' as 'pendiente' | 'pagada' | 'cancelada',
+    estado: 'pagada' as 'pagada' | 'cancelada',
   });
 
   // Ítems en la venta
@@ -120,8 +120,10 @@ export function VentasView({ onNavigate }: VentasViewProps) {
   const getVentaDetalle = (id_venta: number) => {
     const detalles = mockVentasDetalle.filter(d => d.id_venta === id_venta);
     return detalles.map(d => {
-      const producto = mockProductos.find(p => p.id_producto === d.id_producto);
-      return { ...d, producto: producto?.nombre || 'N/A' };
+      const nombre = d.tipo === 'producto'
+        ? mockProductos.find(p => p.id_producto === d.id_producto)?.nombre
+        : mockServicios.find(s => s.id_servicio === d.id_servicio)?.nombre;
+      return { ...d, producto: nombre || 'N/A' };
     });
   };
 
@@ -161,7 +163,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
       'Vendedor': getUsuarioName(venta.id_usuario),
       'Fecha': new Date(venta.fecha + 'T00:00:00').toLocaleDateString('es-ES'),
       'Total': `$${venta.total.toFixed(2)}`,
-      'Estado': venta.estado === 'pagada' ? 'Pagada' : venta.estado === 'cancelada' ? 'Cancelada' : 'Pendiente',
+      'Estado': venta.estado === 'pagada' ? 'Pagada' : 'Cancelada',
     }));
 
     const fechaActual = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
@@ -211,7 +213,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
       id_cliente: '',
       id_usuario: user?.id_usuario.toString() || '',
       fecha: new Date().toISOString().split('T')[0],
-      estado: 'pendiente',
+      estado: 'pagada',
     });
     setProductosVenta([]);
     setItemSeleccionado('');
@@ -321,7 +323,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
       const statusMessages = {
         pagada: 'Venta marcada como pagada',
         cancelada: 'Venta cancelada',
-        pendiente: 'Venta marcada como pendiente',
       };
 
       toast.success(statusMessages[newStatus], {
@@ -467,7 +468,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
     const variants: Record<string, { bg: string; text: string; icon: any }> = {
       pagada: { bg: 'bg-green-600', text: 'Pagada', icon: CheckCircle2 },
       cancelada: { bg: 'bg-red-600', text: 'Cancelada', icon: XCircle },
-      pendiente: { bg: 'bg-yellow-600', text: 'Pendiente', icon: Clock },
     };
 
     const variant = variants[estado] || { bg: 'bg-gray-600', text: estado, icon: AlertCircle };
@@ -483,7 +483,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
 
   const totalVentas = filteredVentas.reduce((sum, venta) => sum + venta.total, 0);
   const ventasPagadas = filteredVentas.filter(v => v.estado === 'pagada').length;
-  const ventasPendientes = filteredVentas.filter(v => v.estado === 'pendiente').length;
 
   // Paginación
   const totalPages = Math.ceil(filteredVentas.length / itemsPerPage);
@@ -512,7 +511,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
       </div>
 
       {/* Tarjetas de Resumen */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="bg-gradient-to-r from-[#D4AF37]/10 to-[#B8941F]/10 border-[#D4AF37]">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
@@ -536,20 +535,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
               <div>
                 <p className="text-sm text-muted-foreground">Ventas Pagadas</p>
                 <p className="text-2xl font-bold text-green-600">{ventasPagadas}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-yellow-600 rounded-lg">
-                <Clock className="w-6 h-6 text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Ventas Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600">{ventasPendientes}</p>
               </div>
             </div>
           </CardContent>
@@ -867,7 +852,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="pendiente">Pendiente</SelectItem>
                         <SelectItem value="pagada">Pagada</SelectItem>
                         <SelectItem value="cancelada">Cancelada</SelectItem>
                       </SelectContent>
@@ -886,42 +870,31 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                     </div>
 
                     <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setItemSeleccionado(''); }} className="w-full">
-                      <TabsList className="grid w-full grid-cols-2 mb-4 bg-background border">
+                      <TabsList className="grid w-full grid-cols-1 mb-4 bg-background border">
                         <TabsTrigger value="productos" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
                           <ShoppingCart className="w-4 h-4 mr-2" />
-                          Productos
-                        </TabsTrigger>
-                        <TabsTrigger value="servicios" className="data-[state=active]:bg-orange-50 data-[state=active]:text-orange-700">
-                          <Briefcase className="w-4 h-4 mr-2" />
-                          Servicios
+                          Productos únicamente
                         </TabsTrigger>
                       </TabsList>
 
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                         <div className="space-y-2 sm:col-span-3">
                           <Label htmlFor="item" className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
-                            {activeTab === 'productos' ? 'Producto' : 'Servicio'}
+                            Producto
                           </Label>
                           <Select
                             value={itemSeleccionado}
                             onValueChange={setItemSeleccionado}
                           >
                             <SelectTrigger className="h-11">
-                              <SelectValue placeholder={`Selecciona un ${activeTab === 'productos' ? 'producto' : 'servicio'}...`} />
+                              <SelectValue placeholder="Selecciona un producto..." />
                             </SelectTrigger>
                             <SelectContent className="max-h-[300px]">
-                              {activeTab === 'productos'
-                                ? mockProductos.map((p) => (
-                                  <SelectItem key={p.id_producto} value={p.id_producto.toString()}>
-                                    {p.nombre} — ${p.precio.toFixed(2)}
-                                  </SelectItem>
-                                ))
-                                : mockServicios.map((s) => (
-                                  <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>
-                                    {s.nombre} — ${s.precio.toFixed(2)}
-                                  </SelectItem>
-                                ))
-                              }
+                              {mockProductos.map((p) => (
+                                <SelectItem key={p.id_producto} value={p.id_producto.toString()}>
+                                  {p.nombre} — ${p.precio.toFixed(2)}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                         </div>
@@ -1270,16 +1243,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                   </AlertDescription>
                 </Alert>
               )}
-
-              {viewingVenta.estado === 'pendiente' && (
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <AlertTitle className="text-yellow-800">Venta Pendiente</AlertTitle>
-                  <AlertDescription className="text-yellow-700">
-                    Esta venta está pendiente de pago.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
           )}
           <DialogFooter>
@@ -1317,12 +1280,6 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="pendiente">
-                    <div className="flex items-center gap-2">
-                      <Clock className="w-4 h-4 text-yellow-600" />
-                      Pendiente
-                    </div>
-                  </SelectItem>
                   <SelectItem value="pagada">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-green-600" />

@@ -54,7 +54,7 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { mockServicios, mockEmpleados, mockClientes, mockProductos, Cita } from '../../shared/lib/mockData';
+import { mockServicios, mockEmpleados, mockClientes, mockProductos, Cita, Venta, VentaProductoDetalle } from '../../shared/lib/mockData';
 import { dataStore } from '../../shared/lib/dataStore';
 import { useAuth } from '../../features/auth';
 import { toast } from 'sonner';
@@ -404,7 +404,77 @@ export function CitasView() {
   const handleStatusChange = (id: number, status: Cita['estado']) => {
     const idx = dataStore.citas.findIndex(c => c.id_cita === id);
     if (idx !== -1) {
+      const oldStatus = dataStore.citas[idx].estado;
       dataStore.citas[idx].estado = status;
+
+      // Si la cita se marca como completada y no estaba completada antes, creamos la venta
+      if (status === 'completada' && oldStatus !== 'completada') {
+        const cita = dataStore.citas[idx];
+        const newVentaId = Math.max(...dataStore.ventas.map(v => v.id_venta), 100) + 1;
+
+        // Preparar detalles (Servicios + Productos)
+        const currentDetalleId = Math.max(...dataStore.ventasDetalle.map(d => d.id_venta_prod_detalle), 500);
+        let detailCounter = 1;
+
+        // 1. Detalles de Servicios
+        const serviceIds = cita.id_servicios || (cita.id_servicio ? [cita.id_servicio] : []);
+        const serviceDetails: VentaProductoDetalle[] = serviceIds.map(sid => {
+          const service = mockServicios.find(s => s.id_servicio === sid);
+          return {
+            id_venta_prod_detalle: currentDetalleId + detailCounter++,
+            id_venta: newVentaId,
+            tipo: 'servicio',
+            id_servicio: sid,
+            cantidad: 1,
+            precio_unitario: service?.precio || 0,
+            subtotal: service?.precio || 0,
+          };
+        });
+
+        // 2. Detalles de Productos
+        // Usamos id_productos (lista plana)
+        const productIds = cita.id_productos || [];
+        const productDetails: VentaProductoDetalle[] = [];
+
+        // Consolidar productos por ID
+        const productCounts = productIds.reduce((acc, pid) => {
+          acc[pid] = (acc[pid] || 0) + 1;
+          return acc;
+        }, {} as Record<number, number>);
+
+        Object.entries(productCounts).forEach(([pidStr, qty]) => {
+          const pid = parseInt(pidStr);
+          const product = mockProductos.find(p => p.id_producto === pid);
+          productDetails.push({
+            id_venta_prod_detalle: currentDetalleId + detailCounter++,
+            id_venta: newVentaId,
+            tipo: 'producto',
+            id_producto: pid,
+            cantidad: qty,
+            precio_unitario: product?.precio || 0,
+            subtotal: (product?.precio || 0) * qty,
+          });
+        });
+
+        const allDetails = [...serviceDetails, ...productDetails];
+        const total = allDetails.reduce((sum, d) => sum + d.subtotal, 0);
+
+        const newVenta: Venta = {
+          id_venta: newVentaId,
+          id_cliente: cita.id_cliente,
+          id_usuario: user?.id_usuario || 1,
+          fecha: cita.fecha,
+          total: total,
+          estado: 'pagada',
+        };
+
+        dataStore.ventas.push(newVenta);
+        dataStore.ventasDetalle.push(...allDetails);
+        toast.success(`Venta #${newVentaId} generada por $${total.toFixed(2)}`, {
+          icon: '💰'
+        });
+      }
+
       refreshData();
       toast.success(`Cita marcada como ${status}`);
     }
