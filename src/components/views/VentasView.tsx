@@ -12,7 +12,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Tabs, TabsList, TabsTrigger } from '../ui/tabs';
 import { RotateCcw, Receipt, Plus, Pencil, Trash2, Search, Eye, FileDown, ShoppingCart, TrendingUp, CheckCircle2, XCircle, AlertCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Briefcase, Scissors, Package } from 'lucide-react';
-import { mockDevoluciones, mockVentas, mockClientes, mockUsuarios, mockVentasDetalle, mockProductos, mockServicios, Venta } from '../../shared/lib/mockData';
+import { mockDevoluciones, mockVentas, mockClientes, mockUsuarios, mockVentasDetalle, mockProductos, mockServicios, Venta, ClienteTemporal } from '../../shared/lib/mockData';
+import { dataStore } from '../../shared/lib/dataStore';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth';
 import { exportToExcelXLSX } from '../../shared/lib/exportUtils';
@@ -106,23 +107,27 @@ export function VentasView({ onNavigate }: VentasViewProps) {
   // Permisos basados en rol
   const isAdmin = user?.id_rol === 1;
 
-  const getClienteName = (id?: number) => {
-    if (!id) return 'Cliente General';
-    const cliente = mockClientes.find(c => c.id_cliente === id);
+  const getClienteName = (id?: number, idTemp?: number) => {
+    if (idTemp) {
+      const temp = dataStore.clientesTemporales.find((c: ClienteTemporal) => c.id_cliente_temporal === idTemp);
+      return temp ? `${temp.nombre} (Temporal)` : 'Desconocido';
+    }
+    if (!id || id === 0) return 'Cliente General';
+    const cliente = dataStore.clientes.find(c => c.id_cliente === id);
     return cliente ? `${cliente.nombre} ${cliente.apellido || ''}` : 'N/A';
   };
 
   const getUsuarioName = (id: number) => {
-    const usuario = mockUsuarios.find(u => u.id_usuario === id);
+    const usuario = dataStore.usuarios.find(u => u.id_usuario === id);
     return usuario?.nombre || 'N/A';
   };
 
   const getVentaDetalle = (id_venta: number) => {
-    const detalles = mockVentasDetalle.filter(d => d.id_venta === id_venta);
+    const detalles = dataStore.ventasDetalle.filter(d => d.id_venta === id_venta);
     return detalles.map(d => {
       const nombre = d.tipo === 'producto'
-        ? mockProductos.find(p => p.id_producto === d.id_producto)?.nombre
-        : mockServicios.find(s => s.id_servicio === d.id_servicio)?.nombre;
+        ? dataStore.productos.find(p => p.id_producto === d.id_producto)?.nombre
+        : dataStore.servicios.find(s => s.id_servicio === d.id_servicio)?.nombre;
       return { ...d, producto: nombre || 'N/A' };
     });
   };
@@ -589,14 +594,14 @@ export function VentasView({ onNavigate }: VentasViewProps) {
 
                     const tieneProductos = allItems
                       ? allItems.some(i => i.tipo === 'producto')
-                      : mockDetalles.length > 0;
+                      : mockDetalles.some(d => d.tipo === 'producto');
                     const tieneServicios = allItems
                       ? allItems.some(i => i.tipo === 'servicio')
-                      : false;
+                      : mockDetalles.some(d => d.tipo === 'servicio');
                     return (
                       <TableRow key={venta.id_venta}>
                         <TableCell>#{venta.id_venta}</TableCell>
-                        <TableCell>{getClienteName(venta.id_cliente)}</TableCell>
+                        <TableCell>{getClienteName(venta.id_cliente, venta.id_cliente_temporal)}</TableCell>
                         <TableCell>{getUsuarioName(venta.id_usuario)}</TableCell>
                         <TableCell>{new Date(venta.fecha + 'T00:00:00').toLocaleDateString('es-ES')}</TableCell>
                         <TableCell className="font-medium">${venta.total.toFixed(2)}</TableCell>
@@ -752,7 +757,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
 
       {/* Sheet Crear/Editar (Panel Lateral) */}
       <Sheet open={dialogOpen} onOpenChange={setDialogOpen}>
-        <SheetContent side="right" className="sm:max-w-2xl w-full flex flex-col p-0 gap-0 h-screen overflow-hidden">
+        <SheetContent side="right" className="sm:max-w-2xl w-full flex flex-col p-0 gap-0 h-full">
           <SheetHeader className="p-6 border-b bg-background flex-none">
             <SheetTitle>{editingVenta ? 'Editar Venta' : 'Nueva Venta'}</SheetTitle>
             <SheetDescription>
@@ -769,288 +774,286 @@ export function VentasView({ onNavigate }: VentasViewProps) {
             )}
           </SheetHeader>
 
-          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0">
-            <div className="flex-1 overflow-y-auto min-h-0">
-              <div className="p-6 space-y-8">
-                {/* Información General */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="id_cliente">Cliente</Label>
-                    <Select
-                      value={formData.id_cliente || '0'}
-                      onValueChange={(value) => setFormData({ ...formData, id_cliente: value === '0' ? '' : value })}
-                    >
-                      <SelectTrigger className={formErrors.id_cliente ? 'border-red-500' : ''}>
-                        <SelectValue placeholder="Cliente General" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">Cliente General</SelectItem>
-                        {mockClientes.map((cliente) => (
-                          <SelectItem key={cliente.id_cliente} value={cliente.id_cliente.toString()}>
-                            {cliente.nombre} {cliente.apellido}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {formErrors.id_cliente && (
-                      <p className="text-xs text-red-500">{formErrors.id_cliente}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="fecha">
-                      Fecha <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="fecha"
-                      type="date"
-                      value={formData.fecha}
-                      onChange={(e) => {
-                        setFormData({ ...formData, fecha: e.target.value });
-                        if (formErrors.fecha) {
-                          setFormErrors({ ...formErrors, fecha: '' });
-                        }
-                      }}
-                      max={new Date().toISOString().split('T')[0]}
-                      className={formErrors.fecha ? 'border-red-500' : ''}
-                    />
-                    {formErrors.fecha && (
-                      <p className="text-xs text-red-500">{formErrors.fecha}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="id_usuario">
-                      Vendedor <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.id_usuario}
-                      onValueChange={(value) => setFormData({ ...formData, id_usuario: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {mockUsuarios.map((usuario) => (
-                          <SelectItem key={usuario.id_usuario} value={usuario.id_usuario.toString()}>
-                            {usuario.nombre}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2 lg:col-span-1">
-                    <Label htmlFor="estado">
-                      Estado <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.estado}
-                      onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pagada">Pagada</SelectItem>
-                        <SelectItem value="cancelada">Cancelada</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <form onSubmit={handleSubmit} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+              {/* Información General */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="id_cliente">Cliente</Label>
+                  <Select
+                    value={formData.id_cliente || '0'}
+                    onValueChange={(value) => setFormData({ ...formData, id_cliente: value === '0' ? '' : value })}
+                  >
+                    <SelectTrigger className={formErrors.id_cliente ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Cliente General" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">Cliente General</SelectItem>
+                      {mockClientes.map((cliente) => (
+                        <SelectItem key={cliente.id_cliente} value={cliente.id_cliente.toString()}>
+                          {cliente.nombre} {cliente.apellido}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {formErrors.id_cliente && (
+                    <p className="text-xs text-red-500">{formErrors.id_cliente}</p>
+                  )}
                 </div>
 
-                {/* Sección de Ítems - Refinada */}
-                <div className="space-y-6">
-                  <div className="space-y-4 p-5 bg-muted/40 rounded-xl border-2 border-dashed border-muted">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                        <Plus className="w-5 h-5 text-[#D4AF37]" />
-                        Agregar Ítems
-                      </h3>
-                    </div>
-
-                    <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setItemSeleccionado(''); }} className="w-full">
-                      <TabsList className="grid w-full grid-cols-1 mb-4 bg-background border">
-                        <TabsTrigger value="productos" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
-                          <ShoppingCart className="w-4 h-4 mr-2" />
-                          Productos únicamente
-                        </TabsTrigger>
-                      </TabsList>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-                        <div className="space-y-2 sm:col-span-3">
-                          <Label htmlFor="item" className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
-                            Producto
-                          </Label>
-                          <Select
-                            value={itemSeleccionado}
-                            onValueChange={setItemSeleccionado}
-                          >
-                            <SelectTrigger className="h-11">
-                              <SelectValue placeholder="Selecciona un producto..." />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-[300px]">
-                              {mockProductos.map((p) => (
-                                <SelectItem key={p.id_producto} value={p.id_producto.toString()}>
-                                  {p.nombre} — ${p.precio.toFixed(2)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label htmlFor="cantidad" className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
-                            Cant.
-                          </Label>
-                          <div className="flex gap-2">
-                            <Input
-                              id="cantidad"
-                              type="number"
-                              min="1"
-                              value={cantidadItem}
-                              onChange={(e) => setCantidadItem(e.target.value)}
-                              className="h-11 text-center font-bold"
-                            />
-                            <Button
-                              type="button"
-                              onClick={handleAgregarItem}
-                              className={`h-11 px-4 ${activeTab === 'productos' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}
-                            >
-                              <Plus className="w-5 h-5" />
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    </Tabs>
-
-                    {formErrors.productos && (
-                      <p className="text-sm font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
-                        {formErrors.productos}
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Lista de Ítems Agregados (Carrito) */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-lg flex items-center gap-2">
-                        <ShoppingCart className="w-5 h-5 text-blue-500" />
-                        Detalle de Venta
-                        <Badge variant="secondary" className="ml-2">
-                          {productosVenta.length} {productosVenta.length === 1 ? 'ítem' : 'ítems'}
-                        </Badge>
-                      </h3>
-                    </div>
-
-                    {productosVenta.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-xl bg-muted/20 text-muted-foreground">
-                        <ShoppingCart className="w-12 h-12 mb-2 opacity-20" />
-                        <p className="text-sm">No has agregado ítems aún</p>
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border shadow-sm bg-background overflow-hidden font-medium">
-                        <Table>
-                          <TableHeader className="bg-muted/50">
-                            <TableRow>
-                              <TableHead className="py-4">Ítem</TableHead>
-                              <TableHead className="text-right">Precio Unit.</TableHead>
-                              <TableHead className="w-24 text-center">Cant.</TableHead>
-                              <TableHead className="text-right">Subtotal</TableHead>
-                              <TableHead className="w-16"></TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {productosVenta.map((item, index) => (
-                              <TableRow key={`${item.tipo}-${item.id_item}-${index}`} className="group hover:bg-muted/30 transition-colors">
-                                <TableCell className="py-4">
-                                  <div className="flex items-center gap-3">
-                                    {item.tipo === 'producto'
-                                      ? <ShoppingCart className="w-4 h-4 text-blue-500" />
-                                      : <Briefcase className="w-4 h-4 text-orange-500" />
-                                    }
-                                    <div>
-                                      <p className="font-bold">{item.nombre}</p>
-                                      <p className="text-[10px] uppercase text-muted-foreground tracking-widest">{item.tipo}</p>
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-right text-muted-foreground">
-                                  ${item.precio_unitario.toFixed(2)}
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    value={item.cantidad}
-                                    onChange={(e) => handleCantidadChange(item.id_item, item.tipo, e.target.value)}
-                                    className="h-8 w-16 text-center focus:ring-1 mx-auto"
-                                  />
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  <p className="font-black text-[#D4AF37]">${item.subtotal.toFixed(2)}</p>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => handleEliminarItem(item.id_item, item.tipo)}
-                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    )}
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fecha">
+                    Fecha <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="fecha"
+                    type="date"
+                    value={formData.fecha}
+                    onChange={(e) => {
+                      setFormData({ ...formData, fecha: e.target.value });
+                      if (formErrors.fecha) {
+                        setFormErrors({ ...formErrors, fecha: '' });
+                      }
+                    }}
+                    max={new Date().toISOString().split('T')[0]}
+                    className={formErrors.fecha ? 'border-red-500' : ''}
+                  />
+                  {formErrors.fecha && (
+                    <p className="text-xs text-red-500">{formErrors.fecha}</p>
+                  )}
                 </div>
-                <div className="w-full space-y-4 pt-2">
-                  <div className="flex items-center justify-between px-1">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
-                      Resumen de Pago
+
+                <div className="space-y-2">
+                  <Label htmlFor="id_usuario">
+                    Vendedor <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.id_usuario}
+                    onValueChange={(value) => setFormData({ ...formData, id_usuario: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mockUsuarios.map((usuario) => (
+                        <SelectItem key={usuario.id_usuario} value={usuario.id_usuario.toString()}>
+                          {usuario.nombre}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2 lg:col-span-1">
+                  <Label htmlFor="estado">
+                    Estado <span className="text-red-500">*</span>
+                  </Label>
+                  <Select
+                    value={formData.estado}
+                    onValueChange={(value: any) => setFormData({ ...formData, estado: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pagada">Pagada</SelectItem>
+                      <SelectItem value="cancelada">Cancelada</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Sección de Ítems - Refinada */}
+              <div className="space-y-6">
+                <div className="space-y-4 p-5 bg-muted/40 rounded-xl border-2 border-dashed border-muted">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <Plus className="w-5 h-5 text-[#D4AF37]" />
+                      Agregar Ítems
                     </h3>
                   </div>
 
-                  <Card className="overflow-hidden border-2 border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-background to-[#B8941F]/10 shadow-lg shadow-[#D4AF37]/5">
-                    <CardContent className="p-0">
-                      <div className="p-6 flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                          <div className="p-4 bg-[#D4AF37] rounded-2xl shadow-inner shadow-black/10">
-                            <Receipt className="w-8 h-8 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-black uppercase text-[#B8941F] tracking-widest mb-1 leading-none">Total Cobrar</p>
-                            <p className="text-4xl md:text-5xl font-black text-foreground tracking-tighter tabular-nums drop-shadow-sm">
-                              ${calcularTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                            </p>
-                          </div>
-                        </div>
+                  <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setItemSeleccionado(''); }} className="w-full">
+                    <TabsList className="grid w-full grid-cols-1 mb-4 bg-background border">
+                      <TabsTrigger value="productos" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700">
+                        <ShoppingCart className="w-4 h-4 mr-2" />
+                        Productos únicamente
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <div className="space-y-2 sm:col-span-3">
+                        <Label htmlFor="item" className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+                          Producto
+                        </Label>
+                        <Select
+                          value={itemSeleccionado}
+                          onValueChange={setItemSeleccionado}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Selecciona un producto..." />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-[300px]">
+                            {mockProductos.map((p) => (
+                              <SelectItem key={p.id_producto} value={p.id_producto.toString()}>
+                                {p.nombre} — ${p.precio.toFixed(2)}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
 
-                      {/* Desglose de Subtotales */}
-                      <div className="grid grid-cols-2 divide-x border-t border-[#D4AF37]/20 bg-[#D4AF37]/5">
-                        <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5">
-                          <span className="text-[10px] uppercase font-bold text-blue-600/70 tracking-tighter">Productos</span>
-                          <span className="text-sm font-black text-blue-700">
-                            ${productosVenta.filter(p => p.tipo === 'producto').reduce((sum, p) => sum + p.subtotal, 0).toFixed(2)}
-                          </span>
-                        </div>
-                        <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5">
-                          <span className="text-[10px] uppercase font-bold text-orange-600/70 tracking-tighter">Servicios</span>
-                          <span className="text-sm font-black text-orange-700">
-                            ${productosVenta.filter(p => p.tipo === 'servicio').reduce((sum, p) => sum + p.subtotal, 0).toFixed(2)}
-                          </span>
+                      <div className="space-y-2">
+                        <Label htmlFor="cantidad" className="text-xs uppercase font-bold text-muted-foreground tracking-wider">
+                          Cant.
+                        </Label>
+                        <div className="flex gap-2">
+                          <Input
+                            id="cantidad"
+                            type="number"
+                            min="1"
+                            value={cantidadItem}
+                            onChange={(e) => setCantidadItem(e.target.value)}
+                            className="h-11 text-center font-bold"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleAgregarItem}
+                            className={`h-11 px-4 ${activeTab === 'productos' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                          >
+                            <Plus className="w-5 h-5" />
+                          </Button>
                         </div>
                       </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </Tabs>
+
+                  {formErrors.productos && (
+                    <p className="text-sm font-medium text-red-500 animate-in fade-in slide-in-from-top-1">
+                      {formErrors.productos}
+                    </p>
+                  )}
                 </div>
+
+                {/* Lista de Ítems Agregados (Carrito) */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg flex items-center gap-2">
+                      <ShoppingCart className="w-5 h-5 text-blue-500" />
+                      Detalle de Venta
+                      <Badge variant="secondary" className="ml-2">
+                        {productosVenta.length} {productosVenta.length === 1 ? 'ítem' : 'ítems'}
+                      </Badge>
+                    </h3>
+                  </div>
+
+                  {productosVenta.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 border-2 border-dashed rounded-xl bg-muted/20 text-muted-foreground">
+                      <ShoppingCart className="w-12 h-12 mb-2 opacity-20" />
+                      <p className="text-sm">No has agregado ítems aún</p>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border shadow-sm bg-background overflow-hidden font-medium">
+                      <Table>
+                        <TableHeader className="bg-muted/50">
+                          <TableRow>
+                            <TableHead className="py-4">Ítem</TableHead>
+                            <TableHead className="text-right">Precio Unit.</TableHead>
+                            <TableHead className="w-24 text-center">Cant.</TableHead>
+                            <TableHead className="text-right">Subtotal</TableHead>
+                            <TableHead className="w-16"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {productosVenta.map((item, index) => (
+                            <TableRow key={`${item.tipo}-${item.id_item}-${index}`} className="group hover:bg-muted/30 transition-colors">
+                              <TableCell className="py-4">
+                                <div className="flex items-center gap-3">
+                                  {item.tipo === 'producto'
+                                    ? <ShoppingCart className="w-4 h-4 text-blue-500" />
+                                    : <Briefcase className="w-4 h-4 text-orange-500" />
+                                  }
+                                  <div>
+                                    <p className="font-bold">{item.nombre}</p>
+                                    <p className="text-[10px] uppercase text-muted-foreground tracking-widest">{item.tipo}</p>
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                ${item.precio_unitario.toFixed(2)}
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  value={item.cantidad}
+                                  onChange={(e) => handleCantidadChange(item.id_item, item.tipo, e.target.value)}
+                                  className="h-8 w-16 text-center focus:ring-1 mx-auto"
+                                />
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <p className="font-black text-[#D4AF37]">${item.subtotal.toFixed(2)}</p>
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEliminarItem(item.id_item, item.tipo)}
+                                  className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="w-full space-y-4 pt-2">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
+                    Resumen de Pago
+                  </h3>
+                </div>
+
+                <Card className="overflow-hidden border-2 border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-background to-[#B8941F]/10 shadow-lg shadow-[#D4AF37]/5">
+                  <CardContent className="p-0">
+                    <div className="p-6 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="p-4 bg-[#D4AF37] rounded-2xl shadow-inner shadow-black/10">
+                          <Receipt className="w-8 h-8 text-white" />
+                        </div>
+                        <div>
+                          <p className="text-xs font-black uppercase text-[#B8941F] tracking-widest mb-1 leading-none">Total Cobrar</p>
+                          <p className="text-4xl md:text-5xl font-black text-foreground tracking-tighter tabular-nums drop-shadow-sm">
+                            ${calcularTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Desglose de Subtotales */}
+                    <div className="grid grid-cols-2 divide-x border-t border-[#D4AF37]/20 bg-[#D4AF37]/5">
+                      <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5">
+                        <span className="text-[10px] uppercase font-bold text-blue-600/70 tracking-tighter">Productos</span>
+                        <span className="text-sm font-black text-blue-700">
+                          ${productosVenta.filter(p => p.tipo === 'producto').reduce((sum, p) => sum + p.subtotal, 0).toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5">
+                        <span className="text-[10px] uppercase font-bold text-orange-600/70 tracking-tighter">Servicios</span>
+                        <span className="text-sm font-black text-orange-700">
+                          ${productosVenta.filter(p => p.tipo === 'servicio').reduce((sum, p) => sum + p.subtotal, 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
 

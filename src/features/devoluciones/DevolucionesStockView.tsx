@@ -1,18 +1,16 @@
-import React, { useState, useEffect, Fragment } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Badge } from '../../components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../../components/ui/alert-dialog';
-import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
+import { Alert, AlertDescription } from '../../components/ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
-import { RotateCcw, Plus, FileDown, Eye, Trash2, Search, Package, CheckCircle2, XCircle, Clock, AlertCircle, Pencil, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { RotateCcw, Plus, FileDown, Eye, Trash2, Search, Package, CheckCircle2, XCircle, Clock, AlertCircle, Pencil, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, ArrowRight } from 'lucide-react';
 import { Checkbox } from '../../components/ui/checkbox';
-import { mockDevoluciones, mockVentasDetalle, mockProductos, Devolucion } from '../../shared/lib/mockData';
+import { mockDevoluciones, mockVentasDetalle, mockProductos, Devolucion, Venta, VentaProductoDetalle, Producto } from '../../shared/lib/mockData';
+import { dataStore } from '../../shared/lib/dataStore';
 import { toast } from 'sonner';
 import { exportToExcelXLSX } from '../../shared/lib/exportUtils';
 
@@ -61,22 +59,22 @@ interface DevolucionesStockViewProps {
 export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockViewProps) {
   const [devoluciones, setDevoluciones] = useState<Devolucion[]>(mockDevoluciones);
   const [filteredDevoluciones, setFilteredDevoluciones] = useState<Devolucion[]>(mockDevoluciones);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [view, setView] = useState<'list' | 'form' | 'details'>('list');
   const [editingDevolucion, setEditingDevolucion] = useState<Devolucion | null>(null);
   const [viewingDevolucion, setViewingDevolucion] = useState<any | null>(null);
-  const [devolucionToDelete, setDevolucionToDelete] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Estados de paginación
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [formProductsPage, setFormProductsPage] = useState(1);
+  const formProductsPerPage = 5;
 
   // Formulario
   const [formData, setFormData] = useState({
     id_venta: '',
+    id_cliente: null as number | null,
     items: [] as Array<{
       id_venta_prod_detalle: number;
       selected: boolean;
@@ -94,14 +92,15 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
     fecha: new Date().toISOString().split('T')[0],
     remitido: 'stock' as 'stock' | 'proveedor',
     estado: 'pendiente' as 'pendiente' | 'aprobada' | 'rechazada',
+    metodo_diferencia: 'efectivo' as 'efectivo' | 'tarjeta' | 'transferencia' | 'saldo_a_favor',
   });
 
   const getProductoInfo = (id_venta_prod_detalle?: number) => {
-    if (!id_venta_prod_detalle) return { nombre: 'N/A', cantidad: 0, venta_id: 0 };
+    if (!id_venta_prod_detalle) return { nombre: 'N/A', cantidad: 0, venta_id: 0, precio_unitario: 0, subtotal: 0 };
 
-    const detalle = mockVentasDetalle.find(d => d.id_venta_prod_detalle === id_venta_prod_detalle);
+    const detalle = dataStore.ventasDetalle.find((d: VentaProductoDetalle) => d.id_venta_prod_detalle === id_venta_prod_detalle);
     if (detalle) {
-      const producto = mockProductos.find(p => p.id_producto === detalle.id_producto);
+      const producto = dataStore.productos.find((p: Producto) => p.id_producto === detalle.id_producto);
       return {
         nombre: producto?.nombre || 'N/A',
         cantidad: detalle.cantidad,
@@ -110,8 +109,10 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
         subtotal: detalle.subtotal,
       };
     }
-    return { nombre: 'N/A', cantidad: 0, venta_id: 0 };
+    return { nombre: 'N/A', cantidad: 0, venta_id: 0, precio_unitario: 0, subtotal: 0 };
   };
+
+
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value.toLowerCase();
@@ -172,45 +173,46 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
     });
   };
 
-  const validateForm = (): boolean => {
-    const errors: Record<string, string> = {};
+  const validateForm = () => {
+    const errors: any = {};
+    if (!formData.id_venta) errors.items = 'Debes seleccionar una venta original';
+    if (formData.items.filter(i => i.selected).length === 0) errors.items = 'Selecciona al menos un producto para devolver';
+    if (!formData.fecha) errors.fecha = 'La fecha es requerida';
+    if (!formData.motivo || formData.motivo.trim().length < 10) errors.motivo = 'El motivo debe tener al menos 10 caracteres';
 
-    const selectedItems = formData.items.filter(item => item.selected);
-    if (selectedItems.length === 0) {
-      errors.items = 'Debes seleccionar al menos un producto para devolver';
-    }
-
-    selectedItems.forEach((item, index) => {
-      if (item.cantidad_devuelta <= 0) {
-        errors[`item_${index}_qty`] = 'La cantidad debe ser mayor a 0';
-      }
-      if (item.cantidad_devuelta > item.max_cantidad) {
-        errors[`item_${index}_qty`] = 'La cantidad no puede exceder lo vendido';
-      }
-      if (item.accion_tomada === 'cambio_otro' && !item.id_producto_cambio) {
-        errors.items = 'Debes seleccionar un producto de reemplazo para los cambios';
+    formData.items.forEach((item, index) => {
+      if (item.selected) {
+        if (item.cantidad_devuelta <= 0) errors[`item_${index}_qty`] = 'La cantidad debe ser mayor a 0';
+        if (item.cantidad_devuelta > item.max_cantidad) errors[`item_${index}_qty`] = 'No puedes devolver más de lo comprado';
+        if (item.accion_tomada === 'cambio_otro' && !item.id_producto_cambio) errors[`item_${index}_action`] = 'Selecciona un producto de reemplazo';
       }
     });
 
-    if (!formData.motivo.trim()) {
-      errors.motivo = 'El motivo es obligatorio';
-    } else if (formData.motivo.trim().length < 10) {
-      errors.motivo = 'El motivo debe tener al menos 10 caracteres';
-    } else if (formData.motivo.trim().length > 500) {
-      errors.motivo = 'El motivo no puede exceder 500 caracteres';
+    // Validar liquidación si hay diferencia
+    const calculateBalanceLocal = (item: any) => {
+      if (item.accion_tomada === 'cambio_otro' && item.precio_producto_cambio !== undefined) {
+        return (item.precio_producto_cambio - item.precio_unitario_original) * item.cantidad_devuelta;
+      }
+      if (item.accion_tomada === 'reembolso') {
+        return -(item.precio_unitario_original * item.cantidad_devuelta);
+      }
+      return 0;
+    };
+
+    const totalBalance = formData.items
+      .filter(i => i.selected)
+      .reduce((sum, item) => sum + calculateBalanceLocal(item), 0);
+
+    if (totalBalance !== 0 && !formData.metodo_diferencia) {
+      errors.metodo_diferencia = 'Debes seleccionar un método para resolver la diferencia de precio';
     }
 
-    // Validar fecha
-    if (!formData.fecha) {
-      errors.fecha = 'La fecha es obligatoria';
-    } else {
-      const fechaDevolucion = new Date(formData.fecha + 'T00:00:00');
-      const fechaActual = new Date();
-      fechaActual.setHours(0, 0, 0, 0);
+    const fechaDevolucion = new Date(formData.fecha + 'T00:00:00');
+    const fechaActual = new Date();
+    fechaActual.setHours(0, 0, 0, 0);
 
-      if (fechaDevolucion > fechaActual) {
-        errors.fecha = 'La fecha no puede ser futura';
-      }
+    if (fechaDevolucion > fechaActual) {
+      errors.fecha = 'La fecha no puede ser futura';
     }
 
     setFormErrors(errors);
@@ -218,28 +220,35 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
   };
 
   const loadSaleItems = (idVenta: number) => {
-    const detalles = mockVentasDetalle.filter(d => d.id_venta === idVenta);
+    const detalles = dataStore.ventasDetalle.filter((d: VentaProductoDetalle) => d.id_venta === idVenta);
 
-    // Filtrar detalles que ya fueron devueltos (estado aprobada o pendiente)
-    const detallesDevueltos = devoluciones
-      .filter(dev => dev.estado === 'aprobada' || dev.estado === 'pendiente')
-      .map(dev => dev.id_venta_prod_detalle);
+    // Calcular cuánto se ha devuelto ya de cada detalle
+    const getCantidadYaDevuelta = (idDetalle: number) => {
+      return devoluciones
+        .filter(dev => dev.id_venta_prod_detalle === idDetalle && (dev.estado === 'aprobada' || dev.estado === 'pendiente'))
+        .reduce((sum, dev) => sum + (dev.cantidad_devuelta || 0), 0);
+    };
 
     const items = detalles
-      .filter(d => !detallesDevueltos.includes(d.id_venta_prod_detalle))
-      .map(d => {
-        const producto = mockProductos.find(p => p.id_producto === d.id_producto);
+      .map((d: VentaProductoDetalle) => {
+        const yaDevuelto = getCantidadYaDevuelta(d.id_venta_prod_detalle);
+        const maxDisponible = d.cantidad - yaDevuelto;
+
+        if (maxDisponible <= 0) return null;
+
+        const producto = dataStore.productos.find((p: Producto) => p.id_producto === d.id_producto);
         return {
           id_venta_prod_detalle: d.id_venta_prod_detalle,
           selected: false,
-          cantidad_devuelta: d.cantidad,
-          max_cantidad: d.cantidad,
+          cantidad_devuelta: maxDisponible,
+          max_cantidad: maxDisponible,
           estado_producto: 'bueno' as const,
           accion_tomada: 'cambio_mismo' as const,
           nombre_producto: producto?.nombre || 'Producto desconocido',
           precio_unitario_original: d.precio_unitario,
         };
-      });
+      })
+      .filter(i => i !== null) as Array<any>;
 
     return items;
   };
@@ -250,29 +259,33 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
       const items = loadSaleItems(preSelectedSale.id_venta);
       setFormData({
         id_venta: preSelectedSale.id_venta.toString(),
+        id_cliente: preSelectedSale.id_cliente || preSelectedSale.id_cliente_temporal || null,
         items,
         motivo: '',
         fecha: new Date().toISOString().split('T')[0],
         remitido: 'stock',
         estado: 'pendiente',
+        metodo_diferencia: 'efectivo',
       });
       setFormErrors({});
-      setDialogOpen(true);
+      setView('form');
     }
-  }, [preSelectedSale, devoluciones]);
+  }, [preSelectedSale]);
 
   const handleCreate = () => {
     setEditingDevolucion(null);
     setFormData({
       id_venta: '',
+      id_cliente: null,
       items: [],
       motivo: '',
       fecha: new Date().toISOString().split('T')[0],
       remitido: 'stock',
       estado: 'pendiente',
+      metodo_diferencia: 'efectivo',
     });
     setFormErrors({});
-    setDialogOpen(true);
+    setView('form');
   };
 
   const handleEdit = (devolucion: Devolucion) => {
@@ -282,6 +295,7 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
 
     setFormData({
       id_venta: detalle?.id_venta.toString() || '',
+      id_cliente: null, // This will be updated if needed based on the actual sale
       items: [{
         id_venta_prod_detalle: devolucion.id_venta_prod_detalle!,
         selected: true,
@@ -299,32 +313,26 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
       fecha: devolucion.fecha,
       remitido: devolucion.remitido,
       estado: devolucion.estado,
+      metodo_diferencia: devolucion.metodo_diferencia || 'efectivo',
     });
     setFormErrors({});
-    setDialogOpen(true);
+    setView('form');
   };
 
   const handleView = (devolucion: Devolucion) => {
     const productoInfo = getProductoInfo(devolucion.id_venta_prod_detalle);
     setViewingDevolucion({ ...devolucion, productoInfo });
-    setDetailsDialogOpen(true);
+    setView('details');
   };
 
   const handleDelete = (id: number) => {
-    setDevolucionToDelete(id);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (devolucionToDelete) {
-      setDevoluciones(devoluciones.filter(d => d.id_devolucion !== devolucionToDelete));
-      setFilteredDevoluciones(filteredDevoluciones.filter(d => d.id_devolucion !== devolucionToDelete));
+    if (window.confirm('¿Estás seguro de que deseas eliminar esta devolución? Esta acción no se puede deshacer.')) {
+      setDevoluciones(devoluciones.filter(d => d.id_devolucion !== id));
+      setFilteredDevoluciones(filteredDevoluciones.filter(d => d.id_devolucion !== id));
       toast.success('Devolución eliminada correctamente', {
         style: { background: '#10b981', color: '#fff' }
       });
     }
-    setDeleteDialogOpen(false);
-    setDevolucionToDelete(null);
   };
 
   const handleStatusChange = (id: number, newStatus: 'pendiente' | 'aprobada' | 'rechazada') => {
@@ -385,12 +393,19 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
       return;
     }
 
+    const calculateBalance = (item: any) => {
+      if (item.accion_tomada === 'cambio_otro' && item.precio_producto_cambio !== undefined) {
+        return (item.precio_producto_cambio - item.precio_unitario_original) * item.cantidad_devuelta;
+      }
+      if (item.accion_tomada === 'reembolso') {
+        return -(item.precio_unitario_original * item.cantidad_devuelta);
+      }
+      return 0; // cambio_mismo no tiene diferencia de precio
+    };
+
     const totalBalance = formData.items
-      .filter(i => i.selected && i.accion_tomada === 'cambio_otro' && i.precio_producto_cambio !== undefined)
-      .reduce((sum, item) => {
-        const diff = (item.precio_producto_cambio! - item.precio_unitario_original) * item.cantidad_devuelta;
-        return sum + diff;
-      }, 0);
+      .filter(i => i.selected)
+      .reduce((sum, item) => sum + calculateBalance(item), 0);
 
     const stockSummary = {
       bueno: formData.items.filter(i => i.selected && i.estado_producto === 'bueno').reduce((acc, i) => acc + i.cantidad_devuelta, 0),
@@ -418,55 +433,71 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
     console.groupEnd();
 
     if (editingDevolucion) {
+      const item = formData.items[0];
+      const balance = calculateBalance(item);
+      let tipo: Devolucion['tipo_diferencia'] = 'sin_diferencia';
+      if (balance > 0) tipo = 'pago_adicional';
+      else if (balance < 0) tipo = item.accion_tomada === 'reembolso' ? 'reembolso' : 'saldo_a_favor';
+
       const updated = devoluciones.map(d =>
         d.id_devolucion === editingDevolucion.id_devolucion
           ? {
             ...d,
-            id_venta_prod_detalle: formData.items[0].id_venta_prod_detalle,
-            motivo: formData.motivo,
+            id_venta_prod_detalle: item.id_venta_prod_detalle,
+            motivo: formData.motivo.trim(),
             fecha: formData.fecha,
             remitido: formData.remitido,
             estado: formData.estado,
-            cantidad_devuelta: formData.items[0].cantidad_devuelta,
-            estado_producto: formData.items[0].estado_producto,
-            accion_tomada: formData.items[0].accion_tomada,
-            id_producto_cambio: formData.items[0].id_producto_cambio,
-            nombre_producto_cambio: formData.items[0].nombre_producto_cambio,
-            precio_producto_cambio: formData.items[0].precio_producto_cambio,
+            cantidad_devuelta: item.cantidad_devuelta,
+            estado_producto: item.estado_producto,
+            accion_tomada: item.accion_tomada,
+            id_producto_cambio: item.id_producto_cambio,
+            nombre_producto_cambio: item.nombre_producto_cambio,
+            precio_producto_cambio: item.precio_producto_cambio,
+            total_diferencia: balance,
+            tipo_diferencia: tipo,
+            metodo_diferencia: formData.metodo_diferencia,
           }
           : d
       );
       setDevoluciones(updated);
       setFilteredDevoluciones(updated);
-      toast.success('Devolución actualizada correctamente', {
-        style: { background: '#10b981', color: '#fff' }
-      });
+      setEditingDevolucion(null);
+      toast.success('Devolución actualizada correctamente');
+      setView('list');
     } else {
       const selectedItems = formData.items.filter(item => item.selected);
-      const newDevoluciones: Devolucion[] = selectedItems.map((item, index) => ({
-        id_devolucion: Math.max(...devoluciones.map(d => d.id_devolucion), 0) + index + 1,
-        id_venta_prod_detalle: item.id_venta_prod_detalle,
-        motivo: formData.motivo,
-        fecha: formData.fecha,
-        remitido: formData.remitido,
-        estado: formData.estado,
-        cantidad_devuelta: item.cantidad_devuelta,
-        estado_producto: item.estado_producto,
-        accion_tomada: item.accion_tomada,
-        id_producto_cambio: item.id_producto_cambio,
-        nombre_producto_cambio: item.nombre_producto_cambio,
-        precio_producto_cambio: item.precio_producto_cambio,
-      }));
+      const newDevoluciones: Devolucion[] = selectedItems.map((item, index) => {
+        const balance = calculateBalance(item);
+        let tipo: Devolucion['tipo_diferencia'] = 'sin_diferencia';
+        if (balance > 0) tipo = 'pago_adicional';
+        else if (balance < 0) tipo = item.accion_tomada === 'reembolso' ? 'reembolso' : 'saldo_a_favor';
+
+        return {
+          id_devolucion: Math.max(...devoluciones.map(d => d.id_devolucion), 0) + index + 1,
+          id_venta_prod_detalle: item.id_venta_prod_detalle,
+          motivo: formData.motivo.trim(),
+          fecha: formData.fecha,
+          remitido: formData.remitido,
+          estado: formData.estado,
+          cantidad_devuelta: item.cantidad_devuelta,
+          estado_producto: item.estado_producto,
+          accion_tomada: item.accion_tomada,
+          id_producto_cambio: item.id_producto_cambio,
+          nombre_producto_cambio: item.nombre_producto_cambio,
+          precio_producto_cambio: item.precio_producto_cambio,
+          total_diferencia: balance,
+          tipo_diferencia: tipo,
+          metodo_diferencia: formData.metodo_diferencia,
+        };
+      });
 
       const updatedList = [...devoluciones, ...newDevoluciones];
       setDevoluciones(updatedList);
       setFilteredDevoluciones(updatedList);
-      toast.success(`${newDevoluciones.length} devolución(es) registrada(s) exitosamente`, {
-        style: { background: '#10b981', color: '#fff' }
-      });
+      toast.success(`${newDevoluciones.length} devolución(es) registrada(s) exitosamente`);
+      setView('list');
     }
-
-    setDialogOpen(false);
   };
 
   const getEstadoBadge = (estado: string) => {
@@ -524,15 +555,15 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
   const totalPages = Math.ceil(filteredDevoluciones.length / itemsPerPage);
   const currentPaginatedDevoluciones = filteredDevoluciones.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  return (
-    <div className="p-4 md:p-8 space-y-6">
+  const renderListView = () => (
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <RotateCcw className="w-6 h-6" />
-            Devolución al Stock
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <RotateCcw className="w-6 h-6 text-blue-600" />
+            Control de Devoluciones
           </h1>
-          <p className="text-muted-foreground">Gestiona las devoluciones de productos al inventario</p>
+          <p className="text-muted-foreground">Gestiona las devoluciones y ajustes de inventario</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
@@ -546,59 +577,58 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
         </div>
       </div>
 
-      {/* Tarjetas de Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-300">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-blue-600 rounded-lg">
-                <RotateCcw className="w-6 h-6 text-white" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-600 rounded-lg">
+                <RotateCcw className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Total</p>
-                <p className="text-2xl font-bold text-blue-600">{totalDevoluciones}</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground/70">Total</p>
+                <p className="text-xl font-black text-blue-600 leading-tight">{totalDevoluciones}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-r from-yellow-50 to-yellow-100 border-yellow-300">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-yellow-600 rounded-lg">
-                <Clock className="w-6 h-6 text-white" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-yellow-600 rounded-lg">
+                <Clock className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Pendientes</p>
-                <p className="text-2xl font-bold text-yellow-600">{devolucionesPendientes}</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground/70">Pendientes</p>
+                <p className="text-xl font-black text-yellow-600 leading-tight">{devolucionesPendientes}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-r from-green-50 to-green-100 border-green-300">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-green-600 rounded-lg">
-                <CheckCircle2 className="w-6 h-6 text-white" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-green-600 rounded-lg">
+                <CheckCircle2 className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Aprobadas</p>
-                <p className="text-2xl font-bold text-green-600">{devolucionesAprobadas}</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground/70">Aprobadas</p>
+                <p className="text-xl font-black text-green-600 leading-tight">{devolucionesAprobadas}</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <Card className="bg-gradient-to-r from-red-50 to-red-100 border-red-300">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-red-600 rounded-lg">
-                <XCircle className="w-6 h-6 text-white" />
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-red-600 rounded-lg">
+                <XCircle className="w-5 h-5 text-white" />
               </div>
               <div>
-                <p className="text-sm text-muted-foreground">Rechazadas</p>
-                <p className="text-2xl font-bold text-red-600">{devolucionesRechazadas}</p>
+                <p className="text-[10px] uppercase font-bold text-muted-foreground/70">Rechazadas</p>
+                <p className="text-xl font-black text-red-600 leading-tight">{devolucionesRechazadas}</p>
               </div>
             </div>
           </CardContent>
@@ -608,12 +638,12 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
       <Card>
         <CardHeader>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <CardTitle>Lista de Devoluciones</CardTitle>
+            <CardTitle>Historial de Operaciones</CardTitle>
             <div className="w-full md:w-96">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="Buscar por ID, producto, cantidad, estado..."
+                  placeholder="Buscar devolución..."
                   value={searchTerm}
                   onChange={handleSearch}
                   className="pl-10"
@@ -626,16 +656,15 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Producto</TableHead>
-                  <TableHead>Cantidad</TableHead>
-                  <TableHead>Venta</TableHead>
-                  <TableHead>Motivo</TableHead>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Destino</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
+                <TableRow className="h-10 bg-muted/30">
+                  <TableHead className="w-[60px] text-[10px] uppercase font-bold">ID</TableHead>
+                  <TableHead className="text-[10px] uppercase font-bold">Detalle de Producto</TableHead>
+                  <TableHead className="w-[70px] text-[10px] uppercase font-bold">Venta</TableHead>
+                  <TableHead className="max-w-[200px] text-[10px] uppercase font-bold">Motivo de Devolución</TableHead>
+                  <TableHead className="w-[100px] text-[10px] uppercase font-bold">Fecha</TableHead>
+                  <TableHead className="w-[110px] text-[10px] uppercase font-bold">Destino</TableHead>
+                  <TableHead className="w-[140px] text-[10px] uppercase font-bold">Estado</TableHead>
+                  <TableHead className="w-[120px] text-[10px] uppercase font-bold text-right">Acciones</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -649,22 +678,34 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                   currentPaginatedDevoluciones.map((devolucion) => {
                     const productoInfo = getProductoInfo(devolucion.id_venta_prod_detalle);
                     return (
-                      <TableRow key={devolucion.id_devolucion}>
-                        <TableCell>#{devolucion.id_devolucion}</TableCell>
-                        <TableCell className="font-medium">{productoInfo.nombre}</TableCell>
+                      <TableRow key={devolucion.id_devolucion} className="group hover:bg-muted/50 transition-colors h-12">
+                        <TableCell className="font-mono text-[10px] font-bold text-muted-foreground">#{devolucion.id_devolucion}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{productoInfo.cantidad} unid.</Badge>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-xs text-blue-900 leading-tight truncate max-w-[180px]">
+                              {productoInfo.nombre}
+                            </span>
+                            <span className="text-[9px] text-muted-foreground font-medium">
+                              {devolucion.cantidad_devuelta} unid. x ${productoInfo.precio_unitario.toFixed(2)}
+                            </span>
+                          </div>
                         </TableCell>
-                        <TableCell>#{productoInfo.venta_id}</TableCell>
-                        <TableCell className="max-w-xs truncate">{devolucion.motivo || 'N/A'}</TableCell>
-                        <TableCell>{new Date(devolucion.fecha + 'T00:00:00').toLocaleDateString('es-ES')}</TableCell>
+                        <TableCell className="text-[10px] text-muted-foreground font-black">#{productoInfo.venta_id}</TableCell>
+                        <TableCell>
+                          <p className="text-[10px] text-muted-foreground/80 leading-relaxed italic line-clamp-2 max-w-[250px]" title={devolucion.motivo}>
+                            "{devolucion.motivo || 'Sin motivo especificado'}"
+                          </p>
+                        </TableCell>
+                        <TableCell className="text-[10px] font-medium text-muted-foreground">
+                          {new Date(devolucion.fecha + 'T00:00:00').toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </TableCell>
                         <TableCell>{getDestinoBadge(devolucion.remitido)}</TableCell>
                         <TableCell>
                           <Select
                             value={devolucion.estado}
                             onValueChange={(value: any) => handleStatusChange(devolucion.id_devolucion, value)}
                           >
-                            <SelectTrigger className="w-[140px] h-8">
+                            <SelectTrigger className="w-[130px] h-7 text-[11px]">
                               <SelectValue>
                                 {getEstadoBadge(devolucion.estado)}
                               </SelectValue>
@@ -672,19 +713,19 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                             <SelectContent>
                               <SelectItem value="pendiente">
                                 <div className="flex items-center gap-2">
-                                  <Clock className="w-4 h-4 text-yellow-600" />
+                                  <Clock className="w-3 h-3 text-yellow-600" />
                                   <span>Pendiente</span>
                                 </div>
                               </SelectItem>
                               <SelectItem value="aprobada">
                                 <div className="flex items-center gap-2">
-                                  <CheckCircle2 className="w-4 h-4 text-green-600" />
+                                  <CheckCircle2 className="w-3 h-3 text-green-600" />
                                   <span>Aprobada</span>
                                 </div>
                               </SelectItem>
                               <SelectItem value="rechazada">
                                 <div className="flex items-center gap-2">
-                                  <XCircle className="w-4 h-4 text-red-600" />
+                                  <XCircle className="w-3 h-3 text-red-600" />
                                   <span>Rechazada</span>
                                 </div>
                               </SelectItem>
@@ -692,14 +733,14 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                           </Select>
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="outline" size="sm" onClick={() => handleView(devolucion)}>
+                          <div className="flex justify-end gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600" onClick={() => handleView(devolucion)}>
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEdit(devolucion)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-amber-600" onClick={() => handleEdit(devolucion)}>
                               <Pencil className="w-4 h-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleDelete(devolucion.id_devolucion)}>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-red-600" onClick={() => handleDelete(devolucion.id_devolucion)}>
                               <Trash2 className="w-4 h-4" />
                             </Button>
                           </div>
@@ -712,7 +753,6 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
             </Table>
           </div>
 
-          {/* Paginador */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
             <div className="flex items-center gap-2">
               <Button
@@ -734,16 +774,12 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                 <ChevronLeft className="w-4 h-4" />
               </Button>
 
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground px-2">
-                  Página
-                </span>
-                <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">
+              <div className="flex items-center gap-1 font-medium text-xs">
+                <span className="text-muted-foreground px-2">Página</span>
+                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded border border-blue-200">
                   {currentPage}
                 </span>
-                <span className="text-sm text-muted-foreground px-2">
-                  de {totalPages || 1}
-                </span>
+                <span className="text-muted-foreground px-2">de {totalPages || 1}</span>
               </div>
 
               <Button
@@ -766,542 +802,508 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
               </Button>
             </div>
 
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+            <div className="flex items-center gap-4 text-xs text-muted-foreground">
+              <span>
                 Mostrando {filteredDevoluciones.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredDevoluciones.length)} de {filteredDevoluciones.length} registros
               </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">
-                Mostrar:
-              </Label>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => {
-                  setItemsPerPage(parseInt(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[80px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2 border-l pl-4">
+                <Label htmlFor="itemsPerPage" className="whitespace-nowrap">Ver:</Label>
+                <Select
+                  value={itemsPerPage.toString()}
+                  onValueChange={(value) => {
+                    setItemsPerPage(parseInt(value));
+                    setCurrentPage(1);
+                  }}
+                >
+                  <SelectTrigger className="w-[70px] h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardContent>
       </Card>
+    </div>
+  );
 
-      {/* Dialog Crear/Editar */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingDevolucion ? 'Editar Devolución' : 'Nueva Devolución al Stock'}</DialogTitle>
-            <DialogDescription>
-              {editingDevolucion ? 'Actualiza la información de la devolución' : 'Registra una nueva devolución al inventario'}
-            </DialogDescription>
-          </DialogHeader>
+  const renderFormView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => setView('list')} className="h-8 w-8 p-0">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-xl font-bold flex items-center gap-2">
+              {editingDevolucion ? <Pencil className="w-5 h-5 text-amber-500" /> : <Plus className="w-5 h-5 text-blue-500" />}
+              {editingDevolucion ? 'Editar Devolución' : 'Nueva Devolución al Stock'}
+            </h1>
+            <p className="text-xs text-muted-foreground">Registra los detalles del retorno de productos</p>
+          </div>
+        </div>
+      </div>
 
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800">Información Importante</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              Esta aplicación es solo para gestión interna. Las devoluciones se registran únicamente desde nuestro establecimiento físico.
-            </AlertDescription>
-          </Alert>
+      <Alert className="bg-blue-50 border-blue-200 py-2">
+        <AlertCircle className="h-4 w-4 text-blue-600" />
+        <AlertDescription className="text-xs text-blue-700">
+          Esta operación afectará el inventario disponible y el balance de caja según el ajuste económico.
+        </AlertDescription>
+      </Alert>
 
-          <form onSubmit={handleSubmit}>
-            <div className="space-y-6 py-4">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Selecciona los productos a devolver</Label>
-                  <div className="border rounded-md overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-muted/50">
-                        <TableRow>
-                          <TableHead className="w-12">
-                            <Checkbox
-                              checked={formData.items.length > 0 && formData.items.every(i => i.selected)}
-                              onCheckedChange={(checked) => {
-                                setFormData({
-                                  ...formData,
-                                  items: formData.items.map(i => ({ ...i, selected: !!checked }))
-                                });
-                              }}
-                              disabled={editingDevolucion !== null}
-                            />
-                          </TableHead>
-                          <TableHead>Producto</TableHead>
-                          <TableHead className="w-24 text-center">Cant. Vend.</TableHead>
-                          <TableHead className="w-32 text-center">Cant. Devol.</TableHead>
-                          <TableHead className="w-40">Estado</TableHead>
-                          <TableHead className="w-44">Acción</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {formData.items.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-4 text-muted-foreground italic">
-                              No hay productos disponibles para esta venta
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          formData.items.map((item, index) => (
-                            <Fragment key={item.id_venta_prod_detalle}>
-                              <TableRow className={item.selected ? 'bg-blue-50/30' : ''}>
-                                <TableCell>
-                                  <Checkbox
-                                    checked={item.selected}
-                                    onCheckedChange={(checked) => {
-                                      const newItems = [...formData.items];
-                                      newItems[index].selected = !!checked;
-                                      setFormData({ ...formData, items: newItems });
-                                    }}
-                                    disabled={editingDevolucion !== null}
-                                  />
-                                </TableCell>
-                                <TableCell className="font-medium text-sm">
-                                  {item.nombre_producto}
-                                  <div className="text-xs text-muted-foreground">
-                                    ${item.precio_unitario_original.toFixed(2)} c/u
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <Badge variant="secondary">{item.max_cantidad}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  <Input
-                                    type="number"
-                                    min="1"
-                                    max={item.max_cantidad}
-                                    value={item.cantidad_devuelta}
-                                    onChange={(e) => {
-                                      const qty = Math.min(parseInt(e.target.value) || 0, item.max_cantidad);
-                                      const newItems = [...formData.items];
-                                      newItems[index].cantidad_devuelta = qty;
-                                      setFormData({ ...formData, items: newItems });
-                                    }}
-                                    className={`h-8 text-center ${formErrors[`item_${index}_qty`] ? 'border-red-500' : ''}`}
-                                    disabled={!item.selected}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <Select
-                                    value={item.estado_producto}
-                                    onValueChange={(val: any) => {
-                                      const newItems = [...formData.items];
-                                      newItems[index].estado_producto = val;
-                                      setFormData({ ...formData, items: newItems });
-                                    }}
-                                    disabled={!item.selected}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="bueno">Buen estado (Vuelve a Stock)</SelectItem>
-                                      <SelectItem value="defectuoso">Defectuoso (Va a Prov.)</SelectItem>
-                                      <SelectItem value="perdida">Pérdida</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                                <TableCell>
-                                  <Select
-                                    value={item.accion_tomada}
-                                    onValueChange={(val: any) => {
-                                      const newItems = [...formData.items];
-                                      newItems[index].accion_tomada = val;
-                                      // Limpiar producto de cambio si cambia de acción
-                                      if (val !== 'cambio_otro') {
-                                        newItems[index].id_producto_cambio = undefined;
-                                        newItems[index].nombre_producto_cambio = undefined;
-                                        newItems[index].precio_producto_cambio = undefined;
-                                      }
-                                      setFormData({ ...formData, items: newItems });
-                                    }}
-                                    disabled={!item.selected}
-                                  >
-                                    <SelectTrigger className="h-8 text-xs">
-                                      <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                      <SelectItem value="cambio_mismo">Cambio mismo ítem</SelectItem>
-                                      <SelectItem value="cambio_otro">Cambio otro ítem</SelectItem>
-                                      <SelectItem value="reembolso">Reembolso dinero</SelectItem>
-                                    </SelectContent>
-                                  </Select>
-                                </TableCell>
-                              </TableRow>
-
-                              {item.selected && item.accion_tomada === 'cambio_otro' && (
-                                <TableRow className="bg-muted/30 border-t-0">
-                                  <TableCell colSpan={2}></TableCell>
-                                  <TableCell colSpan={4} className="py-3 pr-4">
-                                    <div className="space-y-3 p-3 border rounded-md bg-white shadow-sm">
-                                      <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-semibold text-blue-700">Seleccionar Producto de Reemplazo</Label>
-                                        {item.precio_producto_cambio !== undefined && (
-                                          <Badge variant="outline" className="text-[10px] h-5">
-                                            Dif: ${((item.precio_producto_cambio - item.precio_unitario_original) * item.cantidad_devuelta).toFixed(2)}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                      <Select
-                                        value={item.id_producto_cambio?.toString()}
-                                        onValueChange={(val) => {
-                                          const product = mockProductos.find(p => p.id_producto === parseInt(val));
-                                          if (product) {
-                                            const newItems = [...formData.items];
-                                            newItems[index].id_producto_cambio = product.id_producto;
-                                            newItems[index].nombre_producto_cambio = product.nombre;
-                                            newItems[index].precio_producto_cambio = product.precio;
-                                            setFormData({ ...formData, items: newItems });
-                                          }
-                                        }}
-                                      >
-                                        <SelectTrigger className="h-8 text-xs">
-                                          <SelectValue placeholder="Buscar producto..." />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          {mockProductos.map(p => (
-                                            <SelectItem key={p.id_producto} value={p.id_producto.toString()}>
-                                              {p.nombre} - ${p.precio.toFixed(2)}
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      {item.id_producto_cambio && (
-                                        <div className="flex justify-between items-center text-[10px] px-1">
-                                          <span className="text-muted-foreground italic">
-                                            Reemplaza por {item.nombre_producto_cambio}
-                                          </span>
-                                          <span className="font-bold">
-                                            Total Reemplazo: ${(item.precio_producto_cambio! * item.cantidad_devuelta).toFixed(2)}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              )}
-                            </Fragment>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {formErrors.items && (
-                    <p className="text-xs text-red-500 mt-1">{formErrors.items}</p>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="fecha">
-                      Fecha <span className="text-red-500">*</span>
-                    </Label>
-                    <Input
-                      id="fecha"
-                      type="date"
-                      value={formData.fecha}
-                      onChange={(e) => {
-                        setFormData({ ...formData, fecha: e.target.value });
-                        if (formErrors.fecha) {
-                          setFormErrors({ ...formErrors, fecha: '' });
-                        }
-                      }}
-                      max={new Date().toISOString().split('T')[0]}
-                      className={formErrors.fecha ? 'border-red-500' : ''}
-                    />
-                    {formErrors.fecha && (
-                      <p className="text-xs text-red-500">{formErrors.fecha}</p>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="remitido">
-                      Destino <span className="text-red-500">*</span>
-                    </Label>
-                    <Select
-                      value={formData.remitido}
-                      onValueChange={(value: any) => setFormData({ ...formData, remitido: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="stock">Stock</SelectItem>
-                        <SelectItem value="proveedor">Proveedor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="motivo">
-                    Motivo de Devolución <span className="text-red-500">*</span>
-                  </Label>
-                  <Textarea
-                    id="motivo"
-                    value={formData.motivo}
-                    onChange={(e) => {
-                      setFormData({ ...formData, motivo: e.target.value });
-                      if (formErrors.motivo) {
-                        setFormErrors({ ...formErrors, motivo: '' });
-                      }
+      <Card>
+        <CardContent className="pt-6 space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="id_venta_select" className="text-xs uppercase font-bold text-muted-foreground">Venta Original</Label>
+                {editingDevolucion ? (
+                  <div className="p-2 border rounded-md bg-muted text-sm font-medium">Venta #{formData.id_venta}</div>
+                ) : (
+                  <Select
+                    value={formData.id_venta}
+                    onValueChange={(val) => {
+                      const id = parseInt(val);
+                      const venta = dataStore.ventas.find(v => v.id_venta === id);
+                      const items = loadSaleItems(id);
+                      setFormData({
+                        ...formData,
+                        id_venta: val,
+                        id_cliente: venta?.id_cliente || venta?.id_cliente_temporal || null,
+                        items
+                      });
+                      setFormProductsPage(1);
                     }}
-                    placeholder="Describe el motivo de la devolución (mínimo 10 caracteres)..."
-                    rows={4}
-                    className={formErrors.motivo ? 'border-red-500' : ''}
-                  />
-                  {formErrors.motivo && (
-                    <p className="text-xs text-red-500">{formErrors.motivo}</p>
-                  )}
-                </div>
-
-                {/* Resumen de Operación Section */}
-                {formData.items.some(i => i.selected) && (
-                  <div className="mt-6 border-t pt-4">
-                    <Card className="bg-muted/30 border-dashed">
-                      <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0">
-                        <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center">
-                          <RotateCcw className="w-4 h-4 mr-2 text-blue-500" />
-                          Resumen de Operación
-                        </CardTitle>
-                        {(() => {
-                          const totalBalance = formData.items
-                            .filter(i => i.selected && i.accion_tomada === 'cambio_otro' && i.precio_producto_cambio !== undefined)
-                            .reduce((sum, item) => {
-                              const diff = (item.precio_producto_cambio! - item.precio_unitario_original) * item.cantidad_devuelta;
-                              return sum + diff;
-                            }, 0);
-
-                          if (totalBalance > 0) return <Badge className="bg-red-100 text-red-700 border-red-200">Deuda: ${totalBalance.toFixed(2)}</Badge>;
-                          if (totalBalance < 0) return <Badge className="bg-green-100 text-green-700 border-green-200">Devolución: ${Math.abs(totalBalance).toFixed(2)}</Badge>;
-                          return <Badge variant="outline">Sin diferencia</Badge>;
-                        })()}
-                      </CardHeader>
-                      <CardContent className="py-2 px-4 space-y-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="flex items-start space-x-3 p-2 rounded-md bg-white border">
-                            <Package className="w-5 h-5 text-green-500 mt-0.5" />
-                            <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase">Retorno Físico</p>
-                              <p className="text-lg font-bold">
-                                {formData.items.filter(i => i.selected && i.estado_producto === 'bueno').reduce((acc, i) => acc + i.cantidad_devuelta, 0)}
-                                <span className="text-xs font-normal text-muted-foreground ml-1">unid.</span>
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-start space-x-3 p-2 rounded-md bg-white border">
-                            <AlertCircle className="w-5 h-5 text-orange-500 mt-0.5" />
-                            <div>
-                              <p className="text-[10px] font-semibold text-muted-foreground uppercase">Defectuosos</p>
-                              <p className="text-lg font-bold">
-                                {formData.items.filter(i => i.selected && i.estado_producto === 'defectuoso').reduce((acc, i) => acc + i.cantidad_devuelta, 0)}
-                                <span className="text-xs font-normal text-muted-foreground ml-1">unid.</span>
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {formData.items.some(i => i.selected && i.accion_tomada === 'cambio_otro') && (
-                          <div className="p-3 rounded-md bg-blue-50 border border-blue-100">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs font-medium text-blue-800">Ajuste de Caja por Cambios:</span>
-                              {(() => {
-                                const totalBalance = formData.items
-                                  .filter(i => i.selected && i.accion_tomada === 'cambio_otro' && i.precio_producto_cambio !== undefined)
-                                  .reduce((sum, item) => {
-                                    const diff = (item.precio_producto_cambio! - item.precio_unitario_original) * item.cantidad_devuelta;
-                                    return sum + diff;
-                                  }, 0);
-                                return (
-                                  <span className={`text-sm font-bold ${totalBalance > 0 ? 'text-red-600' : totalBalance < 0 ? 'text-green-600' : 'text-blue-600'}`}>
-                                    {totalBalance > 0 ? `+ $${totalBalance.toFixed(2)}` : totalBalance < 0 ? `- $${Math.abs(totalBalance).toFixed(2)}` : '$0.00'}
-                                  </span>
-                                );
-                              })()}
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </div>
+                  >
+                    <SelectTrigger id="id_venta_select" className={formErrors.id_venta ? 'border-red-500' : ''}>
+                      <SelectValue placeholder="Seleccionar venta..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dataStore.ventas.filter((v: Venta) => v.estado === 'pagada').map((v: Venta) => (
+                        <SelectItem key={v.id_venta} value={v.id_venta.toString()}>
+                          #{v.id_venta} - {new Date(v.fecha + 'T00:00:00').toLocaleDateString()} - ${v.total.toFixed(2)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
-              </div>
-            </div>
-
-            <DialogFooter className="sticky bottom-0 bg-background pt-2">
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                {editingDevolucion ? 'Guardar Cambios' : 'Registrar Devolución'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Detalles */}
-      < Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen} >
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Detalles de la Devolución #{viewingDevolucion?.id_devolucion}</DialogTitle>
-            <DialogDescription>Información completa de la devolución</DialogDescription>
-          </DialogHeader>
-          {viewingDevolucion && (
-            <div className="space-y-6 py-4">
-              {/* Información General */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ID Devolución</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">#{viewingDevolucion.id_devolucion}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Estado</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    {getEstadoBadge(viewingDevolucion.estado)}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Producto</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">{viewingDevolucion.productoInfo?.nombre}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Cantidad</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <Badge variant="outline" className="text-base">
-                      {viewingDevolucion.productoInfo?.cantidad} unidades
-                    </Badge>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Venta Original</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">#{viewingDevolucion.productoInfo?.venta_id}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fecha</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p>
-                      {new Date(viewingDevolucion.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Destino</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    {getDestinoBadge(viewingDevolucion.remitido)}
-                  </div>
-                </div>
+                {formErrors.id_venta && <p className="text-[10px] text-red-500">{formErrors.id_venta}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label>Motivo de la Devolución</Label>
-                <div className="p-4 bg-muted rounded-lg">
-                  <p>{viewingDevolucion.motivo || 'N/A'}</p>
-                </div>
+                <Label htmlFor="fecha" className="text-xs uppercase font-bold text-muted-foreground">Fecha</Label>
+                <Input
+                  id="fecha"
+                  type="date"
+                  value={formData.fecha}
+                  onChange={(e) => setFormData({ ...formData, fecha: e.target.value })}
+                  max={new Date().toISOString().split('T')[0]}
+                  className={formErrors.fecha ? 'border-red-500' : ''}
+                />
               </div>
 
-              {/* Información del Producto */}
-              {viewingDevolucion.productoInfo && (
-                <div className="space-y-2">
-                  <Label>Información de la Venta Original</Label>
-                  <Card>
-                    <CardContent className="p-4 space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm text-muted-foreground">Precio Unitario:</span>
-                        <span className="font-medium">${viewingDevolucion.productoInfo.precio_unitario?.toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between border-t pt-2">
-                        <span className="text-sm font-semibold">Total Devuelto:</span>
-                        <span className="font-bold text-blue-600">
-                          ${viewingDevolucion.productoInfo.subtotal?.toFixed(2)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
+              <div className="space-y-2">
+                <Label htmlFor="remitido" className="text-xs uppercase font-bold text-muted-foreground">Destino</Label>
+                <Select
+                  value={formData.remitido}
+                  onValueChange={(value: any) => setFormData({ ...formData, remitido: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="stock">Stock</SelectItem>
+                    <SelectItem value="proveedor">Proveedor</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="motivo" className="text-xs uppercase font-bold text-muted-foreground">Motivo</Label>
+              <Input
+                id="motivo"
+                value={formData.motivo}
+                onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
+                className={formErrors.motivo ? 'border-red-500' : ''}
+              />
+            </div>
+
+            <div className="space-y-3 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                  <Package className="w-4 h-4" />
+                  Productos
+                </h3>
+              </div>
+
+              <div className="border rounded-md overflow-hidden bg-white">
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow className="h-10">
+                      <TableHead className="w-10 text-center">
+                        <Checkbox
+                          checked={formData.items.length > 0 && formData.items.every(i => i.selected)}
+                          onCheckedChange={(checked) => setFormData({ ...formData, items: formData.items.map(i => ({ ...i, selected: !!checked })) })}
+                          disabled={editingDevolucion !== null}
+                        />
+                      </TableHead>
+                      <TableHead className="text-xs">Producto</TableHead>
+                      <TableHead className="w-20 text-center text-xs">Cant.</TableHead>
+                      <TableHead className="w-28 text-center text-xs font-bold">Subtotal</TableHead>
+                      <TableHead className="w-32 text-xs">Estado</TableHead>
+                      <TableHead className="w-40 text-xs">Acción</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {formData.items
+                      .slice((formProductsPage - 1) * formProductsPerPage, formProductsPage * formProductsPerPage)
+                      .map((item) => {
+                        const originalIndex = formData.items.findIndex(i => i.id_venta_prod_detalle === item.id_venta_prod_detalle);
+                        return (
+                          <TableRow key={item.id_venta_prod_detalle} className={item.selected ? 'bg-blue-50/20' : ''}>
+                            <TableCell className="text-center">
+                              <Checkbox
+                                checked={item.selected}
+                                onCheckedChange={(checked) => {
+                                  const newItems = [...formData.items];
+                                  newItems[originalIndex].selected = !!checked;
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                disabled={editingDevolucion !== null}
+                              />
+                            </TableCell>
+                            <TableCell className="text-xs font-medium">{item.nombre_producto}</TableCell>
+                            <TableCell>
+                              <Input
+                                type="number"
+                                min="1"
+                                max={item.max_cantidad}
+                                value={item.cantidad_devuelta}
+                                onChange={(e) => {
+                                  const qty = Math.min(parseInt(e.target.value) || 0, item.max_cantidad);
+                                  const newItems = [...formData.items];
+                                  newItems[originalIndex].cantidad_devuelta = qty;
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                className="h-7 text-center text-xs px-1"
+                                disabled={!item.selected}
+                              />
+                            </TableCell>
+                            <TableCell className="text-xs font-bold font-mono text-center">
+                              ${(item.precio_unitario_original * item.cantidad_devuelta).toFixed(2)}
+                            </TableCell>
+                            <TableCell>
+                              <Select
+                                value={item.estado_producto}
+                                onValueChange={(val: any) => {
+                                  const newItems = [...formData.items];
+                                  newItems[originalIndex].estado_producto = val;
+                                  setFormData({ ...formData, items: newItems });
+                                }}
+                                disabled={!item.selected}
+                              >
+                                <SelectTrigger className="h-7 text-[10px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="bueno">Excelente</SelectItem>
+                                  <SelectItem value="defectuoso">Defectuoso</SelectItem>
+                                  <SelectItem value="perdida">Pérdida</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <Select
+                                  value={item.accion_tomada}
+                                  onValueChange={(val: any) => {
+                                    const newItems = [...formData.items];
+                                    newItems[originalIndex].accion_tomada = val;
+                                    if (val !== 'cambio_otro') {
+                                      newItems[originalIndex].id_producto_cambio = undefined;
+                                      newItems[originalIndex].nombre_producto_cambio = undefined;
+                                      newItems[originalIndex].precio_producto_cambio = undefined;
+                                    }
+                                    setFormData({ ...formData, items: newItems });
+                                  }}
+                                  disabled={!item.selected}
+                                >
+                                  <SelectTrigger className="h-7 text-[10px]">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="cambio_mismo">Mismo Item</SelectItem>
+                                    <SelectItem value="cambio_otro">Otro Item</SelectItem>
+                                    <SelectItem value="reembolso">Reembolso</SelectItem>
+                                  </SelectContent>
+                                </Select>
+
+                                {item.accion_tomada === 'cambio_otro' && (
+                                  <Select
+                                    value={item.id_producto_cambio?.toString()}
+                                    onValueChange={(val) => {
+                                      const prodId = parseInt(val);
+                                      const product = dataStore.productos.find(p => p.id_producto === prodId);
+                                      if (product) {
+                                        const newItems = [...formData.items];
+                                        newItems[originalIndex].id_producto_cambio = product.id_producto;
+                                        newItems[originalIndex].nombre_producto_cambio = product.nombre;
+                                        newItems[originalIndex].precio_producto_cambio = product.precio;
+                                        setFormData({ ...formData, items: newItems });
+                                      }
+                                    }}
+                                    disabled={!item.selected}
+                                  >
+                                    <SelectTrigger className="h-7 text-[9px] border-blue-400">
+                                      <SelectValue placeholder="Buscar reemplazo..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {dataStore.productos
+                                        .filter(p => p.estado !== 'inactivo')
+                                        .map(p => (
+                                          <SelectItem key={p.id_producto} value={p.id_producto.toString()}>
+                                            {p.nombre} - ${p.precio.toFixed(2)}
+                                          </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                                {item.accion_tomada === 'cambio_otro' && item.id_producto_cambio && (
+                                  <div className="text-[9px] text-blue-600 font-bold px-1">
+                                    Dif: $
+                                    {((item.precio_producto_cambio || 0) - item.precio_unitario_original).toFixed(2)}
+                                  </div>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {formData.items.length > formProductsPerPage && (
+                <div className="flex justify-center gap-2">
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setFormProductsPage(p => Math.max(1, p - 1))} disabled={formProductsPage === 1}>
+                    Anterior
+                  </Button>
+                  <span className="text-xs flex items-center">{formProductsPage} / {Math.ceil(formData.items.length / formProductsPerPage)}</span>
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setFormProductsPage(p => p + 1)} disabled={formProductsPage >= Math.ceil(formData.items.length / formProductsPerPage)}>
+                    Siguiente
+                  </Button>
                 </div>
               )}
-
-              {viewingDevolucion.estado === 'aprobada' && (
-                <Alert className="bg-green-50 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">Devolución Aprobada</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    Esta devolución ha sido aprobada y procesada correctamente.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {viewingDevolucion.estado === 'rechazada' && (
-                <Alert className="bg-red-50 border-red-200">
-                  <XCircle className="h-4 w-4 text-red-600" />
-                  <AlertTitle className="text-red-800">Devolución Rechazada</AlertTitle>
-                  <AlertDescription className="text-red-700">
-                    Esta devolución ha sido rechazada y no se procesará.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {viewingDevolucion.estado === 'pendiente' && (
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <AlertTitle className="text-yellow-800">Devolución Pendiente</AlertTitle>
-                  <AlertDescription className="text-yellow-700">
-                    Esta devolución está pendiente de revisión y aprobación.
-                  </AlertDescription>
-                </Alert>
-              )}
             </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog >
 
-      {/* Dialog Eliminar */}
-      < AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen} >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. La devolución será eliminada permanentemente del sistema.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog >
-    </div >
+
+            {/* Liquidación de Diferencia */}
+            {(() => {
+              const selectedItems = formData.items.filter(i => i.selected);
+              if (selectedItems.length === 0) return null;
+
+              const totalOriginal = selectedItems.reduce((sum, i) => sum + (i.precio_unitario_original * i.cantidad_devuelta), 0);
+              const totalReemplazo = selectedItems.reduce((sum, i) => {
+                if (i.accion_tomada === 'cambio_mismo') return sum + (i.precio_unitario_original * i.cantidad_devuelta);
+                if (i.accion_tomada === 'cambio_otro' && i.precio_producto_cambio !== undefined) return sum + (i.precio_producto_cambio * i.cantidad_devuelta);
+                return sum;
+              }, 0);
+
+              const totalAjusteCambios = totalReemplazo - (selectedItems.filter(i => i.accion_tomada !== 'reembolso').reduce((sum, i) => sum + (i.precio_unitario_original * i.cantidad_devuelta), 0));
+              const totalReembolsos = selectedItems.filter(i => i.accion_tomada === 'reembolso').reduce((sum, i) => sum + (i.precio_unitario_original * i.cantidad_devuelta), 0);
+
+              const finalBalance = totalAjusteCambios - totalReembolsos;
+              const hasRefund = totalReembolsos > 0;
+
+              if (finalBalance === 0 && !hasRefund) return null;
+
+              return (
+                <div className={`space-y-4 pt-4 border-t px-4 py-6 rounded-lg ${finalBalance > 0 ? 'bg-amber-50 border-amber-200' : 'bg-green-50 border-green-200'} border mb-6`}>
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-1">
+                      <h3 className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4" />
+                        Resolución de Diferencia Económica
+                      </h3>
+                      <p className="text-[10px] text-muted-foreground">
+                        {finalBalance > 0
+                          ? 'El nuevo producto tiene un valor superior. Se requiere un pago adicional.'
+                          : 'Existe un saldo a favor del cliente que debe ser liquidado.'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] text-muted-foreground opacity-70 font-mono">Original Seleccionado: ${totalOriginal.toFixed(2)}</div>
+                      <div className="text-lg font-black font-mono">
+                        {finalBalance > 0 ? `Cobrar: $${finalBalance.toFixed(2)}` : `Liquidar: $${Math.abs(finalBalance).toFixed(2)}`}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="metodo_diferencia" className="text-xs uppercase font-bold text-muted-foreground flex items-center gap-1">
+                        {finalBalance > 0 ? <Plus className="w-3 h-3 text-amber-600" /> : <ArrowRight className="w-3 h-3 text-green-600" />}
+                        {finalBalance > 0 ? 'Método de Pago Adicional' : 'Destino del Saldo'}
+                      </Label>
+                      <Select
+                        value={formData.metodo_diferencia}
+                        onValueChange={(val: any) => setFormData({ ...formData, metodo_diferencia: val })}
+                      >
+                        <SelectTrigger id="metodo_diferencia" className={formErrors.metodo_diferencia ? 'border-red-500 bg-red-50' : 'border-muted-foreground/30 bg-white'}>
+                          <SelectValue placeholder="Seleccionar opción..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {finalBalance > 0 ? (
+                            <>
+                              <SelectItem value="efectivo">Efectivo</SelectItem>
+                              <SelectItem value="tarjeta">Tarjeta (Débito/Crédito)</SelectItem>
+                              <SelectItem value="transferencia">Transferencia Bancaria</SelectItem>
+                            </>
+                          ) : (
+                            <>
+                              <SelectItem value="efectivo">Devolución en Efectivo</SelectItem>
+                              <SelectItem value="transferencia">Transferencia al Cliente</SelectItem>
+                              <SelectItem value="saldo_a_favor">Saldo a Favor (Crédito Tienda)</SelectItem>
+                              <SelectItem value="tarjeta">Reintegro a Tarjeta</SelectItem>
+                            </>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      {formErrors.metodo_diferencia && <p className="text-[10px] text-red-500 font-bold animate-pulse">{formErrors.metodo_diferencia}</p>}
+                    </div>
+
+                    <div className="bg-white/50 p-3 rounded border border-dashed border-muted-foreground/30 flex flex-col justify-center">
+                      <p className="text-[9px] uppercase font-bold text-muted-foreground mb-1">Desglose de Operación</p>
+                      <div className="flex justify-between text-[11px]">
+                        <span>Ajuste por Cambios:</span>
+                        <span className={totalAjusteCambios >= 0 ? 'text-amber-700 font-bold' : 'text-green-700 font-bold'}>
+                          {totalAjusteCambios >= 0 ? '+' : ''}${totalAjusteCambios.toFixed(2)}
+                        </span>
+                      </div>
+                      {hasRefund && (
+                        <div className="flex justify-between text-[11px] mt-1 text-red-700">
+                          <span>Reembolsos Directos:</span>
+                          <span className="font-bold">-${totalReembolsos.toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="border-t mt-2 pt-1 flex justify-between text-[11px] font-black">
+                        <span>TOTAL FINAL:</span>
+                        <span>${finalBalance.toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            <div className="flex justify-end gap-3 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={() => setView('list')}>Cancelar</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
+                <CheckCircle2 className="w-4 h-4 mr-2" />
+                {editingDevolucion ? 'Guardar Cambios' : 'Confirmar Devolución'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
   );
-}
+
+  const renderDetailsView = () => (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => setView('list')} className="h-8 w-8 p-0">
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold">Detalle de Devolución #{viewingDevolucion?.id_devolucion}</h1>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2">
+          <CardContent className="pt-6 space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Fecha</Label>
+                <p className="text-sm font-medium">{viewingDevolucion?.fecha}</p>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase font-bold text-muted-foreground">Venta</Label>
+                <p className="text-sm font-medium">#{viewingDevolucion?.productoInfo?.venta_id}</p>
+              </div>
+            </div>
+            <div>
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground">Motivo</Label>
+              <p className="text-sm p-3 bg-muted rounded-md italic">"{viewingDevolucion?.motivo}"</p>
+            </div>
+            <div className="pt-4 border-t">
+              <Label className="text-[10px] uppercase font-bold text-muted-foreground mb-2 block">Producto</Label>
+              <div className="border rounded-md">
+                <Table>
+                  <TableHeader className="bg-muted/40">
+                    <TableRow className="h-9">
+                      <TableHead className="text-[10px]">Nombre</TableHead>
+                      <TableHead className="text-[10px] text-center">Cant.</TableHead>
+                      <TableHead className="text-[10px] text-right">Subtotal</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow className="h-11">
+                      <TableCell className="text-xs font-semibold">{viewingDevolucion?.productoInfo?.nombre}</TableCell>
+                      <TableCell className="text-center text-xs">{viewingDevolucion?.cantidad_devuelta}</TableCell>
+                      <TableCell className="text-right text-xs font-bold font-mono text-blue-700">
+                        ${(viewingDevolucion?.productoInfo?.precio_unitario * (viewingDevolucion?.cantidad_devuelta || 0)).toFixed(2)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-4">
+          <Card className="bg-blue-600 text-white">
+            <CardHeader className="py-4">
+              <CardTitle className="text-[10px] uppercase opacity-80 font-bold">Impacto Económico</CardTitle>
+            </CardHeader>
+            <CardContent className="pb-6">
+              <p className="text-3xl font-extrabold">${Math.abs(viewingDevolucion?.total_diferencia || 0).toFixed(2)}</p>
+              <p className="text-[10px] mt-2 opacity-80">
+                {viewingDevolucion?.total_diferencia > 0 ? 'Cobro adicional' :
+                  viewingDevolucion?.accion_tomada === 'reembolso' ? 'Reintegro al cliente' : 'Saldo a favor'}
+              </p>
+              {viewingDevolucion?.metodo_diferencia && (
+                <p className="text-[10px] mt-1 font-bold uppercase tracking-wider">
+                  Vía: {viewingDevolucion.metodo_diferencia}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+          <Button variant="outline" className="w-full" onClick={() => setView('list')}>
+            <ChevronLeft className="w-4 h-4 mr-2" /> Volver al Listado
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="p-4 md:p-8 animate-in fade-in duration-500">
+      {view === 'list' && renderListView()}
+      {view === 'form' && renderFormView()}
+      {view === 'details' && renderDetailsView()}
+    </div>
+  );
+};
+
+export default DevolucionesStockView;
+

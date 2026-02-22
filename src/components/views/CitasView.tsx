@@ -50,7 +50,6 @@ import {
   XCircle,
   Clock,
   Calendar,
-  User,
   X
 } from 'lucide-react';
 import { cn } from '../ui/utils';
@@ -172,6 +171,73 @@ export function CitasView() {
   const { user } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const refreshData = () => setRefreshKey((prev: number) => prev + 1);
+
+  // --- Helper to generate sale from appointment ---
+  const generateSaleFromCita = (cita: Cita) => {
+    if (cita.id_venta) return; // Ya facturada previamente
+
+    const newVentaId = Math.max(...dataStore.ventas.map(v => v.id_venta), 100) + 1;
+    const currentDetalleId = Math.max(...dataStore.ventasDetalle.map(d => d.id_venta_prod_detalle), 500);
+    let detailCounter = 1;
+
+    // 1. Detalles de Servicios
+    const serviceIds = cita.id_servicios || (cita.id_servicio ? [cita.id_servicio] : []);
+    const serviceDetails: VentaProductoDetalle[] = serviceIds.map(sid => {
+      const service = mockServicios.find(s => s.id_servicio === sid);
+      return {
+        id_venta_prod_detalle: currentDetalleId + detailCounter++,
+        id_venta: newVentaId,
+        tipo: 'servicio',
+        id_servicio: sid,
+        cantidad: 1,
+        precio_unitario: service?.precio || 0,
+        subtotal: service?.precio || 0,
+      };
+    });
+
+    // 2. Detalles de Productos
+    const productIds = cita.id_productos || [];
+    const productCounts = productIds.reduce((acc, pid) => {
+      acc[pid] = (acc[pid] || 0) + 1;
+      return acc;
+    }, {} as Record<number, number>);
+
+    const productDetails: VentaProductoDetalle[] = Object.entries(productCounts).map(([pidStr, qty]) => {
+      const pid = parseInt(pidStr);
+      const product = mockProductos.find(p => p.id_producto === pid);
+      return {
+        id_venta_prod_detalle: currentDetalleId + detailCounter++,
+        id_venta: newVentaId,
+        tipo: 'producto',
+        id_producto: pid,
+        cantidad: qty,
+        precio_unitario: product?.precio || 0,
+        subtotal: (product?.precio || 0) * qty,
+      };
+    });
+
+    const allDetails = [...serviceDetails, ...productDetails];
+    const total = allDetails.reduce((sum, d) => sum + d.subtotal, 0);
+
+    const newVenta: Venta = {
+      id_venta: newVentaId,
+      id_cliente: cita.id_cliente,
+      id_cliente_temporal: cita.id_cliente_temporal, // Soportar clientes temporales
+      id_usuario: user?.id_usuario || 1,
+      fecha: cita.fecha,
+      total: total,
+      estado: 'pagada',
+    };
+
+    dataStore.ventas.push(newVenta);
+    dataStore.ventasDetalle.push(...allDetails);
+    cita.id_venta = newVentaId; // Vincular la cita con la venta generada
+
+    toast.success(`Venta #${newVentaId} generada automáticamente por $${total.toFixed(2)}`, {
+      icon: '💰',
+      duration: 5000
+    });
+  };
 
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -392,9 +458,16 @@ export function CitasView() {
 
     if (editingCita) {
       const idx = dataStore.citas.findIndex(c => c.id_cita === editingCita.id_cita);
-      if (idx !== -1) dataStore.citas[idx] = { ...dataStore.citas[idx], ...common };
+      if (idx !== -1) {
+        dataStore.citas[idx] = { ...dataStore.citas[idx], ...common };
+        // Generar venta al registrar/actualizar la cita (si no tiene una vinculada)
+        generateSaleFromCita(dataStore.citas[idx]);
+      }
     } else {
-      dataStore.citas.push({ id_cita: getNextCitaId(), ...common });
+      const newCita = { id_cita: getNextCitaId(), ...common };
+      dataStore.citas.push(newCita);
+      // Generar venta al registrar la nueva cita
+      generateSaleFromCita(newCita);
     }
     refreshData();
     setShowForm(false);
@@ -404,75 +477,11 @@ export function CitasView() {
   const handleStatusChange = (id: number, status: Cita['estado']) => {
     const idx = dataStore.citas.findIndex(c => c.id_cita === id);
     if (idx !== -1) {
-      const oldStatus = dataStore.citas[idx].estado;
       dataStore.citas[idx].estado = status;
 
-      // Si la cita se marca como completada y no estaba completada antes, creamos la venta
-      if (status === 'completada' && oldStatus !== 'completada') {
-        const cita = dataStore.citas[idx];
-        const newVentaId = Math.max(...dataStore.ventas.map(v => v.id_venta), 100) + 1;
-
-        // Preparar detalles (Servicios + Productos)
-        const currentDetalleId = Math.max(...dataStore.ventasDetalle.map(d => d.id_venta_prod_detalle), 500);
-        let detailCounter = 1;
-
-        // 1. Detalles de Servicios
-        const serviceIds = cita.id_servicios || (cita.id_servicio ? [cita.id_servicio] : []);
-        const serviceDetails: VentaProductoDetalle[] = serviceIds.map(sid => {
-          const service = mockServicios.find(s => s.id_servicio === sid);
-          return {
-            id_venta_prod_detalle: currentDetalleId + detailCounter++,
-            id_venta: newVentaId,
-            tipo: 'servicio',
-            id_servicio: sid,
-            cantidad: 1,
-            precio_unitario: service?.precio || 0,
-            subtotal: service?.precio || 0,
-          };
-        });
-
-        // 2. Detalles de Productos
-        // Usamos id_productos (lista plana)
-        const productIds = cita.id_productos || [];
-        const productDetails: VentaProductoDetalle[] = [];
-
-        // Consolidar productos por ID
-        const productCounts = productIds.reduce((acc, pid) => {
-          acc[pid] = (acc[pid] || 0) + 1;
-          return acc;
-        }, {} as Record<number, number>);
-
-        Object.entries(productCounts).forEach(([pidStr, qty]) => {
-          const pid = parseInt(pidStr);
-          const product = mockProductos.find(p => p.id_producto === pid);
-          productDetails.push({
-            id_venta_prod_detalle: currentDetalleId + detailCounter++,
-            id_venta: newVentaId,
-            tipo: 'producto',
-            id_producto: pid,
-            cantidad: qty,
-            precio_unitario: product?.precio || 0,
-            subtotal: (product?.precio || 0) * qty,
-          });
-        });
-
-        const allDetails = [...serviceDetails, ...productDetails];
-        const total = allDetails.reduce((sum, d) => sum + d.subtotal, 0);
-
-        const newVenta: Venta = {
-          id_venta: newVentaId,
-          id_cliente: cita.id_cliente,
-          id_usuario: user?.id_usuario || 1,
-          fecha: cita.fecha,
-          total: total,
-          estado: 'pagada',
-        };
-
-        dataStore.ventas.push(newVenta);
-        dataStore.ventasDetalle.push(...allDetails);
-        toast.success(`Venta #${newVentaId} generada por $${total.toFixed(2)}`, {
-          icon: '💰'
-        });
+      // Generar venta si cambia a un estado activo (y no tiene una vinculada)
+      if (status !== 'cancelada') {
+        generateSaleFromCita(dataStore.citas[idx]);
       }
 
       refreshData();
@@ -555,26 +564,28 @@ export function CitasView() {
         <>
           {(isAdmin || isBarbero) && (
             <section className="animate-in fade-in duration-500">
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
                 {Object.entries(stats).map(([k, v]) => (
-                  <Card key={k} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-6">
-                      <div className="flex items-center gap-4">
+                  <Card key={k} className="hover:shadow-md transition-shadow border-muted/60">
+                    <CardContent className="p-3">
+                      <div className="flex items-center gap-3">
                         <div className={cn(
-                          "p-3 rounded-lg",
-                          k === 'pendiente' && 'bg-yellow-100 text-yellow-600',
-                          k === 'confirmada' && 'bg-blue-100 text-blue-600',
-                          k === 'en-ejecucion' && 'bg-orange-100 text-orange-600',
-                          k === 'completada' && 'bg-green-100 text-green-600',
-                          k === 'cancelada' && 'bg-red-100 text-red-600'
+                          "p-2 rounded-lg shrink-0",
+                          k === 'pendiente' && 'bg-yellow-50 text-yellow-600',
+                          k === 'confirmada' && 'bg-blue-50 text-blue-600',
+                          k === 'en-ejecucion' && 'bg-orange-50 text-orange-600',
+                          k === 'completada' && 'bg-green-50 text-green-600',
+                          k === 'cancelada' && 'bg-red-50 text-red-600'
                         )}>
-                          {k === 'completada' ? <CheckCircle className="w-6 h-6" /> :
-                            k === 'cancelada' ? <XCircle className="w-6 h-6" /> :
-                              <Clock className="w-6 h-6" />}
+                          {k === 'completada' ? <CheckCircle className="w-5 h-5" /> :
+                            k === 'cancelada' ? <XCircle className="w-5 h-5" /> :
+                              <Clock className="w-5 h-5" />}
                         </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground capitalize font-medium">{k.replace('-', ' ')}</p>
-                          <p className="text-2xl font-bold">{v}</p>
+                        <div className="min-w-0">
+                          <p className="text-[10px] uppercase font-bold text-muted-foreground/70 truncate">
+                            {k.replace('-', ' ')}
+                          </p>
+                          <p className="text-xl font-black leading-tight">{v}</p>
                         </div>
                       </div>
                     </CardContent>

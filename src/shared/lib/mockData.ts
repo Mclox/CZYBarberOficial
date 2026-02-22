@@ -79,6 +79,9 @@ export interface Devolucion {
   id_producto_cambio?: number;
   nombre_producto_cambio?: string;
   precio_producto_cambio?: number;
+  total_diferencia?: number; // Diferencia de precio (positivo = deuda, negativo = saldo a favor)
+  tipo_diferencia?: 'pago_adicional' | 'saldo_a_favor' | 'reembolso' | 'sin_diferencia';
+  metodo_diferencia?: 'efectivo' | 'tarjeta' | 'transferencia' | 'saldo_a_favor';
 }
 
 export interface DevolucionProveedor {
@@ -127,6 +130,7 @@ export interface Cita {
   estado: 'pendiente' | 'confirmada' | 'en-ejecucion' | 'completada' | 'cancelada';
   observaciones?: string;
   precios_personalizados?: Record<number, number>; // id_servicio/id_producto -> precio
+  id_venta?: number; // Venta vinculada (si ya fue facturada)
 }
 
 export interface Empleado {
@@ -177,6 +181,7 @@ export interface Pago {
 export interface Venta {
   id_venta: number;
   id_cliente?: number;
+  id_cliente_temporal?: number; // Para ventas a clientes no registrados (desde citas)
   id_usuario: number;
   fecha: string;
   total: number;
@@ -691,6 +696,9 @@ export const mockDevoluciones: Devolucion[] = [
     cantidad_devuelta: 1,
     estado_producto: 'defectuoso',
     accion_tomada: 'reembolso',
+    total_diferencia: -15.99,
+    tipo_diferencia: 'reembolso',
+    metodo_diferencia: 'efectivo',
   },
   {
     id_devolucion: 2,
@@ -713,6 +721,9 @@ export const mockDevoluciones: Devolucion[] = [
     cantidad_devuelta: 2,
     estado_producto: 'defectuoso',
     accion_tomada: 'reembolso',
+    total_diferencia: -37.00,
+    tipo_diferencia: 'reembolso',
+    metodo_diferencia: 'transferencia',
   },
   {
     id_devolucion: 4,
