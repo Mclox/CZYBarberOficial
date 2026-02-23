@@ -31,30 +31,30 @@ export function ConsignacionesView() {
     precio_venta: '',
     fecha_entrega: '',
     fecha_pago: '',
-    estado: 'pendiente' as 'pendiente' | 'pagado' | 'devuelto',
+    estado: 'pendiente_consignar' as 'pendiente_consignar' | 'consignado' | 'devuelto',
     observaciones: '',
   });
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
-    
+
     const filtered = consignaciones.filter(consignacion => {
       const productoName = getProductoName(consignacion.id_producto).toLowerCase();
       const idConsignacion = consignacion.id_consignacion.toString();
       const precioProveedor = consignacion.precio_proveedor.toString();
       const precioVenta = consignacion.precio_venta.toString();
-      const cantidad = consignacion.cantidad.toString();
+      const cantidad = consignacion.cantidad_recibida.toString();
       const estado = consignacion.estado.toLowerCase();
-      
+
       return productoName.includes(term) ||
-             idConsignacion.includes(term) ||
-             consignacion.fecha_entrega.includes(term) ||
-             consignacion.fecha_pago?.includes(term) ||
-             precioProveedor.includes(term) ||
-             precioVenta.includes(term) ||
-             cantidad.includes(term) ||
-             estado.includes(term);
+        idConsignacion.includes(term) ||
+        consignacion.fecha_entrega.includes(term) ||
+        consignacion.fecha_pago?.includes(term) ||
+        precioProveedor.includes(term) ||
+        precioVenta.includes(term) ||
+        cantidad.includes(term) ||
+        estado.includes(term);
     });
     setFilteredConsignaciones(filtered);
   };
@@ -75,7 +75,7 @@ export function ConsignacionesView() {
       precio_venta: '',
       fecha_entrega: new Date().toISOString().split('T')[0],
       fecha_pago: '',
-      estado: 'pendiente',
+      estado: 'pendiente_consignar',
       observaciones: '',
     });
     setDialogOpen(true);
@@ -125,18 +125,18 @@ export function ConsignacionesView() {
       const updated = consignaciones.map(c =>
         c.id_consignacion === editingConsignacion.id_consignacion
           ? {
-              ...c,
-              id_proveedor: parseInt(formData.id_proveedor),
-              id_producto: parseInt(formData.id_producto),
-              cantidad_recibida: parseInt(formData.cantidad_recibida),
-              cantidad_vendida: parseInt(formData.cantidad_vendida),
-              precio_proveedor: parseFloat(formData.precio_proveedor),
-              precio_venta: parseFloat(formData.precio_venta),
-              fecha_entrega: formData.fecha_entrega,
-              fecha_pago: formData.fecha_pago,
-              estado: formData.estado,
-              observaciones: formData.observaciones,
-            }
+            ...c,
+            id_proveedor: parseInt(formData.id_proveedor),
+            id_producto: parseInt(formData.id_producto),
+            cantidad_recibida: parseInt(formData.cantidad_recibida),
+            cantidad_vendida: parseInt(formData.cantidad_vendida),
+            precio_proveedor: parseFloat(formData.precio_proveedor),
+            precio_venta: parseFloat(formData.precio_venta),
+            fecha_entrega: formData.fecha_entrega,
+            fecha_pago: formData.fecha_pago,
+            estado: formData.estado,
+            observaciones: formData.observaciones,
+          }
           : c
       );
       setConsignaciones(updated);
@@ -170,10 +170,10 @@ export function ConsignacionesView() {
 
   const getEstadoBadge = (estado: string) => {
     switch (estado) {
-      case 'pagado':
-        return <Badge variant="default" className="bg-green-600">Pagado</Badge>;
-      case 'pendiente':
-        return <Badge variant="secondary" className="bg-yellow-600">Pendiente</Badge>;
+      case 'consignado':
+        return <Badge variant="default" className="bg-green-600">Consignado</Badge>;
+      case 'pendiente_consignar':
+        return <Badge variant="secondary" className="bg-yellow-600">Pendiente por consignar</Badge>;
       case 'devuelto':
         return <Badge variant="destructive">Devuelto</Badge>;
       default:
@@ -382,8 +382,8 @@ export function ConsignacionesView() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="pendiente">Pendiente</SelectItem>
-                    <SelectItem value="pagado">Pagado</SelectItem>
+                    <SelectItem value="pendiente_consignar">Pendiente por consignar</SelectItem>
+                    <SelectItem value="consignado">Consignado</SelectItem>
                     <SelectItem value="devuelto">Devuelto</SelectItem>
                   </SelectContent>
                 </Select>
@@ -465,10 +465,10 @@ export function ConsignacionesView() {
                   <p>
                     {viewingConsignacion.fecha_pago
                       ? new Date(viewingConsignacion.fecha_pago + 'T00:00:00').toLocaleDateString('es-ES', {
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric',
-                        })
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })
                       : 'No pagado'}
                   </p>
                 </div>

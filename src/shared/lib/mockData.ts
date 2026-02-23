@@ -36,6 +36,8 @@ export interface Producto {
   imagen?: string;
   estado?: 'activo' | 'inactivo';
   tipo_adquisicion?: 'consignacion' | 'compra_directa';
+  porcentaje_ganancia_barberia?: number;
+  porcentaje_pago_proveedor?: number;
 }
 
 export interface Proveedor {
@@ -47,6 +49,8 @@ export interface Proveedor {
   email?: string;
   direccion?: string;
   estado?: 'activo' | 'inactivo';
+  porcentaje_ganancia_barberia?: number;
+  porcentaje_pago_proveedor?: number;
 }
 
 export interface Compra {
@@ -104,7 +108,7 @@ export interface ConsignacionProveedor {
   precio_venta: number;
   fecha_entrega: string;
   fecha_pago?: string;
-  estado: 'pendiente' | 'pagado' | 'devuelto';
+  estado: 'pendiente_consignar' | 'consignado' | 'devuelto';
   observaciones?: string;
 }
 
@@ -168,14 +172,21 @@ export interface Pago {
   id_pago: number;
   id_venta?: number;
   id_consignacion?: number;
+  id_producto?: number;
+  id_proveedor?: number;
   monto: number;
-  metodo: 'efectivo' | 'tarjeta' | 'transferencia';
+  metodo: 'efectivo' | 'tarjeta' | 'transferencia' | 'no_definido';
   fecha: string;
   referencia?: string;
   estado: 'pendiente' | 'aprobado' | 'rechazado' | 'anulado';
   tipo: 'consignacion' | 'general';
+  mes?: string;
   motivo_anulacion?: string;
   fecha_anulacion?: string;
+  cantidad_vendida?: number;
+  total_vendido?: number;
+  comision_barberia?: number;
+  pago_proveedor?: number;
 }
 
 export interface Venta {
@@ -197,6 +208,7 @@ export interface VentaProductoDetalle {
   cantidad: number;
   precio_unitario: number;
   subtotal: number;
+  estado_consignacion?: 'pendiente_consignar' | 'consignado';
 }
 
 // Mock Data
@@ -332,18 +344,22 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1542818279-04aa19d54f06?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 25,
+    porcentaje_pago_proveedor: 75
   },
   {
     id_producto: 2,
-    nombre: 'Gel Fijador',
-    descripcion: 'Gel fijación extrema',
-    precio: 12.99,
-    stock: 30,
-    categoria: 'Cuidado Capilar',
-    codigo: 'GEL001',
-    imagen: 'https://images.unsplash.com/photo-1571875257727-256c39da42af?w=400',
+    nombre: 'Gel Extremo',
+    descripcion: 'Gel fijador ultra fuerte',
+    precio: 15.00,
+    stock: 25,
+    categoria: 'Fijación',
+    codigo: 'GEL-002',
+    imagen: 'https://images.unsplash.com/photo-1585751119414-ef2636f8aede?w=100&h=100&fit=crop',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 40,
+    porcentaje_pago_proveedor: 60
   },
   {
     id_producto: 3,
@@ -356,6 +372,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1643123158602-c5e19b5c96ca?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 30,
+    porcentaje_pago_proveedor: 70
   },
   {
     id_producto: 4,
@@ -368,6 +386,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1619451334792-150fd785ee74?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 25,
+    porcentaje_pago_proveedor: 75
   },
   {
     id_producto: 5,
@@ -380,6 +400,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1585232350370-6adc49653456?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 35,
+    porcentaje_pago_proveedor: 65
   },
   {
     id_producto: 6,
@@ -392,6 +414,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1570554886111-e80fcca6a029?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 20,
+    porcentaje_pago_proveedor: 80
   },
   {
     id_producto: 7,
@@ -404,6 +428,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1615397349754-facc0352b620?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 30,
+    porcentaje_pago_proveedor: 70
   },
   {
     id_producto: 8,
@@ -464,6 +490,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1564029875275-9acc2b94a89b?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 30,
+    porcentaje_pago_proveedor: 70
   },
   {
     id_producto: 13,
@@ -476,6 +504,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1612832021836-f6e0a7aff6de?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 25,
+    porcentaje_pago_proveedor: 75
   },
   {
     id_producto: 14,
@@ -585,6 +615,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1585232350370-6adc49653456?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 40,
+    porcentaje_pago_proveedor: 60
   },
   {
     id_producto: 23,
@@ -597,6 +629,8 @@ export const mockProductos: Producto[] = [
     imagen: 'https://images.unsplash.com/photo-1571875257727-256c39da42af?w=400',
     estado: 'activo',
     tipo_adquisicion: 'consignacion',
+    porcentaje_ganancia_barberia: 30,
+    porcentaje_pago_proveedor: 70
   },
   {
     id_producto: 24,
@@ -642,8 +676,10 @@ export const mockProveedores: Proveedor[] = [
     contacto: 'Ana García',
     telefono: '555-1002',
     email: 'contacto@lanavaja.com',
-    direccion: 'Calle Comercio 456',
+    direccion: 'Calle 10 #25-30',
     estado: 'activo',
+    porcentaje_ganancia_barberia: 30,
+    porcentaje_pago_proveedor: 70
   },
   {
     id_proveedor: 3,
@@ -654,6 +690,18 @@ export const mockProveedores: Proveedor[] = [
     email: 'ventas@bebidasysnacks.com',
     direccion: 'Zona Industrial 789',
     estado: 'activo',
+  },
+  {
+    id_proveedor: 4,
+    nombre: 'Beret Co',
+    nit: '900.555.666-2',
+    contacto: 'Ana Martínez',
+    telefono: '3109876543',
+    email: 'ventas@beret.com',
+    direccion: 'Av. Industrial #45-12',
+    estado: 'activo',
+    porcentaje_ganancia_barberia: 20,
+    porcentaje_pago_proveedor: 80
   },
 ];
 
@@ -826,7 +874,117 @@ export const mockConsignaciones: ConsignacionProveedor[] = [
     precio_proveedor: 450.00,
     precio_venta: 799.99,
     fecha_entrega: '2025-10-15',
-    estado: 'pendiente',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 2,
+    id_proveedor: 2,
+    id_producto: 2,
+    cantidad_recibida: 30,
+    cantidad_vendida: 10,
+    precio_proveedor: 350.00,
+    precio_venta: 500.00,
+    fecha_entrega: '2025-10-20',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 3,
+    id_proveedor: 4,
+    id_producto: 3,
+    cantidad_recibida: 15,
+    cantidad_vendida: 2,
+    precio_proveedor: 15.00,
+    precio_venta: 18.50,
+    fecha_entrega: '2025-10-25',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 4,
+    id_proveedor: 2,
+    id_producto: 4,
+    cantidad_recibida: 25,
+    cantidad_vendida: 2,
+    precio_proveedor: 12.00,
+    precio_venta: 16.99,
+    fecha_entrega: '2025-10-26',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 5,
+    id_proveedor: 4,
+    id_producto: 5,
+    cantidad_recibida: 20,
+    cantidad_vendida: 1,
+    precio_proveedor: 10.00,
+    precio_venta: 14.50,
+    fecha_entrega: '2025-10-27',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 6,
+    id_proveedor: 2,
+    id_producto: 6,
+    cantidad_recibida: 50,
+    cantidad_vendida: 3,
+    precio_proveedor: 8.00,
+    precio_venta: 11.99,
+    fecha_entrega: '2025-10-28',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 7,
+    id_proveedor: 4,
+    id_producto: 7,
+    cantidad_recibida: 30,
+    cantidad_vendida: 1,
+    precio_proveedor: 9.00,
+    precio_venta: 13.99,
+    fecha_entrega: '2025-10-29',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 8,
+    id_proveedor: 2,
+    id_producto: 12,
+    cantidad_recibida: 40,
+    cantidad_vendida: 3,
+    precio_proveedor: 7.00,
+    precio_venta: 10.99,
+    fecha_entrega: '2025-11-01',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 9,
+    id_proveedor: 2,
+    id_producto: 13,
+    cantidad_recibida: 60,
+    cantidad_vendida: 1,
+    precio_proveedor: 6.00,
+    precio_venta: 8.50,
+    fecha_entrega: '2025-11-02',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 10,
+    id_proveedor: 1,
+    id_producto: 22,
+    cantidad_recibida: 25,
+    cantidad_vendida: 2,
+    precio_proveedor: 14.00,
+    precio_venta: 19.99,
+    fecha_entrega: '2025-11-05',
+    estado: 'pendiente_consignar',
+  },
+  {
+    id_consignacion: 11,
+    id_proveedor: 1,
+    id_producto: 23,
+    cantidad_recibida: 35,
+    cantidad_vendida: 2,
+    precio_proveedor: 10.00,
+    precio_venta: 14.99,
+    fecha_entrega: '2025-11-06',
+    estado: 'pendiente_consignar',
   },
 ];
 
@@ -1509,8 +1667,9 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     tipo: 'producto',
     id_producto: 8,
     cantidad: 2,
-    precio_unitario: 45.00,
-    subtotal: 90.00,
+    precio_unitario: 35.00,
+    subtotal: 70.00,
+    estado_consignacion: 'pendiente_consignar'
   },
   {
     id_venta_prod_detalle: 26,
