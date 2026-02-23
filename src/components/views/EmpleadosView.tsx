@@ -2,409 +2,308 @@ import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '../ui/select';
 import { Badge } from '../ui/badge';
-import { Plus, Pencil, Trash2, UserCog, Eye, FileDown, Mail, Phone, Calendar } from 'lucide-react';
-import { mockEmpleados, Empleado } from '../../shared/lib/mockData';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
+import {
+  Search,
+  X,
+  UserPlus,
+  UserCheck,
+  UserX,
+  DollarSign,
+  Settings,
+  Briefcase
+} from 'lucide-react';
+import { cn } from '../ui/utils';
+import { Empleado } from '../../shared/lib/mockData';
+import { dataStore } from '../../shared/lib/dataStore';
 import { toast } from 'sonner';
-import { SearchBar } from '../common/SearchBar';
 
 export function EmpleadosView() {
-  const [empleados, setEmpleados] = useState<Empleado[]>(mockEmpleados);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingEmpleado, setEditingEmpleado] = useState<Empleado | null>(null);
-  const [viewingEmpleado, setViewingEmpleado] = useState<Empleado | null>(null);
-  const [empleadoToDelete, setEmpleadoToDelete] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({
+  const [refreshKey, setRefreshKey] = useState(0);
+  const refreshData = () => setRefreshKey((prev: number) => prev + 1);
+
+  // --- Employee Management State ---
+  const [employeeFormData, setEmployeeFormData] = useState<Partial<Empleado>>({
     nombre: '',
     apellido: '',
-    cargo: '',
+    cargo: 'Barbero',
     telefono: '',
     email: '',
-    fecha_contratacion: '',
-    salario: '',
+    estado: 'activo',
+    tipo_esquema: 'comision',
+    porcentaje_comision: 60,
+    porcentaje_dueno: 40,
+    pago_silla_semanal: 0,
+    fecha_contratacion: new Date().toISOString().slice(0, 10),
   });
+  const [editingEmployee, setEditingEmployee] = useState<Empleado | null>(null);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState('');
 
-  // Filtrar empleados por término de búsqueda
-  const filteredEmpleados = useMemo(() => {
-    if (!searchTerm.trim()) return empleados;
+  const filteredEmployees = useMemo(() => {
+    return dataStore.empleados.filter(e =>
+      e.nombre.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+      e.apellido.toLowerCase().includes(employeeSearch.toLowerCase())
+    );
+  }, [employeeSearch, refreshKey]);
 
-    const lowerSearch = searchTerm.toLowerCase();
-    return empleados.filter((empleado) => {
-      const fullName = `${empleado.nombre} ${empleado.apellido}`.toLowerCase();
-      const cargo = empleado.cargo.toLowerCase();
-      const email = (empleado.email || '').toLowerCase();
-      const telefono = (empleado.telefono || '').toLowerCase();
-      
-      return (
-        fullName.includes(lowerSearch) ||
-        cargo.includes(lowerSearch) ||
-        email.includes(lowerSearch) ||
-        telefono.includes(lowerSearch)
-      );
-    });
-  }, [empleados, searchTerm]);
-
-  const handleExport = () => {
-    toast.success('Exportando a Excel...', {
-      style: { background: '#10b981', color: '#fff' }
-    });
-    console.log('Exportando empleados:', empleados);
-  };
-
-  const handleCreate = () => {
-    setEditingEmpleado(null);
-    setFormData({
+  const handleEmployeeCreate = () => {
+    setEditingEmployee(null);
+    setEmployeeFormData({
       nombre: '',
       apellido: '',
-      cargo: '',
+      cargo: 'Barbero',
       telefono: '',
       email: '',
-      fecha_contratacion: '',
-      salario: '',
+      estado: 'activo',
+      tipo_esquema: 'comision',
+      porcentaje_comision: 60,
+      porcentaje_dueno: 40,
+      pago_silla_semanal: 0,
+      fecha_contratacion: new Date().toISOString().slice(0, 10),
     });
-    setDialogOpen(true);
+    setShowEmployeeForm(true);
+    window.scrollTo(0, 0);
   };
 
-  const handleEdit = (empleado: Empleado) => {
-    setEditingEmpleado(empleado);
-    setFormData({
-      nombre: empleado.nombre,
-      apellido: empleado.apellido,
-      cargo: empleado.cargo,
-      telefono: empleado.telefono || '',
-      email: empleado.email || '',
-      fecha_contratacion: empleado.fecha_contratacion,
-      salario: empleado.salario?.toString() || '',
-    });
-    setDialogOpen(true);
+  const handleEmployeeEdit = (emp: Empleado) => {
+    setEditingEmployee(emp);
+    setEmployeeFormData({ ...emp });
+    setShowEmployeeForm(true);
+    window.scrollTo(0, 0);
   };
 
-  const handleView = (empleado: Empleado) => {
-    setViewingEmpleado(empleado);
-    setDetailsDialogOpen(true);
-  };
-
-  const handleDelete = (id: number) => {
-    setEmpleadoToDelete(id);
-    setDeleteDialogOpen(true);
-  };
-
-  const confirmDelete = () => {
-    if (empleadoToDelete) {
-      setEmpleados(empleados.filter(e => e.id_empleado !== empleadoToDelete));
-      toast.success('Empleado eliminado correctamente', {
-        style: { background: '#10b981', color: '#fff' }
-      });
-    }
-    setDeleteDialogOpen(false);
-    setEmpleadoToDelete(null);
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleEmployeeSave = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (editingEmpleado) {
-      const updated = empleados.map(emp =>
-        emp.id_empleado === editingEmpleado.id_empleado
-          ? {
-              ...emp,
-              ...formData,
-              salario: formData.salario ? parseFloat(formData.salario) : undefined,
-            }
-          : emp
-      );
-      setEmpleados(updated);
-      toast.success('Empleado actualizado correctamente', {
-        style: { background: '#10b981', color: '#fff' }
-      });
-    } else {
-      const newEmpleado: Empleado = {
-        id_empleado: Math.max(...empleados.map(e => e.id_empleado), 0) + 1,
-        ...formData,
-        salario: formData.salario ? parseFloat(formData.salario) : undefined,
-      };
-      setEmpleados([...empleados, newEmpleado]);
-      toast.success('Empleado creado correctamente', {
-        style: { background: '#10b981', color: '#fff' }
-      });
+    // Validaciones
+    if (employeeFormData.tipo_esquema === 'comision') {
+      const com = employeeFormData.porcentaje_comision || 0;
+      const due = employeeFormData.porcentaje_dueno || 0;
+      if (com + due !== 100) {
+        toast.error('La suma de porcentajes debe ser 100%');
+        return;
+      }
+    } else if (employeeFormData.tipo_esquema === 'silla') {
+      if (!employeeFormData.pago_silla_semanal || employeeFormData.pago_silla_semanal <= 0) {
+        toast.error('Indica un valor de alquiler válido');
+        return;
+      }
     }
 
-    setDialogOpen(false);
+    if (editingEmployee) {
+      const idx = dataStore.empleados.findIndex(e => e.id_empleado === editingEmployee.id_empleado);
+      if (idx !== -1) {
+        dataStore.empleados[idx] = { ...editingEmployee, ...employeeFormData } as Empleado;
+        toast.success('Perfil de barbero actualizado');
+      }
+    } else {
+      const newEmp: Empleado = {
+        id_empleado: Math.max(...dataStore.empleados.map(e => e.id_empleado), 0) + 1,
+        ...employeeFormData
+      } as Empleado;
+      dataStore.empleados.push(newEmp);
+      toast.success('Nuevo barbero registrado');
+    }
+
+    setShowEmployeeForm(false);
+    refreshData();
+  };
+
+  const toggleEmployeeStatus = (emp: Empleado) => {
+    const newStatus = emp.estado === 'activo' ? 'inactivo' : 'activo';
+    const idx = dataStore.empleados.findIndex(e => e.id_empleado === emp.id_empleado);
+    if (idx !== -1) {
+      dataStore.empleados[idx].estado = newStatus;
+      toast.info(`Barbero marcado como ${newStatus}`);
+      refreshData();
+    }
+  };
+
+  const handleMarkChairPayment = (idControl: number) => {
+    const idx = dataStore.controlesPagoSilla.findIndex(c => c.id_control_pago === idControl);
+    if (idx !== -1) {
+      dataStore.controlesPagoSilla[idx].estado = 'pagado';
+      dataStore.controlesPagoSilla[idx].fecha_pago = new Date().toISOString().slice(0, 10);
+      toast.success('Pago de silla registrado');
+      refreshData();
+    }
   };
 
   return (
-    <div className="p-4 md:p-8 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-4 md:p-8 max-w-[1600px] mx-auto w-full space-y-8 h-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="flex items-center gap-2">
-            <UserCog className="w-6 h-6" />
-            Empleados
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Briefcase className="w-6 h-6 text-[#D4AF37]" />
+            Gestión de Empleados
           </h1>
-          <p className="text-muted-foreground">Gestiona los empleados del sistema</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleCreate}>
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Empleado
-          </Button>
-          <Button onClick={handleExport}>
-            <FileDown className="w-4 h-4 mr-2" />
-            Exportar
-          </Button>
+          <p className="text-muted-foreground">Configura los barberos, esquemas de pago y controla el alquiler de sillas.</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <CardTitle>Lista de Empleados</CardTitle>
-            <SearchBar
-              value={searchTerm}
-              onChange={setSearchTerm}
-              placeholder="Buscar por nombre, cargo, email o teléfono..."
-              className="w-full md:w-96"
-            />
-          </div>
-        </CardHeader>
-        <CardContent>
-          {filteredEmpleados.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              {searchTerm ? 'No se encontraron empleados con ese criterio' : 'No hay empleados registrados'}
-            </div>
-          ) : (
-            <div className="rounded-md border overflow-x-auto">
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Cargo</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Teléfono</TableHead>
-                  <TableHead>Fecha Contratación</TableHead>
-                  <TableHead>Salario</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmpleados.map((empleado) => (
-                  <TableRow key={empleado.id_empleado}>
-                    <TableCell>{empleado.nombre} {empleado.apellido}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{empleado.cargo}</Badge>
-                    </TableCell>
-                    <TableCell>{empleado.email || '-'}</TableCell>
-                    <TableCell>{empleado.telefono || '-'}</TableCell>
-                    <TableCell>{new Date(empleado.fecha_contratacion + 'T00:00:00').toLocaleDateString('es-ES')}</TableCell>
-                    <TableCell>{empleado.salario ? `$${empleado.salario.toFixed(2)}` : '-'}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="sm" onClick={() => handleView(empleado)}>
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleEdit(empleado)}>
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleDelete(empleado.id_empleado)}>
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+      <div className="space-y-8 animate-in fade-in duration-500">
+        {showEmployeeForm ? (
+          <Card className="border-2 border-[#D4AF37]/20 shadow-2xl">
+            <CardHeader className="bg-muted/20 border-b pb-6">
+              <div className="flex justify-between items-center">
+                <div>
+                  <CardTitle className="text-2xl font-black">{editingEmployee ? `Editar: ${editingEmployee.nombre}` : 'Nuevo Barbero'}</CardTitle>
+                  <CardDescription>Define el esquema de pago y datos del profesional</CardDescription>
+                </div>
+                <Button variant="ghost" size="icon" onClick={() => setShowEmployeeForm(false)}><X /></Button>
+              </div>
+            </CardHeader>
+            <form onSubmit={handleEmployeeSave}>
+              <CardContent className="p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Personales</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2"><Label>Nombre *</Label><Input required value={employeeFormData.nombre} onChange={e => setEmployeeFormData({ ...employeeFormData, nombre: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Apellido *</Label><Input required value={employeeFormData.apellido} onChange={e => setEmployeeFormData({ ...employeeFormData, apellido: e.target.value })} /></div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2"><Label>Email</Label><Input type="email" value={employeeFormData.email} onChange={e => setEmployeeFormData({ ...employeeFormData, email: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Teléfono</Label><Input value={employeeFormData.telefono} onChange={e => setEmployeeFormData({ ...employeeFormData, telefono: e.target.value })} /></div>
+                    </div>
+
+                    <div className="space-y-2"><Label>Cargo</Label><Input value={employeeFormData.cargo} onChange={e => setEmployeeFormData({ ...employeeFormData, cargo: e.target.value })} /></div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Esquema de Pago</h3>
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Tipo de Pago *</Label>
+                        <Select value={employeeFormData.tipo_esquema} onValueChange={v => setEmployeeFormData({ ...employeeFormData, tipo_esquema: v as any })}>
+                          <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="comision">Porcentaje (Comisión)</SelectItem>
+                            <SelectItem value="silla">Alquiler Silla (Fijo)</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* Dialog Crear/Editar */}
-      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>{editingEmpleado ? 'Editar Empleado' : 'Nuevo Empleado'}</DialogTitle>
-            <DialogDescription>
-              {editingEmpleado ? 'Actualiza la información del empleado' : 'Registra un nuevo empleado'}
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre *</Label>
-                <Input
-                  id="nombre"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  required
-                />
+                      {employeeFormData.tipo_esquema === 'comision' ? (
+                        <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-left-2">
+                          <div className="space-y-2">
+                            <Label>Comisión Barbero %</Label>
+                            <Input type="number" min="0" max="100" value={employeeFormData.porcentaje_comision} onChange={e => setEmployeeFormData({ ...employeeFormData, porcentaje_comision: parseInt(e.target.value), porcentaje_dueno: 100 - parseInt(e.target.value) })} />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Negocio %</Label>
+                            <Input type="number" disabled value={employeeFormData.porcentaje_dueno} />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-2 animate-in slide-in-from-right-2">
+                          <Label>Valor Alquiler Semanal</Label>
+                          <div className="relative">
+                            <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input type="number" className="pl-10" value={employeeFormData.pago_silla_semanal} onChange={e => setEmployeeFormData({ ...employeeFormData, pago_silla_semanal: parseInt(e.target.value) })} />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-muted/30 p-8 flex justify-end gap-3 border-t mt-4">
+                <Button type="button" variant="outline" onClick={() => setShowEmployeeForm(false)}>Cancelar</Button>
+                <Button type="submit" className="bg-[#D4AF37] text-black px-8 font-bold hover:bg-[#B8941F]">Guardar Barbero</Button>
+              </CardFooter>
+            </form>
+          </Card>
+        ) : (
+          <>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+              <div className="relative w-full md:w-96">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar barbero..." value={employeeSearch} onChange={e => setEmployeeSearch(e.target.value)} className="pl-10" />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="apellido">Apellido *</Label>
-                <Input
-                  id="apellido"
-                  value={formData.apellido}
-                  onChange={(e) => setFormData({ ...formData, apellido: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="cargo">Cargo *</Label>
-                <Input
-                  id="cargo"
-                  value={formData.cargo}
-                  onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono *</Label>
-                <Input
-                  id="telefono"
-                  type="tel"
-                  value={formData.telefono}
-                  onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fecha_contratacion">Fecha Contratación *</Label>
-                <Input
-                  id="fecha_contratacion"
-                  type="date"
-                  value={formData.fecha_contratacion}
-                  onChange={(e) => setFormData({ ...formData, fecha_contratacion: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="salario">Salario</Label>
-                <Input
-                  id="salario"
-                  type="number"
-                  step="0.01"
-                  value={formData.salario}
-                  onChange={(e) => setFormData({ ...formData, salario: e.target.value })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
+              <Button onClick={handleEmployeeCreate} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black shadow-md hover:shadow-[#D4AF37]/20 transition-all">
+                <UserPlus className="w-4 h-4 mr-2" /> Nuevo barbero
               </Button>
-              <Button type="submit">{editingEmpleado ? 'Actualizar' : 'Crear'}</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dialog Detalles */}
-      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalles del Empleado</DialogTitle>
-            <DialogDescription>Información completa del empleado</DialogDescription>
-          </DialogHeader>
-          {viewingEmpleado && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nombre Completo</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">
-                      {viewingEmpleado.nombre} {viewingEmpleado.apellido}
-                    </p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>Cargo</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <Badge variant="outline">{viewingEmpleado.cargo}</Badge>
-                  </div>
-                </div>
-                {viewingEmpleado.email && (
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <div className="p-3 bg-muted rounded-md flex items-center gap-2">
-                      <Mail className="w-4 h-4 text-muted-foreground" />
-                      <p>{viewingEmpleado.email}</p>
-                    </div>
-                  </div>
-                )}
-                {viewingEmpleado.telefono && (
-                  <div className="space-y-2">
-                    <Label>Teléfono</Label>
-                    <div className="p-3 bg-muted rounded-md flex items-center gap-2">
-                      <Phone className="w-4 h-4 text-muted-foreground" />
-                      <p>{viewingEmpleado.telefono}</p>
-                    </div>
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label>Fecha de Contratación</Label>
-                  <div className="p-3 bg-muted rounded-md flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-muted-foreground" />
-                    <p>
-                      {new Date(viewingEmpleado.fecha_contratacion + 'T00:00:00').toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                </div>
-                {viewingEmpleado.salario && (
-                  <div className="space-y-2">
-                    <Label>Salario</Label>
-                    <div className="p-3 bg-muted rounded-md">
-                      <p className="font-medium text-green-600">
-                        ${viewingEmpleado.salario.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
-      {/* Dialog Eliminar */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. El empleado será eliminado permanentemente.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+              {filteredEmployees.map(emp => (
+                <Card key={emp.id_empleado} className={cn("hover:shadow-lg transition-all border-l-4 h-full flex flex-col", emp.estado === 'activo' ? "border-l-green-500" : "border-l-gray-300")}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center font-bold text-lg">
+                          {emp.nombre[0]}{emp.apellido[0]}
+                        </div>
+                        <div>
+                          <CardTitle className="text-lg">{emp.nombre} {emp.apellido}</CardTitle>
+                          <CardDescription>{emp.cargo}</CardDescription>
+                        </div>
+                      </div>
+                      <Badge variant={emp.estado === 'activo' ? 'default' : 'secondary'} className={cn(emp.estado === 'activo' ? "bg-green-100 text-green-700" : "")}>
+                        {emp.estado}
+                      </Badge>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-4 flex-1">
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-muted-foreground uppercase font-bold text-[9px]">Esquema</span>
+                        <span className="font-bold flex items-center gap-1">
+                          {emp.tipo_esquema === 'comision' ? <DollarSign className="w-3 h-3" /> : <Briefcase className="w-3 h-3" />}
+                          {emp.tipo_esquema.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-muted-foreground uppercase font-bold text-[9px]">Detalle</span>
+                        <span className="font-bold">
+                          {emp.tipo_esquema === 'comision' ? `${emp.porcentaje_comision}%` : `$${emp.pago_silla_semanal?.toLocaleString()}`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {emp.tipo_esquema === 'silla' && (
+                      <div className="bg-muted/30 p-3 rounded-lg space-y-2">
+                        <div className="flex justify-between items-center text-[10px] font-bold">
+                          <span>CONTROL DE SILLA (SEMANAL)</span>
+                          <Button variant="link" size="sm" className="h-auto p-0 text-[10px]">Ver historial</Button>
+                        </div>
+                        {dataStore.controlesPagoSilla.filter(c => c.id_empleado === emp.id_empleado).slice(0, 1).map(ctrl => (
+                          <div key={ctrl.id_control_pago} className="flex justify-between items-center">
+                            <span className="text-xs text-muted-foreground">{ctrl.fecha_inicio_semana} al {ctrl.fecha_fin_semana}</span>
+                            {ctrl.estado === 'pendiente' ? (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] border-orange-500 text-orange-600 hover:bg-orange-50" onClick={() => handleMarkChairPayment(ctrl.id_control_pago)}>Marcar Pagado</Button>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-700 text-[10px]">PAGADO</Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                  <CardFooter className="border-t bg-muted/10 p-4 flex justify-between mt-auto">
+                    <Button variant="ghost" size="sm" onClick={() => handleEmployeeEdit(emp)}><Settings className="w-4 h-4 mr-2" /> Configurar</Button>
+                    <Button variant="ghost" size="sm" className={cn(emp.estado === 'activo' ? "text-red-500" : "text-green-600")} onClick={() => toggleEmployeeStatus(emp)}>
+                      {emp.estado === 'activo' ? <UserX className="w-4 h-4 mr-2" /> : <UserCheck className="w-4 h-4 mr-2" />}
+                      {emp.estado === 'activo' ? 'Inactivar' : 'Activar'}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 }

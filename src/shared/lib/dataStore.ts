@@ -1,5 +1,5 @@
 // Simple data store to make mock data mutable across components
-import { 
+import {
   mockRoles,
   mockUsuarios,
   mockProductos,
@@ -17,6 +17,7 @@ import {
   mockPagos,
   mockVentas,
   mockVentasDetalle,
+  mockControlesPagoSilla,
   type ClienteTemporal,
   type Cita
 } from './mockData';
@@ -40,6 +41,7 @@ export const dataStore = {
   pagos: mockPagos,
   ventas: mockVentas,
   ventasDetalle: mockVentasDetalle,
+  controlesPagoSilla: mockControlesPagoSilla,
 };
 
 // Helper functions

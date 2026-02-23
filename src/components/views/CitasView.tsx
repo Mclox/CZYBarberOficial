@@ -39,6 +39,12 @@ import {
   TableHeader,
   TableRow,
 } from '../ui/table';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '../ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
 import {
   Plus,
@@ -50,10 +56,17 @@ import {
   XCircle,
   Clock,
   Calendar,
-  X
+  X,
+  Users,
+  UserPlus,
+  UserCheck,
+  UserX,
+  DollarSign,
+  Settings,
+  Briefcase
 } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { mockServicios, mockEmpleados, mockClientes, mockProductos, Cita, Venta, VentaProductoDetalle } from '../../shared/lib/mockData';
+import { mockServicios, mockEmpleados, mockClientes, mockProductos, Cita, Venta, VentaProductoDetalle, Empleado } from '../../shared/lib/mockData';
 import { dataStore } from '../../shared/lib/dataStore';
 import { useAuth } from '../../features/auth';
 import { toast } from 'sonner';
@@ -269,6 +282,25 @@ export function CitasView() {
       return 'all';
     }
   });
+
+  // --- Employee Management State ---
+  const [employeeFormData, setEmployeeFormData] = useState<Partial<Empleado>>({
+    nombre: '',
+    apellido: '',
+    cargo: 'Barbero',
+    telefono: '',
+    email: '',
+    estado: 'activo',
+    tipo_esquema: 'comision',
+    porcentaje_comision: 60,
+    porcentaje_dueno: 40,
+    pago_silla_semanal: 0,
+    fecha_contratacion: new Date().toISOString().slice(0, 10),
+  });
+  const [editingEmployee, setEditingEmployee] = useState<Empleado | null>(null);
+  const [showEmployeeForm, setShowEmployeeForm] = useState(false);
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [activeTab, setActiveTab] = useState('agenda');
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
@@ -540,349 +572,613 @@ export function CitasView() {
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
+  // --- Employee Management Logic ---
+  const handleEmployeeCreate = () => {
+    setEditingEmployee(null);
+    setEmployeeFormData({
+      nombre: '',
+      apellido: '',
+      cargo: 'Barbero',
+      telefono: '',
+      email: '',
+      estado: 'activo',
+      tipo_esquema: 'comision',
+      porcentaje_comision: 60,
+      porcentaje_dueno: 40,
+      pago_silla_semanal: 0,
+      fecha_contratacion: new Date().toISOString().slice(0, 10),
+    });
+    setShowEmployeeForm(true);
+    window.scrollTo(0, 0);
+  };
+
+  const handleEmployeeEdit = (emp: Empleado) => {
+    setEditingEmployee(emp);
+    setEmployeeFormData({ ...emp });
+    setShowEmployeeForm(true);
+    window.scrollTo(0, 0);
+  };
+
+  const handleEmployeeSave = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validaciones
+    if (employeeFormData.tipo_esquema === 'comision') {
+      const com = employeeFormData.porcentaje_comision || 0;
+      const due = employeeFormData.porcentaje_dueno || 0;
+      if (com + due !== 100) {
+        toast.error('La suma de porcentajes debe ser 100%');
+        return;
+      }
+    } else if (employeeFormData.tipo_esquema === 'silla') {
+      if (!employeeFormData.pago_silla_semanal || employeeFormData.pago_silla_semanal <= 0) {
+        toast.error('Indica un valor de alquiler válido');
+        return;
+      }
+    }
+
+    if (editingEmployee) {
+      const idx = dataStore.empleados.findIndex(e => e.id_empleado === editingEmployee.id_empleado);
+      if (idx !== -1) {
+        dataStore.empleados[idx] = { ...editingEmployee, ...employeeFormData } as Empleado;
+        toast.success('Perfil de barbero actualizado');
+      }
+    } else {
+      const newEmp: Empleado = {
+        id_empleado: Math.max(...dataStore.empleados.map(e => e.id_empleado), 0) + 1,
+        ...employeeFormData
+      } as Empleado;
+      dataStore.empleados.push(newEmp);
+      toast.success('Nuevo barbero registrado');
+    }
+
+    setShowEmployeeForm(false);
+    refreshData();
+  };
+
+  const toggleEmployeeStatus = (emp: Empleado) => {
+    const newStatus = emp.estado === 'activo' ? 'inactivo' : 'activo';
+    const idx = dataStore.empleados.findIndex(e => e.id_empleado === emp.id_empleado);
+    if (idx !== -1) {
+      dataStore.empleados[idx].estado = newStatus;
+      toast.info(`Barbero marcado como ${newStatus}`);
+      refreshData();
+    }
+  };
+
+  const handleMarkChairPayment = (idControl: number) => {
+    const idx = dataStore.controlesPagoSilla.findIndex(c => c.id_control_pago === idControl);
+    if (idx !== -1) {
+      dataStore.controlesPagoSilla[idx].estado = 'pagado';
+      dataStore.controlesPagoSilla[idx].fecha_pago = new Date().toISOString().slice(0, 10);
+      toast.success('Pago de silla registrado');
+      refreshData();
+    }
+  };
+
   return (
     <div className="flex flex-col gap-12 p-4 md:p-8 max-w-[1600px] mx-auto w-full">
-      <div className="flex items-center justify-between pb-6 border-b">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Calendar className="w-6 h-6 text-[#D4AF37]" />
-            Citas
-          </h1>
-          <p className="text-muted-foreground">
-            {isCliente ? 'Gestiona tus citas' : 'Gestiona las citas programadas'}
-          </p>
-        </div>
-        {!showForm && (
-          <Button onClick={() => handleCreate()} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black shadow-md hover:shadow-[#D4AF37]/20 transition-all">
-            <Plus className="w-4 h-4 mr-2" />
-            Nueva Cita
-          </Button>
-        )}
-      </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex items-center justify-between pb-6 border-b mb-8">
+          <div>
+            <h1 className="flex items-center gap-2 text-2xl font-bold">
+              <Calendar className="w-6 h-6 text-[#D4AF37]" />
+              Agendamiento
+            </h1>
+            <p className="text-muted-foreground">
+              Gestiona citas y el equipo de barberos
+            </p>
+          </div>
 
-      {!showForm ? (
-        <>
-          {(isAdmin || isBarbero) && (
-            <section className="animate-in fade-in duration-500">
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {Object.entries(stats).map(([k, v]) => (
-                  <Card key={k} className="hover:shadow-md transition-shadow border-muted/60">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-3">
-                        <div className={cn(
-                          "p-2 rounded-lg shrink-0",
-                          k === 'pendiente' && 'bg-yellow-50 text-yellow-600',
-                          k === 'confirmada' && 'bg-blue-50 text-blue-600',
-                          k === 'en-ejecucion' && 'bg-orange-50 text-orange-600',
-                          k === 'completada' && 'bg-green-50 text-green-600',
-                          k === 'cancelada' && 'bg-red-50 text-red-600'
-                        )}>
-                          {k === 'completada' ? <CheckCircle className="w-5 h-5" /> :
-                            k === 'cancelada' ? <XCircle className="w-5 h-5" /> :
-                              <Clock className="w-5 h-5" />}
+          <TabsList className="bg-muted/40 p-1">
+            <TabsTrigger value="agenda" className="flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Agenda
+            </TabsTrigger>
+            <TabsTrigger value="barberos" className="flex items-center gap-2">
+              <Users className="w-4 h-4" />
+              Barberos
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="agenda">
+          <div className="space-y-12">
+            {!showForm && (
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => handleCreate()} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black shadow-md hover:shadow-[#D4AF37]/20 transition-all">
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nueva Cita
+                </Button>
+              </div>
+            )}
+
+            {!showForm ? (
+              <>
+                {(isAdmin || isBarbero) && (
+                  <section className="animate-in fade-in duration-500">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                      {Object.entries(stats).map(([k, v]) => (
+                        <Card key={k} className="hover:shadow-md transition-shadow border-muted/60">
+                          <CardContent className="p-3">
+                            <div className="flex items-center gap-3">
+                              <div className={cn(
+                                "p-2 rounded-lg shrink-0",
+                                k === 'pendiente' && 'bg-yellow-50 text-yellow-600',
+                                k === 'confirmada' && 'bg-blue-50 text-blue-600',
+                                k === 'en-ejecucion' && 'bg-orange-50 text-orange-600',
+                                k === 'completada' && 'bg-green-50 text-green-600',
+                                k === 'cancelada' && 'bg-red-50 text-red-600'
+                              )}>
+                                {k === 'completada' ? <CheckCircle className="w-5 h-5" /> :
+                                  k === 'cancelada' ? <XCircle className="w-5 h-5" /> :
+                                    <Clock className="w-5 h-5" />}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-[10px] uppercase font-bold text-muted-foreground/70 truncate">
+                                  {k.replace('-', ' ')}
+                                </p>
+                                <p className="text-xl font-black leading-tight">{v}</p>
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </section>
+                )}
+
+                <section className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                    <Card className="lg:col-span-3 shadow-sm">
+                      <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
+                        <CardTitle className="text-xl">Panel de Calendario</CardTitle>
+                        <div className="flex items-center gap-3">
+                          <Label className="text-xs text-muted-foreground font-bold">Barbero:</Label>
+                          <Select value={calendarEmpleadoFilter} onValueChange={setCalendarEmpleadoFilter}>
+                            <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos los barberos</SelectItem>
+                              {dataStore.empleados.map(e => <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-[10px] uppercase font-bold text-muted-foreground/70 truncate">
-                            {k.replace('-', ' ')}
-                          </p>
-                          <p className="text-xl font-black leading-tight">{v}</p>
-                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-6">
+                        <CitasCalendar citasByDate={citasByDate} selectedDate={selectedDate} onSelectDay={handleSelectDay} onEventClick={handleViewDetails} />
+                      </CardContent>
+                    </Card>
+
+                    <Card className="lg:col-span-1 h-fit sticky top-4 shadow-sm border-[#D4AF37]/10">
+                      <CardHeader className="border-b bg-muted/20 pb-4">
+                        <CardTitle className="text-lg flex items-center gap-2"><Clock className="w-5 h-5 text-[#D4AF37]" /> Agenda del Día</CardTitle>
+                        <CardDescription className="font-medium text-xs">
+                          {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Selecciona una fecha'}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-0 max-h-[500px] overflow-y-auto custom-scrollbar">
+                        {(() => {
+                          const dayCitas = selectedDate ? (citasByDate[selectedDate] || []) : [];
+                          if (!selectedDate) return <div className="p-10 text-center italic text-muted-foreground text-sm">Escoge un día en el calendario</div>;
+                          if (!dayCitas.length) return <div className="p-10 text-center text-muted-foreground text-sm">Sin actividades programadas</div>;
+
+                          return dayCitas.sort((a, b) => parseTimeToMinutes(a.hora) - parseTimeToMinutes(b.hora)).map(c => (
+                            <div key={c.id_cita} className="p-4 border-b hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => handleViewDetails(c)}>
+                              <div className="flex justify-between items-start mb-2">
+                                <Badge variant="outline" className="font-bold text-[10px]">{c.hora}</Badge>
+                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(c); }}><Pencil className="h-3.5 w-3.5" /></Button>
+                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={(e) => { e.stopPropagation(); handleDelete(c.id_cita); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                </div>
+                              </div>
+                              <p className="text-sm font-bold text-foreground truncate">{getServicioName(c.id_servicio)}</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{getClienteName(c.id_cliente)}</p>
+                            </div>
+                          ));
+                        })()}
+                      </CardContent>
+                      <CardFooter className="p-4 bg-muted/30 border-t">
+                        <Button className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black font-bold" onClick={() => handleCreate(selectedDate || todayStr)}>
+                          <Plus className="w-4 h-4 mr-2" /> Agendar ahora
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  </div>
+                </section>
+
+                <section className="mt-8">
+                  <Card className="shadow-sm">
+                    <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-4">
+                      <div><CardTitle className="text-xl">Historial Maestro</CardTitle></div>
+                      <div className="relative w-full md:w-80">
+                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input placeholder="Filtrar por nombre o servicio..." value={searchTerm} onChange={handleSearch} className="pl-9" />
                       </div>
+                    </CardHeader>
+                    <CardContent className="p-0">
+                      <Table>
+                        <TableHeader className="bg-muted/10">
+                          <TableRow>
+                            <TableHead className="pl-6">Cliente</TableHead><TableHead>Servicios</TableHead><TableHead>Horario</TableHead><TableHead>Estado</TableHead><TableHead className="text-right pr-6">Acciones</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {displayCitas.map(c => (
+                            <TableRow key={c.id_cita} className="hover:bg-muted/5">
+                              <TableCell className="pl-6 font-medium">{getClienteName(c.id_cliente)}</TableCell>
+                              <TableCell className="max-w-[250px] truncate">{formatServicios(c)}</TableCell>
+                              <TableCell>
+                                <div className="flex flex-col"><span className="text-sm">{c.fecha}</span><span className="text-xs text-muted-foreground">{c.hora}</span></div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge className={cn(
+                                  "text-[10px]",
+                                  c.estado === 'completada' ? 'bg-green-600' :
+                                    c.estado === 'confirmada' ? 'bg-blue-600' :
+                                      c.estado === 'pendiente' ? 'bg-yellow-600' : 'bg-red-600'
+                                )}>{c.estado}</Badge>
+                              </TableCell>
+                              <TableCell className="text-right pr-6">
+                                <div className="flex justify-end gap-1">
+                                  <Button variant="ghost" size="icon" onClick={() => handleViewDetails(c)}><Eye className="h-4 w-4" /></Button>
+                                  {!isCliente && (
+                                    <div className="flex gap-1 border-l ml-1 pl-1">
+                                      {c.estado === 'pendiente' && <Button variant="ghost" size="icon" className="text-blue-600" onClick={() => handleConfirm(c.id_cita)}><CheckCircle className="h-4 w-4" /></Button>}
+                                      {c.estado === 'confirmada' && <Button variant="ghost" size="icon" className="text-orange-600" onClick={() => handleStatusChange(c.id_cita, 'en-ejecucion')}><Clock className="h-4 w-4" /></Button>}
+                                      {c.estado === 'en-ejecucion' && <Button variant="ghost" size="icon" className="text-green-600" onClick={() => handleComplete(c.id_cita)}><CheckCircle className="h-4 w-4" /></Button>}
+                                      <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Pencil className="h-4 w-4" /></Button>
+                                      <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleCancel(c.id_cita)} disabled={c.estado === 'cancelada'}><XCircle className="h-4 w-4" /></Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </CardContent>
                   </Card>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-              <Card className="lg:col-span-3 shadow-sm">
-                <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-                  <CardTitle className="text-xl">Panel de Calendario</CardTitle>
-                  <div className="flex items-center gap-3">
-                    <Label className="text-xs text-muted-foreground font-bold">Barbero:</Label>
-                    <Select value={calendarEmpleadoFilter} onValueChange={setCalendarEmpleadoFilter}>
-                      <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos los barberos</SelectItem>
-                        {mockEmpleados.map(e => <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                </section>
+              </>
+            ) : (
+              <Card className="border-2 border-[#D4AF37]/20 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
+                <CardHeader className="bg-muted/20 border-b pb-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-2xl font-black">{editingCita ? 'Actualizar Cita' : 'Programar Nueva Cita'}</CardTitle>
+                      <CardDescription>Completa los detalles para agendar el espacio</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X /></Button>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-6">
-                  <CitasCalendar citasByDate={citasByDate} selectedDate={selectedDate} onSelectDay={handleSelectDay} onEventClick={handleViewDetails} />
-                </CardContent>
-              </Card>
-
-              <Card className="lg:col-span-1 h-fit sticky top-4 shadow-sm border-[#D4AF37]/10">
-                <CardHeader className="border-b bg-muted/20 pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2"><Clock className="w-5 h-5 text-[#D4AF37]" /> Agenda del Día</CardTitle>
-                  <CardDescription className="font-medium text-xs">
-                    {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Selecciona una fecha'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-0 max-h-[500px] overflow-y-auto custom-scrollbar">
-                  {(() => {
-                    const dayCitas = selectedDate ? (citasByDate[selectedDate] || []) : [];
-                    if (!selectedDate) return <div className="p-10 text-center italic text-muted-foreground text-sm">Escoge un día en el calendario</div>;
-                    if (!dayCitas.length) return <div className="p-10 text-center text-muted-foreground text-sm">Sin actividades programadas</div>;
-
-                    return dayCitas.sort((a, b) => parseTimeToMinutes(a.hora) - parseTimeToMinutes(b.hora)).map(c => (
-                      <div key={c.id_cita} className="p-4 border-b hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => handleViewDetails(c)}>
-                        <div className="flex justify-between items-start mb-2">
-                          <Badge variant="outline" className="font-bold text-[10px]">{c.hora}</Badge>
-                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(c); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={(e) => { e.stopPropagation(); handleDelete(c.id_cita); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                <form onSubmit={handleSubmit}>
+                  <CardContent className="p-8">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+                      <div className="space-y-6">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Principales</h3>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Cliente Responsable *</Label>
+                            <Select value={formData.id_cliente} onValueChange={v => setFormData({ ...formData, id_cliente: v })}>
+                              <SelectTrigger className={cn("h-11", formErrors.id_cliente && "border-destructive")}>
+                                <SelectValue placeholder="Seleccionar cliente..." />
+                              </SelectTrigger>
+                              <SelectContent>{mockClientes.map(c => <SelectItem key={c.id_cliente} value={c.id_cliente.toString()}>{c.nombre} {c.apellido}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Profesional asignado</Label>
+                            <Select value={formData.id_empleado} onValueChange={v => setFormData({ ...formData, id_empleado: v })}>
+                              <SelectTrigger className="h-11"><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="0" className="italic text-muted-foreground">Por asignar</SelectItem>
+                                {dataStore.empleados.filter(e => e.estado === 'activo').map(e => <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2"><Label>Fecha *</Label><Input type="date" value={formData.fecha} onChange={e => setFormData({ ...formData, fecha: e.target.value })} className="h-11" /></div>
+                            <div className="space-y-2"><Label>Hora *</Label>
+                              <Select value={formData.hora} onValueChange={v => setFormData({ ...formData, hora: v })}>
+                                <SelectTrigger className="h-11"><SelectValue placeholder="Bloque" /></SelectTrigger>
+                                <SelectContent className="max-h-60 overflow-y-auto">
+                                  <SelectGroup>
+                                    {timeSlots.map(s => {
+                                      const occupied = getOccupiedTimes(formData.fecha, parseInt(formData.id_empleado), editingCita?.id_cita);
+                                      const isOccupied = occupied.includes(s);
+                                      return (
+                                        <SelectItem key={s} value={s} disabled={isOccupied}>{s} {isOccupied ? '(Ocupado)' : ''}</SelectItem>
+                                      );
+                                    })}
+                                  </SelectGroup>
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                         </div>
-                        <p className="text-sm font-bold text-foreground truncate">{getServicioName(c.id_servicio)}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{getClienteName(c.id_cliente)}</p>
                       </div>
-                    ));
-                  })()}
-                </CardContent>
-                <CardFooter className="p-4 bg-muted/30 border-t">
-                  <Button className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black font-bold" onClick={() => handleCreate(selectedDate || todayStr)}>
-                    <Plus className="w-4 h-4 mr-2" /> Agendar ahora
-                  </Button>
-                </CardFooter>
+
+                      <div className="space-y-6">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Servicios y Productos</h3>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Añadir Servicios *</Label>
+                            <div className="flex gap-2">
+                              <Select value={servicioSeleccionado} onValueChange={setServicioSeleccionado}>
+                                <SelectTrigger className="h-11 flex-1"><SelectValue placeholder="Elegir servicio..." /></SelectTrigger>
+                                <SelectContent>{mockServicios.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre} — ${s.precio}</SelectItem>)}</SelectContent>
+                              </Select>
+                              <Button type="button" variant="secondary" onClick={handleAgregarServicioCita} className="h-11"><Plus /></Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                              {formData.id_servicios.map(sid => (
+                                <Badge key={sid} className="bg-foreground text-background py-1.5 px-3">
+                                  {getServicioName(parseInt(sid))} <X className="ml-2 h-3 w-3 cursor-pointer" onClick={() => setFormData(p => ({ ...p, id_servicios: p.id_servicios.filter(id => id !== sid) }))} />
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label>Venta de Productos</Label>
+                            <div className="flex gap-2">
+                              <Select value={productoSeleccionadoCita} onValueChange={setProductoSeleccionadoCita}>
+                                <SelectTrigger className="h-11 flex-1"><SelectValue placeholder="Elegir producto..." /></SelectTrigger>
+                                <SelectContent>{mockProductos.map(p => <SelectItem key={p.id_producto} value={p.id_producto.toString()}>{p.nombre}</SelectItem>)}</SelectContent>
+                              </Select>
+                              <Input type="number" min="1" className="w-16 h-11" value={cantidadProductoInput} onChange={e => setCantidadProductoInput(e.target.value)} />
+                              <Button type="button" variant="outline" onClick={handleAgregarProductoCita} className="h-11"><Plus /></Button>
+                            </div>
+                            <div className="space-y-2 mt-4 max-h-[150px] overflow-y-auto">
+                              {formData.id_productos_detallados.map(i => (
+                                <div key={i.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg text-xs font-bold">
+                                  <span>{mockProductos.find(p => p.id_producto === parseInt(i.id))?.nombre} (x{i.cantidad})</span>
+                                  <X className="h-4 w-4 cursor-pointer text-red-500" onClick={() => setFormData(p => ({ ...p, id_productos_detallados: p.id_productos_detallados.filter(item => item.id !== i.id) }))} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-5 bg-[#D4AF37]/10 rounded-xl border border-[#D4AF37]/30 flex justify-between items-center">
+                          <div className="flex flex-col"><span className="text-[10px] font-black text-[#D4AF37] uppercase">Total Liquidado</span><span className="text-3xl font-black text-[#D4AF37]">${computeServiciosPrice(formData).toFixed(2)}</span></div>
+                          <div className="text-right text-xs font-bold text-muted-foreground"><Clock className="inline w-3 h-3 mr-1" /> {formatDuration(computeSelectedServicesDuration())}</div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-8 space-y-2">
+                      <Label>Observaciones Técnicas / Notas</Label>
+                      <Textarea value={formData.observaciones} onChange={e => setFormData({ ...formData, observaciones: e.target.value })} rows={3} className="resize-none" />
+                    </div>
+                  </CardContent>
+                  <CardFooter className="bg-muted/30 p-8 flex justify-end gap-3 border-t">
+                    <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="h-12 px-8">Cancelar</Button>
+                    <Button type="submit" className="bg-[#D4AF37] text-black h-12 px-12 font-black text-lg">Guardar registro</Button>
+                  </CardFooter>
+                </form>
               </Card>
-            </div>
-          </section>
+            )}
 
-          <section className="mt-8">
-            <Card className="shadow-sm">
-              <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-4">
-                <div><CardTitle className="text-xl">Historial Maestro</CardTitle></div>
-                <div className="relative w-full md:w-80">
-                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Filtrar por nombre o servicio..." value={searchTerm} onChange={handleSearch} className="pl-9" />
+            <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
+              <DialogContent className="max-w-xl p-0 overflow-hidden rounded-2xl">
+                <DialogHeader className="bg-[#1a1a1a] text-white p-6">
+                  <DialogTitle className="uppercase tracking-tighter">Resumen de Cita</DialogTitle>
+                  <DialogDescription className="text-white/50">ID: {viewingCita?.id_cita}</DialogDescription>
+                </DialogHeader>
+                <div className="p-8 space-y-6">
+                  {viewingCita && (
+                    <>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Cliente</Label><p className="font-bold">{getClienteName(viewingCita.id_cliente, viewingCita.id_cliente_temporal)}</p><p className="text-xs text-muted-foreground">{getClienteEmail(viewingCita.id_cliente, viewingCita.id_cliente_temporal)}</p><p className="text-xs text-muted-foreground">{getClienteTelefono(viewingCita.id_cliente, viewingCita.id_cliente_temporal)}</p></div>
+                        <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Barbero</Label><p className="font-bold">{getEmpleadoName(viewingCita.id_empleado)}</p></div>
+                        <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Programación</Label><p className="font-bold">{viewingCita.fecha}</p><p className="text-sm font-bold text-[#D4AF37]">{viewingCita.hora}</p></div>
+                        <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Estado</Label><Badge>{viewingCita.estado}</Badge></div>
+                      </div>
+                      <div className="pt-4 border-t space-y-2">
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Servicios</Label>
+                        <p className="text-sm font-medium">{formatServicios(viewingCita)}</p>
+                        <div className="flex justify-between items-center bg-muted/40 p-4 rounded-lg mt-4">
+                          <span className="font-bold text-sm">TOTAL</span>
+                          <span className="text-2xl font-black text-orange-600">${computeServiciosPrice(viewingCita).toFixed(2)}</span>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  <Button onClick={() => setDetailsDialogOpen(false)} className="w-full h-11 font-bold">Cerrar</Button>
                 </div>
-              </CardHeader>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader className="bg-muted/10">
-                    <TableRow>
-                      <TableHead className="pl-6">Cliente</TableHead><TableHead>Servicios</TableHead><TableHead>Horario</TableHead><TableHead>Estado</TableHead><TableHead className="text-right pr-6">Acciones</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {displayCitas.map(c => (
-                      <TableRow key={c.id_cita} className="hover:bg-muted/5">
-                        <TableCell className="pl-6 font-medium">{getClienteName(c.id_cliente)}</TableCell>
-                        <TableCell className="max-w-[250px] truncate">{formatServicios(c)}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col"><span className="text-sm">{c.fecha}</span><span className="text-xs text-muted-foreground">{c.hora}</span></div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={cn(
-                            "text-[10px]",
-                            c.estado === 'completada' ? 'bg-green-600' :
-                              c.estado === 'confirmada' ? 'bg-blue-600' :
-                                c.estado === 'pendiente' ? 'bg-yellow-600' : 'bg-red-600'
-                          )}>{c.estado}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right pr-6">
-                          <div className="flex justify-end gap-1">
-                            <Button variant="ghost" size="icon" onClick={() => handleViewDetails(c)}><Eye className="h-4 w-4" /></Button>
-                            {!isCliente && (
-                              <div className="flex gap-1 border-l ml-1 pl-1">
-                                {c.estado === 'pendiente' && <Button variant="ghost" size="icon" className="text-blue-600" onClick={() => handleConfirm(c.id_cita)}><CheckCircle className="h-4 w-4" /></Button>}
-                                {c.estado === 'confirmada' && <Button variant="ghost" size="icon" className="text-orange-600" onClick={() => handleStatusChange(c.id_cita, 'en-ejecucion')}><Clock className="h-4 w-4" /></Button>}
-                                {c.estado === 'en-ejecucion' && <Button variant="ghost" size="icon" className="text-green-600" onClick={() => handleComplete(c.id_cita)}><CheckCircle className="h-4 w-4" /></Button>}
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                                <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleCancel(c.id_cita)} disabled={c.estado === 'cancelada'}><XCircle className="h-4 w-4" /></Button>
+              </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+              <AlertDialogContent className="rounded-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-2xl font-black">¿Confirmar eliminación?</AlertDialogTitle>
+                  <AlertDialogDescription>Esta acción es permanente y no se podrá recuperar el registro.</AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="pt-4">
+                  <AlertDialogCancel className="h-11 px-6 rounded-xl">Mantener</AlertDialogCancel>
+                  <AlertDialogAction onClick={confirmDelete} className="h-11 px-8 bg-red-600 font-extrabold rounded-xl">Eliminar definitivamente</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
+              <DialogContent className="rounded-2xl">
+                <DialogHeader><DialogTitle className="font-black">Agenda: {selectedDate}</DialogTitle></DialogHeader>
+                <div className="space-y-3 py-4">
+                  {(selectedDate ? (citasByDate[selectedDate] || []) : []).map(c => (
+                    <div key={c.id_cita} className="flex justify-between p-4 bg-muted/30 rounded-xl border items-center hover:bg-muted/50 transition-all" onClick={() => { handleViewDetails(c); setDayDialogOpen(false); }}>
+                      <div className="flex flex-col"><span className="font-black text-sm">{c.hora}</span><span className="text-xs text-muted-foreground">{getServicioName(c.id_servicio)}</span><span className="text-[10px] font-bold mt-1">{getClienteName(c.id_cliente)}</span></div>
+                      <Button size="icon" variant="ghost" className="rounded-full"><Eye className="w-4 h-4" /></Button>
+                    </div>
+                  ))}
+                </div>
+                <DialogFooter className="flex gap-2"><Button variant="outline" onClick={() => setDayDialogOpen(false)} className="flex-1 h-11">Cerrar</Button><Button onClick={() => { handleCreate(selectedDate || todayStr); setDayDialogOpen(false); }} className="flex-1 bg-[#D4AF37] text-black font-black h-11">Añadir Cita</Button></DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="barberos">
+          <div className="space-y-8 animate-in fade-in duration-500">
+            {showEmployeeForm ? (
+              <Card className="border-2 border-[#D4AF37]/20 shadow-2xl">
+                <CardHeader className="bg-muted/20 border-b pb-6">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <CardTitle className="text-2xl font-black">{editingEmployee ? `Editar: ${editingEmployee.nombre}` : 'Nuevo Barbero'}</CardTitle>
+                      <CardDescription>Define el esquema de pago y datos del profesional</CardDescription>
+                    </div>
+                    <Button variant="ghost" size="icon" onClick={() => setShowEmployeeForm(false)}><X /></Button>
+                  </div>
+                </CardHeader>
+                <form onSubmit={handleEmployeeSave}>
+                  <CardContent className="p-8 space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                      <div className="space-y-6">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Personales</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2"><Label>Nombre *</Label><Input required value={employeeFormData.nombre} onChange={e => setEmployeeFormData({ ...employeeFormData, nombre: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Apellido *</Label><Input required value={employeeFormData.apellido} onChange={e => setEmployeeFormData({ ...employeeFormData, apellido: e.target.value })} /></div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2"><Label>Email</Label><Input type="email" value={employeeFormData.email} onChange={e => setEmployeeFormData({ ...employeeFormData, email: e.target.value })} /></div>
+                          <div className="space-y-2"><Label>Teléfono</Label><Input value={employeeFormData.telefono} onChange={e => setEmployeeFormData({ ...employeeFormData, telefono: e.target.value })} /></div>
+                        </div>
+
+                        <div className="space-y-2"><Label>Cargo</Label><Input value={employeeFormData.cargo} onChange={e => setEmployeeFormData({ ...employeeFormData, cargo: e.target.value })} /></div>
+                      </div>
+
+                      <div className="space-y-6">
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Esquema de Pago</h3>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label>Tipo de Pago *</Label>
+                            <Select value={employeeFormData.tipo_esquema} onValueChange={v => setEmployeeFormData({ ...employeeFormData, tipo_esquema: v as any })}>
+                              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="comision">Porcentaje (Comisión)</SelectItem>
+                                <SelectItem value="silla">Alquiler Silla (Fijo)</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {employeeFormData.tipo_esquema === 'comision' ? (
+                            <div className="grid grid-cols-2 gap-4 animate-in slide-in-from-left-2">
+                              <div className="space-y-2">
+                                <Label>Comisión Barbero %</Label>
+                                <Input type="number" min="0" max="100" value={employeeFormData.porcentaje_comision} onChange={e => setEmployeeFormData({ ...employeeFormData, porcentaje_comision: parseInt(e.target.value), porcentaje_dueno: 100 - parseInt(e.target.value) })} />
                               </div>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </section>
-        </>
-      ) : (
-        <Card className="border-2 border-[#D4AF37]/20 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
-          <CardHeader className="bg-muted/20 border-b pb-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <CardTitle className="text-2xl font-black">{editingCita ? 'Actualizar Cita' : 'Programar Nueva Cita'}</CardTitle>
-                <CardDescription>Completa los detalles para agendar el espacio</CardDescription>
-              </div>
-              <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X /></Button>
-            </div>
-          </CardHeader>
-          <form onSubmit={handleSubmit}>
-            <CardContent className="p-8">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                <div className="space-y-6">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Principales</h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Cliente Responsable *</Label>
-                      <Select value={formData.id_cliente} onValueChange={v => setFormData({ ...formData, id_cliente: v })}>
-                        <SelectTrigger className={cn("h-11", formErrors.id_cliente && "border-destructive")}>
-                          <SelectValue placeholder="Seleccionar cliente..." />
-                        </SelectTrigger>
-                        <SelectContent>{mockClientes.map(c => <SelectItem key={c.id_cliente} value={c.id_cliente.toString()}>{c.nombre} {c.apellido}</SelectItem>)}</SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Profesional asignado</Label>
-                      <Select value={formData.id_empleado} onValueChange={v => setFormData({ ...formData, id_empleado: v })}>
-                        <SelectTrigger className="h-11"><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="0" className="italic text-muted-foreground">Por asignar</SelectItem>
-                          {mockEmpleados.map(e => <SelectItem key={e.id_empleado} value={e.id_empleado.toString()}>{e.nombre}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-6">
-                      <div className="space-y-2"><Label>Fecha *</Label><Input type="date" value={formData.fecha} onChange={e => setFormData({ ...formData, fecha: e.target.value })} className="h-11" /></div>
-                      <div className="space-y-2"><Label>Hora *</Label>
-                        <Select value={formData.hora} onValueChange={v => setFormData({ ...formData, hora: v })}>
-                          <SelectTrigger className="h-11"><SelectValue placeholder="Bloque" /></SelectTrigger>
-                          <SelectContent className="max-h-60 overflow-y-auto">
-                            <SelectGroup>
-                              {timeSlots.map(s => {
-                                const occupied = getOccupiedTimes(formData.fecha, parseInt(formData.id_empleado), editingCita?.id_cita);
-                                const isOccupied = occupied.includes(s);
-                                return (
-                                  <SelectItem key={s} value={s} disabled={isOccupied}>{s} {isOccupied ? '(Ocupado)' : ''}</SelectItem>
-                                );
-                              })}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
+                              <div className="space-y-2">
+                                <Label>Negocio %</Label>
+                                <Input type="number" disabled value={employeeFormData.porcentaje_dueno} />
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2 animate-in slide-in-from-right-2">
+                              <Label>Valor Alquiler Semanal</Label>
+                              <div className="relative">
+                                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input type="number" className="pl-10" value={employeeFormData.pago_silla_semanal} onChange={e => setEmployeeFormData({ ...employeeFormData, pago_silla_semanal: parseInt(e.target.value) })} />
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Servicios y Productos</h3>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Añadir Servicios *</Label>
-                      <div className="flex gap-2">
-                        <Select value={servicioSeleccionado} onValueChange={setServicioSeleccionado}>
-                          <SelectTrigger className="h-11 flex-1"><SelectValue placeholder="Elegir servicio..." /></SelectTrigger>
-                          <SelectContent>{mockServicios.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre} — ${s.precio}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <Button type="button" variant="secondary" onClick={handleAgregarServicioCita} className="h-11"><Plus /></Button>
-                      </div>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.id_servicios.map(sid => (
-                          <Badge key={sid} className="bg-foreground text-background py-1.5 px-3">
-                            {getServicioName(parseInt(sid))} <X className="ml-2 h-3 w-3 cursor-pointer" onClick={() => setFormData(p => ({ ...p, id_servicios: p.id_servicios.filter(id => id !== sid) }))} />
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>Venta de Productos</Label>
-                      <div className="flex gap-2">
-                        <Select value={productoSeleccionadoCita} onValueChange={setProductoSeleccionadoCita}>
-                          <SelectTrigger className="h-11 flex-1"><SelectValue placeholder="Elegir producto..." /></SelectTrigger>
-                          <SelectContent>{mockProductos.map(p => <SelectItem key={p.id_producto} value={p.id_producto.toString()}>{p.nombre}</SelectItem>)}</SelectContent>
-                        </Select>
-                        <Input type="number" min="1" className="w-16 h-11" value={cantidadProductoInput} onChange={e => setCantidadProductoInput(e.target.value)} />
-                        <Button type="button" variant="outline" onClick={handleAgregarProductoCita} className="h-11"><Plus /></Button>
-                      </div>
-                      <div className="space-y-2 mt-4 max-h-[150px] overflow-y-auto">
-                        {formData.id_productos_detallados.map(i => (
-                          <div key={i.id} className="flex justify-between items-center p-3 bg-muted/30 rounded-lg text-xs font-bold">
-                            <span>{mockProductos.find(p => p.id_producto === parseInt(i.id))?.nombre} (x{i.cantidad})</span>
-                            <X className="h-4 w-4 cursor-pointer text-red-500" onClick={() => setFormData(p => ({ ...p, id_productos_detallados: p.id_productos_detallados.filter(item => item.id !== i.id) }))} />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="p-5 bg-[#D4AF37]/10 rounded-xl border border-[#D4AF37]/30 flex justify-between items-center">
-                    <div className="flex flex-col"><span className="text-[10px] font-black text-[#D4AF37] uppercase">Total Liquidado</span><span className="text-3xl font-black text-[#D4AF37]">${computeServiciosPrice(formData).toFixed(2)}</span></div>
-                    <div className="text-right text-xs font-bold text-muted-foreground"><Clock className="inline w-3 h-3 mr-1" /> {formatDuration(computeSelectedServicesDuration())}</div>
-                  </div>
-                </div>
-              </div>
-              <div className="mt-8 space-y-2">
-                <Label>Observaciones Técnicas / Notas</Label>
-                <Textarea value={formData.observaciones} onChange={e => setFormData({ ...formData, observaciones: e.target.value })} rows={3} className="resize-none" />
-              </div>
-            </CardContent>
-            <CardFooter className="bg-muted/30 p-8 flex justify-end gap-3 border-t">
-              <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="h-12 px-8">Cancelar</Button>
-              <Button type="submit" className="bg-[#D4AF37] text-black h-12 px-12 font-black text-lg">Guardar registro</Button>
-            </CardFooter>
-          </form>
-        </Card>
-      )}
-
-      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-xl p-0 overflow-hidden rounded-2xl">
-          <DialogHeader className="bg-[#1a1a1a] text-white p-6">
-            <DialogTitle className="uppercase tracking-tighter">Resumen de Cita</DialogTitle>
-            <DialogDescription className="text-white/50">ID: {viewingCita?.id_cita}</DialogDescription>
-          </DialogHeader>
-          <div className="p-8 space-y-6">
-            {viewingCita && (
+                  </CardContent>
+                  <CardFooter className="bg-muted/30 p-8 flex justify-end gap-3 border-t mt-4">
+                    <Button type="button" variant="outline" onClick={() => setShowEmployeeForm(false)}>Cancelar</Button>
+                    <Button type="submit" className="bg-[#D4AF37] text-black px-8 font-bold hover:bg-[#B8941F]">Guardar Barbero</Button>
+                  </CardFooter>
+                </form>
+              </Card>
+            ) : (
               <>
-                <div className="grid grid-cols-2 gap-6">
-                  <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Cliente</Label><p className="font-bold">{getClienteName(viewingCita.id_cliente, viewingCita.id_cliente_temporal)}</p><p className="text-xs text-muted-foreground">{getClienteEmail(viewingCita.id_cliente, viewingCita.id_cliente_temporal)}</p><p className="text-xs text-muted-foreground">{getClienteTelefono(viewingCita.id_cliente, viewingCita.id_cliente_temporal)}</p></div>
-                  <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Barbero</Label><p className="font-bold">{getEmpleadoName(viewingCita.id_empleado)}</p></div>
-                  <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Programación</Label><p className="font-bold">{viewingCita.fecha}</p><p className="text-sm font-bold text-[#D4AF37]">{viewingCita.hora}</p></div>
-                  <div><Label className="text-[10px] uppercase font-bold text-muted-foreground">Estado</Label><Badge>{viewingCita.estado}</Badge></div>
-                </div>
-                <div className="pt-4 border-t space-y-2">
-                  <Label className="text-[10px] uppercase font-bold text-muted-foreground">Servicios</Label>
-                  <p className="text-sm font-medium">{formatServicios(viewingCita)}</p>
-                  <div className="flex justify-between items-center bg-muted/40 p-4 rounded-lg mt-4">
-                    <span className="font-bold text-sm">TOTAL</span>
-                    <span className="text-2xl font-black text-orange-600">${computeServiciosPrice(viewingCita).toFixed(2)}</span>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+                  <div className="relative w-full md:w-96">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input placeholder="Buscar barbero..." value={employeeSearch} onChange={e => setEmployeeSearch(e.target.value)} className="pl-10" />
                   </div>
+                  <Button onClick={handleEmployeeCreate} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
+                    <UserPlus className="w-4 h-4 mr-2" /> Nuevo barbero
+                  </Button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {dataStore.empleados.filter(e =>
+                    e.nombre.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                    e.apellido.toLowerCase().includes(employeeSearch.toLowerCase())
+                  ).map(emp => (
+                    <Card key={emp.id_empleado} className={cn("hover:shadow-lg transition-all border-l-4", emp.estado === 'activo' ? "border-l-green-500" : "border-l-gray-300")}>
+                      <CardHeader className="pb-2">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center font-bold text-lg">
+                              {emp.nombre[0]}{emp.apellido[0]}
+                            </div>
+                            <div>
+                              <CardTitle className="text-lg">{emp.nombre} {emp.apellido}</CardTitle>
+                              <CardDescription>{emp.cargo}</CardDescription>
+                            </div>
+                          </div>
+                          <Badge variant={emp.estado === 'activo' ? 'default' : 'secondary'} className={cn(emp.estado === 'activo' ? "bg-green-100 text-green-700" : "")}>
+                            {emp.estado}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4 pt-4">
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex flex-col gap-1">
+                            <span className="text-muted-foreground uppercase font-bold text-[9px]">Esquema</span>
+                            <span className="font-bold flex items-center gap-1">
+                              {emp.tipo_esquema === 'comision' ? <DollarSign className="w-3 h-3" /> : <Briefcase className="w-3 h-3" />}
+                              {emp.tipo_esquema.toUpperCase()}
+                            </span>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <span className="text-muted-foreground uppercase font-bold text-[9px]">Detalle</span>
+                            <span className="font-bold">
+                              {emp.tipo_esquema === 'comision' ? `${emp.porcentaje_comision}%` : `$${emp.pago_silla_semanal?.toLocaleString()}`}
+                            </span>
+                          </div>
+                        </div>
+
+                        {emp.tipo_esquema === 'silla' && (
+                          <div className="bg-muted/30 p-3 rounded-lg space-y-2">
+                            <div className="flex justify-between items-center text-[10px] font-bold">
+                              <span>CONTROL DE SILLA (SEMANAL)</span>
+                              <Button variant="link" size="sm" className="h-auto p-0 text-[10px]">Ver historial</Button>
+                            </div>
+                            {dataStore.controlesPagoSilla.filter(c => c.id_empleado === emp.id_empleado).slice(0, 1).map(ctrl => (
+                              <div key={ctrl.id_control_pago} className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">{ctrl.fecha_inicio_semana} al {ctrl.fecha_fin_semana}</span>
+                                {ctrl.estado === 'pendiente' ? (
+                                  <Button size="sm" variant="outline" className="h-7 text-[10px] border-orange-500 text-orange-600 hover:bg-orange-50" onClick={() => handleMarkChairPayment(ctrl.id_control_pago)}>Marcar Pagado</Button>
+                                ) : (
+                                  <Badge className="bg-green-100 text-green-700 text-[10px]">PAGADO</Badge>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                      <CardFooter className="border-t bg-muted/10 p-4 flex justify-between">
+                        <Button variant="ghost" size="sm" onClick={() => handleEmployeeEdit(emp)}><Settings className="w-4 h-4 mr-2" /> Configurar</Button>
+                        <Button variant="ghost" size="sm" className={cn(emp.estado === 'activo' ? "text-red-500" : "text-green-600")} onClick={() => toggleEmployeeStatus(emp)}>
+                          {emp.estado === 'activo' ? <UserX className="w-4 h-4 mr-2" /> : <UserCheck className="w-4 h-4 mr-2" />}
+                          {emp.estado === 'activo' ? 'Inactivar' : 'Activar'}
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  ))}
                 </div>
               </>
             )}
-            <Button onClick={() => setDetailsDialogOpen(false)} className="w-full h-11 font-bold">Cerrar</Button>
           </div>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-2xl font-black">¿Confirmar eliminación?</AlertDialogTitle>
-            <AlertDialogDescription>Esta acción es permanente y no se podrá recuperar el registro.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="pt-4">
-            <AlertDialogCancel className="h-11 px-6 rounded-xl">Mantener</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="h-11 px-8 bg-red-600 font-extrabold rounded-xl">Eliminar definitivamente</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={dayDialogOpen} onOpenChange={setDayDialogOpen}>
-        <DialogContent className="rounded-2xl">
-          <DialogHeader><DialogTitle className="font-black">Agenda: {selectedDate}</DialogTitle></DialogHeader>
-          <div className="space-y-3 py-4">
-            {(selectedDate ? (citasByDate[selectedDate] || []) : []).map(c => (
-              <div key={c.id_cita} className="flex justify-between p-4 bg-muted/30 rounded-xl border items-center hover:bg-muted/50 transition-all" onClick={() => { handleViewDetails(c); setDayDialogOpen(false); }}>
-                <div className="flex flex-col"><span className="font-black text-sm">{c.hora}</span><span className="text-xs text-muted-foreground">{getServicioName(c.id_servicio)}</span><span className="text-[10px] font-bold mt-1">{getClienteName(c.id_cliente)}</span></div>
-                <Button size="icon" variant="ghost" className="rounded-full"><Eye className="w-4 h-4" /></Button>
-              </div>
-            ))}
-          </div>
-          <DialogFooter className="flex gap-2"><Button variant="outline" onClick={() => setDayDialogOpen(false)} className="flex-1 h-11">Cerrar</Button><Button onClick={() => { handleCreate(selectedDate || todayStr); setDayDialogOpen(false); }} className="flex-1 bg-[#D4AF37] text-black font-black h-11">Añadir Cita</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

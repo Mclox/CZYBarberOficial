@@ -147,6 +147,21 @@ export interface Empleado {
   email?: string;
   fecha_contratacion: string;
   salario?: number;
+  estado: 'activo' | 'inactivo';
+  tipo_esquema: 'comision' | 'silla';
+  porcentaje_comision?: number; // % que se lleva el barbero
+  porcentaje_dueno?: number;    // % que se lleva el dueño
+  pago_silla_semanal?: number;  // Valor fijo semanal
+}
+
+export interface ControlPagoSilla {
+  id_control_pago: number;
+  id_empleado: number;
+  fecha_inicio_semana: string;
+  fecha_fin_semana: string;
+  monto: number;
+  estado: 'pendiente' | 'pagado';
+  fecha_pago?: string;
 }
 
 export interface Cliente {
@@ -1128,6 +1143,10 @@ export const mockEmpleados: Empleado[] = [
     email: 'pedro@barberia.com',
     fecha_contratacion: '2023-01-15',
     salario: 1800.00,
+    estado: 'activo',
+    tipo_esquema: 'comision',
+    porcentaje_comision: 60,
+    porcentaje_dueno: 40,
   },
   {
     id_empleado: 2,
@@ -1139,6 +1158,10 @@ export const mockEmpleados: Empleado[] = [
     email: 'carlos@barberia.com',
     fecha_contratacion: '2024-03-20',
     salario: 1500.00,
+    estado: 'activo',
+    tipo_esquema: 'comision',
+    porcentaje_comision: 50,
+    porcentaje_dueno: 50,
   },
   {
     id_empleado: 3,
@@ -1148,7 +1171,42 @@ export const mockEmpleados: Empleado[] = [
     telefono: '555-2003',
     email: 'miguel@barberia.com',
     fecha_contratacion: '2024-08-10',
-    salario: 1200.00,
+    estado: 'activo',
+    tipo_esquema: 'silla',
+    pago_silla_semanal: 120000,
+  },
+  {
+    id_empleado: 4,
+    nombre: 'Andrés',
+    apellido: 'Gómez',
+    cargo: 'Barbero',
+    telefono: '555-2004',
+    email: 'andres@barberia.com',
+    fecha_contratacion: '2024-05-12',
+    estado: 'inactivo',
+    tipo_esquema: 'comision',
+    porcentaje_comision: 60,
+    porcentaje_dueno: 40,
+  },
+];
+
+export const mockControlesPagoSilla: ControlPagoSilla[] = [
+  {
+    id_control_pago: 1,
+    id_empleado: 3,
+    fecha_inicio_semana: '2026-02-16',
+    fecha_fin_semana: '2026-02-22',
+    monto: 120000,
+    estado: 'pagado',
+    fecha_pago: '2026-02-16',
+  },
+  {
+    id_control_pago: 2,
+    id_empleado: 3,
+    fecha_inicio_semana: '2026-02-23',
+    fecha_fin_semana: '2026-03-01',
+    monto: 120000,
+    estado: 'pendiente',
   },
 ];
 

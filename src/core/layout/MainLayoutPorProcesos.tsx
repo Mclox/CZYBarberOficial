@@ -122,6 +122,7 @@ const processMenuItems: ProcessItem[] = [
     subItems: [
       { id: 'servicios', label: 'Gestión de Servicios', icon: Briefcase },
       { id: 'citas', label: 'Gestión de Citas', icon: Calendar },
+      { id: 'empleados', label: 'Gestión de Empleados', icon: Users },
     ]
   },
 
