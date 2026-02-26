@@ -202,6 +202,7 @@ export interface Pago {
   total_vendido?: number;
   comision_barberia?: number;
   pago_proveedor?: number;
+  ids_productos_consignacion?: number[]; // IDs de productos incluidos en un pago agrupado
 }
 
 export interface Venta {
@@ -1400,6 +1401,7 @@ export const mockPagos: Pago[] = [
   // Pagos de consignación
   {
     id_pago: 16,
+    id_proveedor: 1,
     id_consignacion: 1,
     monto: 2250.00,
     metodo: 'transferencia',
@@ -1407,9 +1409,11 @@ export const mockPagos: Pago[] = [
     referencia: 'CON-1732060800000-001',
     estado: 'aprobado',
     tipo: 'consignacion',
+    mes: 'noviembre',
   },
   {
     id_pago: 17,
+    id_proveedor: 1,
     id_consignacion: 1,
     monto: 2250.00,
     metodo: 'efectivo',
@@ -1417,6 +1421,7 @@ export const mockPagos: Pago[] = [
     referencia: 'CON-1732233600000-002',
     estado: 'anulado',
     tipo: 'consignacion',
+    mes: 'noviembre',
     motivo_anulacion: 'Error en el monto consignado, se generará un nuevo pago con el monto correcto.',
     fecha_anulacion: '2025-11-23',
   },

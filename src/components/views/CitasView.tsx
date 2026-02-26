@@ -697,28 +697,28 @@ export function CitasView() {
               <>
                 {(isAdmin || isBarbero) && (
                   <section className="animate-in fade-in duration-500">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    <div className="flex flex-row gap-2 w-full">
                       {Object.entries(stats).map(([k, v]) => (
-                        <Card key={k} className="hover:shadow-md transition-shadow border-muted/60">
-                          <CardContent className="p-3">
-                            <div className="flex items-center gap-3">
+                        <Card key={k} className="flex-1 hover:shadow-md transition-shadow border-muted/60 min-w-0">
+                          <CardContent className="p-2">
+                            <div className="flex items-center gap-2">
                               <div className={cn(
-                                "p-2 rounded-lg shrink-0",
+                                "p-1.5 rounded-lg shrink-0",
                                 k === 'pendiente' && 'bg-yellow-50 text-yellow-600',
                                 k === 'confirmada' && 'bg-blue-50 text-blue-600',
                                 k === 'en-ejecucion' && 'bg-orange-50 text-orange-600',
                                 k === 'completada' && 'bg-green-50 text-green-600',
                                 k === 'cancelada' && 'bg-red-50 text-red-600'
                               )}>
-                                {k === 'completada' ? <CheckCircle className="w-5 h-5" /> :
-                                  k === 'cancelada' ? <XCircle className="w-5 h-5" /> :
-                                    <Clock className="w-5 h-5" />}
+                                {k === 'completada' ? <CheckCircle className="w-4 h-4" /> :
+                                  k === 'cancelada' ? <XCircle className="w-4 h-4" /> :
+                                    <Clock className="w-4 h-4" />}
                               </div>
                               <div className="min-w-0">
-                                <p className="text-[10px] uppercase font-bold text-muted-foreground/70 truncate">
+                                <p className="text-[9px] uppercase font-bold text-muted-foreground/70 truncate">
                                   {k.replace('-', ' ')}
                                 </p>
-                                <p className="text-xl font-black leading-tight">{v}</p>
+                                <p className="text-lg font-black leading-none">{v}</p>
                               </div>
                             </div>
                           </CardContent>
@@ -786,59 +786,7 @@ export function CitasView() {
                   </div>
                 </section>
 
-                <section className="mt-8">
-                  <Card className="shadow-sm">
-                    <CardHeader className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b pb-4">
-                      <div><CardTitle className="text-xl">Historial Maestro</CardTitle></div>
-                      <div className="relative w-full md:w-80">
-                        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input placeholder="Filtrar por nombre o servicio..." value={searchTerm} onChange={handleSearch} className="pl-9" />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-0">
-                      <Table>
-                        <TableHeader className="bg-muted/10">
-                          <TableRow>
-                            <TableHead className="pl-6">Cliente</TableHead><TableHead>Servicios</TableHead><TableHead>Horario</TableHead><TableHead>Estado</TableHead><TableHead className="text-right pr-6">Acciones</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {displayCitas.map(c => (
-                            <TableRow key={c.id_cita} className="hover:bg-muted/5">
-                              <TableCell className="pl-6 font-medium">{getClienteName(c.id_cliente)}</TableCell>
-                              <TableCell className="max-w-[250px] truncate">{formatServicios(c)}</TableCell>
-                              <TableCell>
-                                <div className="flex flex-col"><span className="text-sm">{c.fecha}</span><span className="text-xs text-muted-foreground">{c.hora}</span></div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge className={cn(
-                                  "text-[10px]",
-                                  c.estado === 'completada' ? 'bg-green-600' :
-                                    c.estado === 'confirmada' ? 'bg-blue-600' :
-                                      c.estado === 'pendiente' ? 'bg-yellow-600' : 'bg-red-600'
-                                )}>{c.estado}</Badge>
-                              </TableCell>
-                              <TableCell className="text-right pr-6">
-                                <div className="flex justify-end gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => handleViewDetails(c)}><Eye className="h-4 w-4" /></Button>
-                                  {!isCliente && (
-                                    <div className="flex gap-1 border-l ml-1 pl-1">
-                                      {c.estado === 'pendiente' && <Button variant="ghost" size="icon" className="text-blue-600" onClick={() => handleConfirm(c.id_cita)}><CheckCircle className="h-4 w-4" /></Button>}
-                                      {c.estado === 'confirmada' && <Button variant="ghost" size="icon" className="text-orange-600" onClick={() => handleStatusChange(c.id_cita, 'en-ejecucion')}><Clock className="h-4 w-4" /></Button>}
-                                      {c.estado === 'en-ejecucion' && <Button variant="ghost" size="icon" className="text-green-600" onClick={() => handleComplete(c.id_cita)}><CheckCircle className="h-4 w-4" /></Button>}
-                                      <Button variant="ghost" size="icon" onClick={() => handleEdit(c)}><Pencil className="h-4 w-4" /></Button>
-                                      <Button variant="ghost" size="icon" className="text-red-500" onClick={() => handleCancel(c.id_cita)} disabled={c.estado === 'cancelada'}><XCircle className="h-4 w-4" /></Button>
-                                    </div>
-                                  )}
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    </CardContent>
-                  </Card>
-                </section>
+
               </>
             ) : (
               <Card className="border-2 border-[#D4AF37]/20 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">

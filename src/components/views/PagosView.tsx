@@ -4,7 +4,6 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Badge } from '../ui/badge';
@@ -93,8 +92,7 @@ export function PagosView() {
       return d;
     })
   );
-  const [currentView, setCurrentView] = useState<'list' | 'generate' | 'editor'>('list');
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'list' | 'generate' | 'editor' | 'details'>('list');
   const [anularDialogOpen, setAnularDialogOpen] = useState(false);
   const [viewingPago, setViewingPago] = useState<Pago | null>(null);
   const [pagoToAnular, setPagoToAnular] = useState<Pago | null>(null);
@@ -159,20 +157,51 @@ export function PagosView() {
     return prod?.tipo_adquisicion === 'consignacion' && detalle.estado_consignacion === 'pendiente_consignar';
   });
 
+  // Agrupación de ventas pendientes por proveedor (para visualización)
+  const groupedVentasPendientes = ventasPendientesConsignar.reduce((acc, current) => {
+    const prod = mockProductos.find(p => p.id_producto === current.id_producto);
+    const provId = mockConsignaciones.find(c => c.id_producto === current.id_producto)?.id_proveedor;
+
+    if (!provId) return acc;
+
+    if (!acc[provId]) {
+      acc[provId] = {
+        id_proveedor: provId,
+        productos: [],
+        total_pago: 0,
+        cantidad_items: 0,
+        fecha_min: current.id_venta // Usaremos el ID de venta como referencia temporal si no hay fecha
+      };
+    }
+
+    const prov = mockProveedores.find(p => p.id_proveedor === provId);
+    if (prod && prov) {
+      const { pagoProveedor } = calcularDesgloseConsignacion(current, prod, prov);
+      acc[provId].productos.push({
+        ...current,
+        nombre_producto: prod.nombre,
+        pago_individual: pagoProveedor
+      });
+      acc[provId].total_pago += pagoProveedor;
+      acc[provId].cantidad_items += current.cantidad;
+    }
+
+    return acc;
+  }, {} as Record<number, any>);
+
+  const listadoGruposPendientes = Object.values(groupedVentasPendientes);
+
   // 2. Pagos que están en estado pendiente
   const pagosPendientes = pagos.filter(p => p.tipo === 'consignacion' && p.estado === 'pendiente');
 
   // Filtrado para la pestaña de pendientes
-  const filteredVentasPendientes = ventasPendientesConsignar.filter(d => {
+  const filteredGruposPendientes = listadoGruposPendientes.filter((grupo: any) => {
     if (!searchTermPendientes) return true;
     const term = searchTermPendientes.toLowerCase();
-    const producto = mockProductos.find(p => p.id_producto === d.id_producto)?.nombre || '';
-    const provId = mockConsignaciones.find(c => c.id_producto === d.id_producto)?.id_proveedor;
-    const proveedor = mockProveedores.find(p => p.id_proveedor === provId)?.nombre || '';
+    const proveedor = mockProveedores.find(p => p.id_proveedor === grupo.id_proveedor)?.nombre || '';
 
-    return producto.toLowerCase().includes(term) ||
-      proveedor.toLowerCase().includes(term) ||
-      d.id_venta.toString().includes(term);
+    return proveedor.toLowerCase().includes(term) ||
+      grupo.productos.some((p: any) => p.nombre_producto.toLowerCase().includes(term));
   });
 
   const filteredPagosPendientes = pagosPendientes.filter(pago => {
@@ -247,7 +276,7 @@ export function PagosView() {
 
   const handleView = (pago: Pago) => {
     setViewingPago(pago);
-    setDetailsDialogOpen(true);
+    setCurrentView('details');
   };
 
   const handleAnular = (pago: Pago) => {
@@ -270,13 +299,21 @@ export function PagosView() {
       );
       setPagos(updated);
 
-      // Si es un pago de consignación, devolver los productos a estado pendiente
-      if (pagoToAnular.id_venta && pagoToAnular.id_producto) {
+      // Si es un pago de consignación con IDs específicos rescatados, usarlos
+      if (pagoToAnular.tipo === 'consignacion' && pagoToAnular.ids_productos_consignacion) {
         setVentasDetalle(prev => prev.map(d =>
-          (d.id_venta === pagoToAnular.id_venta && d.id_producto === pagoToAnular.id_producto)
+          pagoToAnular.ids_productos_consignacion?.includes(d.id_venta_prod_detalle)
             ? { ...d, estado_consignacion: 'pendiente_consignar' }
             : d
         ));
+      } else if (pagoToAnular.tipo === 'consignacion' && pagoToAnular.id_proveedor) {
+        // Fallback: Si no tiene IDs (pagos antiguos), revertir por proveedor y mes
+        setVentasDetalle(prev => prev.map(d => {
+          const provId = mockConsignaciones.find(c => c.id_producto === d.id_producto)?.id_proveedor;
+          return (provId === pagoToAnular.id_proveedor && d.estado_consignacion === 'consignado')
+            ? { ...d, estado_consignacion: 'pendiente_consignar' }
+            : d;
+        }));
       }
 
       toast.success('Pago anulado correctamente', {
@@ -293,58 +330,55 @@ export function PagosView() {
     setMotivoAnulacion('');
   };
 
-  const handleGenerarPago = (detalle: VentaProductoDetalle) => {
-    setDetalleParaPago(detalle);
+  // Nueva función para generar pago por proveedor (agrupado)
+  const [grupoParaPago, setGrupoParaPago] = useState<any | null>(null);
+
+  const handleGenerarPagoProveedor = (grupo: any) => {
+    setGrupoParaPago(grupo);
     setMetodoPago('no_definido');
     setCurrentView('generate');
     window.scrollTo(0, 0);
   };
 
   const confirmGenerarPago = () => {
-    if (detalleParaPago) {
-      const producto = mockProductos.find(p => p.id_producto === detalleParaPago.id_producto);
-      const provId = mockConsignaciones.find(c => c.id_producto === detalleParaPago.id_producto)?.id_proveedor;
-      const proveedor = mockProveedores.find(p => p.id_proveedor === provId);
+    if (grupoParaPago) {
+      const proveedor = mockProveedores.find(p => p.id_proveedor === grupoParaPago.id_proveedor);
 
-      if (!producto || !proveedor) {
-        toast.error('Error: No se encontró información del producto o proveedor');
+      if (!proveedor) {
+        toast.error('Error: No se encontró información del proveedor');
         return;
       }
 
-      const { totalVendido, comisionBarberia, pagoProveedor } = calcularDesgloseConsignacion(detalleParaPago, producto, proveedor);
-
       const newPago: Pago = {
         id_pago: Math.max(...pagos.map(p => p.id_pago), 0) + 1,
-        id_venta: detalleParaPago.id_venta,
-        id_producto: detalleParaPago.id_producto,
         id_proveedor: proveedor.id_proveedor,
-        monto: pagoProveedor,
+        monto: grupoParaPago.total_pago,
         metodo: metodoPago,
         fecha: new Date().toISOString().split('T')[0],
         referencia: generateConsignacionReference(),
         estado: 'aprobado',
         tipo: 'consignacion',
         mes: mesPago,
-        cantidad_vendida: detalleParaPago.cantidad,
-        total_vendido: totalVendido,
-        comision_barberia: comisionBarberia,
-        pago_proveedor: pagoProveedor,
+        cantidad_vendida: grupoParaPago.cantidad_items,
+        pago_proveedor: grupoParaPago.total_pago,
+        ids_productos_consignacion: grupoParaPago.productos.map((p: any) => p.id_venta_prod_detalle)
       };
 
-      // Actualizar estado del detalle de venta a "consignado"
+      // Actualizar estado de TODOS los detalles de venta del grupo a "consignado"
+      const detailIdsInGroup = grupoParaPago.productos.map((p: any) => p.id_venta_prod_detalle);
       setVentasDetalle(prev => prev.map(d =>
-        (d.id_venta === detalleParaPago.id_venta && d.id_producto === detalleParaPago.id_producto)
+        detailIdsInGroup.includes(d.id_venta_prod_detalle)
           ? { ...d, estado_consignacion: 'consignado' }
           : d
       ));
 
       setPagos([...pagos, newPago]);
-      toast.success(`Pago de consignación generado exitosamente por $${pagoProveedor.toFixed(2)}`, {
+      toast.success(`Pago de consignación generado exitosamente por $${grupoParaPago.total_pago.toFixed(2)}`, {
         style: { background: '#10b981', color: '#fff' }
       });
       setCurrentView('list');
     }
-    setDetalleParaPago(null);
+    setGrupoParaPago(null);
   };
 
   const handleCreate = () => {
@@ -418,6 +452,7 @@ export function PagosView() {
     setCurrentView('list');
     setEditingPago(null);
     setDetalleParaPago(null);
+    setViewingPago(null);
     setFormData({
       monto: undefined as unknown as number,
       metodo: 'efectivo',
@@ -563,6 +598,8 @@ export function PagosView() {
     );
   };
 
+
+
   const getProductoName = (id: number) => {
     return mockProductos.find(p => p.id_producto === id)?.nombre || 'N/A';
   };
@@ -571,11 +608,8 @@ export function PagosView() {
     return mockProveedores.find(p => p.id_proveedor === id)?.nombre || 'N/A';
   };
 
-  if (currentView === 'generate' && detalleParaPago) {
-    const producto = mockProductos.find(p => p.id_producto === detalleParaPago.id_producto);
-    const provId = mockConsignaciones.find(c => c.id_producto === detalleParaPago.id_producto)?.id_proveedor;
-    const proveedor = mockProveedores.find(p => p.id_proveedor === provId);
-    const desglose = (producto && proveedor) ? calcularDesgloseConsignacion(detalleParaPago, producto, proveedor) : null;
+  if (currentView === 'generate' && grupoParaPago) {
+    const proveedor = mockProveedores.find(p => p.id_proveedor === grupoParaPago.id_proveedor);
 
     return (
       <div className="p-4 md:p-8 max-w-4xl mx-auto space-y-6">
@@ -592,122 +626,113 @@ export function PagosView() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Generar Pago de Consignación</h1>
-            <p className="text-muted-foreground text-sm">Registro de liquidación por venta realizada</p>
+            <p className="text-muted-foreground text-sm">Registro de liquidación consolidada por proveedor</p>
           </div>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Resumen de la Venta</CardTitle>
+            <CardTitle className="text-lg">Resumen de Liquidación Agrupada</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs uppercase text-muted-foreground">Producto</Label>
-                <div className="p-3 bg-muted rounded-md border">
-                  <p className="font-semibold text-[#D4AF37]">{producto?.nombre || 'N/A'}</p>
-                  <p className="text-xs text-muted-foreground">Código: {producto?.codigo || 'N/A'}</p>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-xs uppercase text-muted-foreground">Proveedor</Label>
-                <div className="p-3 bg-muted rounded-md border">
-                  <p className="font-semibold">{proveedor?.nombre || 'N/A'}</p>
+            <div className="space-y-2">
+              <Label className="text-xs uppercase text-muted-foreground">Proveedor Destino</Label>
+              <div className="p-4 bg-muted/40 rounded-lg border flex items-center justify-between">
+                <div>
+                  <p className="font-bold text-lg">{proveedor?.nombre}</p>
                   <p className="text-xs text-muted-foreground">NIT: {proveedor?.nit || 'N/A'}</p>
                 </div>
+                <div className="text-right">
+                  <Badge variant="outline" className="bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/30">
+                    {grupoParaPago.productos.length} Productos distintos
+                  </Badge>
+                </div>
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted/30 rounded-lg border border-dashed flex flex-col items-center justify-center text-center">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Cant. Vendida</p>
-                <p className="text-xl font-bold">{detalleParaPago.cantidad} und</p>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg border border-dashed flex flex-col items-center justify-center text-center">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Precio Unitario</p>
-                <p className="text-xl font-bold">${detalleParaPago.precio_unitario.toFixed(2)}</p>
-              </div>
-              <div className="p-4 bg-muted/30 rounded-lg border border-dashed flex flex-col items-center justify-center text-center">
-                <p className="text-xs text-muted-foreground uppercase mb-1">Total de Venta</p>
-                <p className="text-xl font-bold">${detalleParaPago.subtotal.toFixed(2)}</p>
-              </div>
-            </div>
-
-            {desglose && (
-              <Alert className="bg-blue-50 border-blue-200">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertTitle className="text-blue-800 font-bold">Liquidación de Comisión</AlertTitle>
-                <AlertDescription className="text-blue-700">
-                  <div className="flex flex-col md:flex-row md:items-center justify-between mt-2 gap-4">
-                    <div className="text-sm">
-                      <p>Ganancia Barbería ({desglose.pctBarberia}%): <strong>${desglose.comisionBarberia.toFixed(2)}</strong></p>
-                    </div>
-                    <div className="text-sm">
-                      <p>Pago Proveedor ({desglose.pctProveedor}%): <strong>${desglose.pagoProveedor.toFixed(2)}</strong></p>
-                    </div>
-                  </div>
-                </AlertDescription>
-              </Alert>
-            )}
 
             <div className="space-y-4">
-              <h3 className="font-bold border-b pb-2">Información del Pago</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="metodo_pago" className="font-bold">
-                      Método de Pago <span className="text-red-500">*</span>
-                    </Label>
-                    <Select value={metodoPago} onValueChange={(value: any) => setMetodoPago(value)}>
-                      <SelectTrigger className="h-10">
-                        <SelectValue placeholder="Selecciona un método" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="no_definido">No especificado</SelectItem>
-                        <SelectItem value="efectivo">Efectivo</SelectItem>
-                        <SelectItem value="tarjeta">Tarjeta</SelectItem>
-                        <SelectItem value="transferencia">Transferencia</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+              <h3 className="text-sm font-bold border-b pb-2 flex items-center gap-2">
+                <Package2 className="w-4 h-4" /> Productos Incluidos
+              </h3>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="text-center">Cant.</TableHead>
+                      <TableHead className="text-right">Subtotal Venta</TableHead>
+                      <TableHead className="text-right text-[#D4AF37]">Monto Proveedor</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {grupoParaPago.productos.map((item: any, idx: number) => (
+                      <TableRow key={idx}>
+                        <TableCell className="text-xs font-medium">{item.nombre_producto}</TableCell>
+                        <TableCell className="text-center text-xs">{item.cantidad}</TableCell>
+                        <TableCell className="text-right text-xs">${item.subtotal.toFixed(2)}</TableCell>
+                        <TableCell className="text-right text-xs font-bold text-[#D4AF37]">${item.pago_individual.toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="mes_pago" className="font-bold">
-                      Mes del Pago <span className="text-red-500">*</span>
-                    </Label>
-                    <Select value={mesPago} onValueChange={(value: any) => setMesPago(value)}>
-                      <SelectTrigger id="mes_pago" className="h-10">
-                        <SelectValue placeholder="Selecciona el mes" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {meses.map((m) => (
-                          <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="metodo_pago" className="font-bold">
+                    Método de Pago <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={metodoPago} onValueChange={(value: any) => setMetodoPago(value)}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="Selecciona un método" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="no_definido">No especificado</SelectItem>
+                      <SelectItem value="efectivo">Efectivo</SelectItem>
+                      <SelectItem value="tarjeta">Tarjeta</SelectItem>
+                      <SelectItem value="transferencia">Transferencia</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="font-bold">Valor Neto a Pagar al Proveedor</Label>
-                  <div className="p-6 bg-gradient-to-r from-[#D4AF37]/10 to-[#B8941F]/10 border-2 border-[#D4AF37] rounded-lg text-center flex flex-col justify-center items-center h-[120px]">
-                    <p className="text-4xl font-extrabold text-slate-900 leading-none">
-                      ${desglose ? desglose.pagoProveedor.toFixed(2) : '0.00'}
-                    </p>
-                    <p className="text-xs text-[#D4AF37] font-semibold mt-2 uppercase tracking-wider">Monto Calculado Automáticamente</p>
-                  </div>
+                  <Label htmlFor="mes_pago" className="font-bold">
+                    Mes del Pago <span className="text-red-500">*</span>
+                  </Label>
+                  <Select value={mesPago} onValueChange={(value: any) => setMesPago(value)}>
+                    <SelectTrigger id="mes_pago" className="h-10">
+                      <SelectValue placeholder="Selecciona el mes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {meses.map((m) => (
+                        <SelectItem key={m} value={m} className="capitalize">{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              <div className="space-y-2 max-w-sm">
-                <Label className="font-bold">Fecha de Registro</Label>
-                <Input
-                  type="date"
-                  value={new Date().toISOString().split('T')[0]}
-                  readOnly
-                  className="bg-muted cursor-not-allowed h-10"
-                />
+              <div className="space-y-2 text-center">
+                <Label className="font-bold">Valor Neto a Pagar al Proveedor</Label>
+                <div className="p-6 bg-gradient-to-r from-[#D4AF37]/10 to-[#B8941F]/10 border-2 border-[#D4AF37] rounded-lg flex flex-col justify-center items-center h-full">
+                  <p className="text-4xl font-extrabold text-slate-900 leading-none">
+                    ${grupoParaPago.total_pago.toFixed(2)}
+                  </p>
+                  <p className="text-xs text-[#D4AF37] font-semibold mt-2 uppercase tracking-wider">Monto Calculado Automáticamente</p>
+                </div>
               </div>
+            </div>
+
+            <div className="space-y-2 max-w-sm">
+              <Label className="font-bold">Fecha de Registro</Label>
+              <Input
+                type="date"
+                value={new Date().toISOString().split('T')[0]}
+                readOnly
+                className="bg-muted cursor-not-allowed h-10"
+              />
             </div>
 
             <div className="flex justify-end gap-3 pt-6 border-t">
@@ -873,6 +898,215 @@ export function PagosView() {
     );
   }
 
+  if (currentView === 'details' && viewingPago) {
+    return (
+      <div className="p-4 md:p-8 max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="flex items-center justify-between border-b pb-6">
+          <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" onClick={handleBack} className="rounded-full shadow-sm">
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight flex items-center gap-3">
+                <CreditCard className="w-8 h-8 text-[#D4AF37]" />
+                Detalles del Pago #{viewingPago.id_pago}
+              </h1>
+              <p className="text-muted-foreground mt-1">Información completa y desglose de la liquidación de consignación</p>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={() => handlePrint(viewingPago)} className="h-11 px-6 shadow-sm">
+              <Printer className="w-4 h-4 mr-2" />
+              Imprimir Comprobante
+            </Button>
+            {isAdmin && viewingPago.estado !== 'anulado' && (
+              <Button
+                variant="destructive"
+                onClick={() => handleAnular(viewingPago)}
+                className="h-11 px-6 shadow-sm"
+              >
+                <Ban className="w-4 h-4 mr-2" />
+                Anular Pago
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Columna Izquierda: Información General */}
+          <div className="lg:col-span-1 space-y-6">
+            <Card className="shadow-md border-t-4 border-t-[#D4AF37]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-lg font-bold">Datos del Registro</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="bg-muted/30 p-4 rounded-xl space-y-1">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Referencia</Label>
+                    <p className="font-mono text-sm break-all font-semibold">{viewingPago.referencia || 'N/A'}</p>
+                  </div>
+
+                  <div className="bg-muted/30 p-4 rounded-xl space-y-1">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Método de Pago</Label>
+                    <div className="pt-1">{getMetodoBadge(viewingPago.metodo)}</div>
+                  </div>
+
+                  <div className="bg-muted/30 p-4 rounded-xl space-y-1">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Fecha de Pago</Label>
+                    <p className="font-bold flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-[#D4AF37]" />
+                      {new Date(viewingPago.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </p>
+                  </div>
+
+                  <div className="bg-muted/30 p-4 rounded-xl space-y-1">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Estado Actual</Label>
+                    <div className="pt-1">{getEstadoBadge(viewingPago.estado)}</div>
+                  </div>
+
+                  <div className="bg-muted/30 p-4 rounded-xl space-y-1">
+                    <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-widest">Proveedor Beneficiario</Label>
+                    <div className="flex items-center gap-3 pt-1">
+                      <div className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center border border-[#D4AF37]/30 text-[#D4AF37] font-bold">
+                        {getProveedorName(viewingPago.id_pago || 0).charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 leading-tight">{getProveedorName(viewingPago.id_proveedor || 0)}</p>
+                        <p className="text-[10px] text-muted-foreground">ID Proveedor: {viewingPago.id_proveedor}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Alertas de Estado */}
+            <div className="space-y-4">
+              {viewingPago.estado === 'aprobado' && (
+                <Alert className="bg-green-50 border-green-200 shadow-sm py-6">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
+                  <div className="ml-2">
+                    <AlertTitle className="text-green-800 font-bold text-base">Transacción Confirmada</AlertTitle>
+                    <AlertDescription className="text-green-700 mt-1">
+                      Este desembolso ha sido procesado y conciliado correctamente en los estados financieros.
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              )}
+
+              {viewingPago.estado === 'anulado' && (
+                <Alert className="bg-red-50 border-red-200 shadow-sm py-6">
+                  <Ban className="h-6 w-6 text-red-600" />
+                  <div className="ml-2">
+                    <AlertTitle className="text-red-800 font-bold text-base">Pago Invalidado</AlertTitle>
+                    <AlertDescription className="text-red-700 mt-2 space-y-1">
+                      <p><strong>Motivo:</strong> {viewingPago.motivo_anulacion}</p>
+                      {viewingPago.fecha_anulacion && (
+                        <p className="text-xs pt-2"><strong>Fecha de anulación:</strong> {new Date(viewingPago.fecha_anulacion + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
+                      )}
+                    </AlertDescription>
+                  </div>
+                </Alert>
+              )}
+            </div>
+          </div>
+
+          {/* Columna Derecha: Tabla de Productos y Totales */}
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="shadow-lg border-none overflow-hidden">
+              <div className="bg-slate-900 text-white p-5 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Package2 className="w-5 h-5 text-[#D4AF37]" />
+                  <h3 className="font-bold text-lg uppercase tracking-tight">Desglose de Productos Liquidados</h3>
+                </div>
+                <Badge className="bg-[#D4AF37] hover:bg-[#D4AF37] px-4 py-1 text-xs uppercase font-bold tracking-widest">{viewingPago.mes}</Badge>
+              </div>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow className="border-b">
+                        <TableHead className="py-4 px-6 font-bold text-xs uppercase text-slate-600">Descripción del Producto</TableHead>
+                        <TableHead className="py-4 text-center font-bold text-xs uppercase text-slate-600 w-[100px]">Cantidad</TableHead>
+                        <TableHead className="py-4 text-right px-6 font-bold text-xs uppercase text-slate-600 w-[150px]">Monto Proveedor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {viewingPago.ids_productos_consignacion ? (
+                        ventasDetalle.filter(d =>
+                          viewingPago.ids_productos_consignacion?.includes(d.id_venta_prod_detalle)
+                        ).map((d, idx) => {
+                          const prod = mockProductos.find(p => p.id_producto === d.id_producto);
+                          const prov = mockProveedores.find(p => p.id_proveedor === viewingPago.id_proveedor);
+                          const paymentInfo = (prod && prov) ? calcularDesgloseConsignacion(d, prod, prov) : { pagoProveedor: 0 };
+                          return (
+                            <TableRow key={idx} className="hover:bg-muted/20 transition-colors">
+                              <TableCell className="py-4 px-6 font-medium">{prod?.nombre}</TableCell>
+                              <TableCell className="py-4 text-center font-semibold text-slate-600">{d.cantidad}</TableCell>
+                              <TableCell className="py-4 text-right px-6 font-bold text-[#D4AF37]">${paymentInfo.pagoProveedor.toFixed(2)}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      ) : (
+                        ventasDetalle.filter(d => {
+                          const provId = mockConsignaciones.find(c => c.id_producto === d.id_producto)?.id_proveedor;
+                          return provId === viewingPago.id_proveedor && d.estado_consignacion === 'consignado';
+                        }).map((d, idx) => {
+                          const prod = mockProductos.find(p => p.id_producto === d.id_producto);
+                          const prov = mockProveedores.find(p => p.id_proveedor === viewingPago.id_proveedor);
+                          const paymentInfo = (prod && prov) ? calcularDesgloseConsignacion(d, prod, prov) : { pagoProveedor: 0 };
+                          return (
+                            <TableRow key={idx} className="hover:bg-muted/20 transition-colors">
+                              <TableCell className="py-4 px-6 font-medium">{prod?.nombre}</TableCell>
+                              <TableCell className="py-4 text-center font-semibold text-slate-600">{d.cantidad}</TableCell>
+                              <TableCell className="py-4 text-right px-6 font-bold text-[#D4AF37]">${paymentInfo.pagoProveedor.toFixed(2)}</TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div className="p-8 bg-slate-50 border-t space-y-4">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Unidades Vendidas</p>
+                      <p className="text-xl font-bold">{viewingPago.cantidad_vendida || 0} Unds</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Venta Bruta Total</p>
+                      <p className="text-xl font-bold">${viewingPago.total_vendido?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Comisión Barbería</p>
+                      <p className="text-xl font-bold text-blue-600">- ${viewingPago.comision_barberia?.toFixed(2) || '0.00'}</p>
+                    </div>
+                    <div className="space-y-1 bg-[#D4AF37]/10 p-4 rounded-xl border border-[#D4AF37]/20 flex flex-col justify-center">
+                      <p className="text-[9px] font-black uppercase text-[#D4AF37] tracking-widest leading-none mb-1">Total a Transferir</p>
+                      <p className="text-2xl font-black text-slate-900 leading-none">${viewingPago.monto.toFixed(2)}</p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-start">
+              <Button variant="ghost" onClick={handleBack} className="flex items-center gap-2 text-muted-foreground hover:text-slate-900">
+                <ChevronLeft className="w-4 h-4" />
+                Volver al listado de pagos realizados
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
@@ -994,10 +1228,12 @@ export function PagosView() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>ID</TableHead>
+                      <TableHead>Proveedor</TableHead>
                       <TableHead>Referencia</TableHead>
                       <TableHead>Monto</TableHead>
                       <TableHead>Método</TableHead>
-                      <TableHead>Fecha</TableHead>
+                      <TableHead>Fecha Pago</TableHead>
+                      <TableHead>Período</TableHead>
                       <TableHead>Estado</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
@@ -1005,7 +1241,7 @@ export function PagosView() {
                   <TableBody>
                     {currentPaginatedPagos.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">
                           No se encontraron pagos de consignación
                         </TableCell>
                       </TableRow>
@@ -1013,10 +1249,16 @@ export function PagosView() {
                       currentPaginatedPagos.map((pago) => (
                         <TableRow key={pago.id_pago} className={pago.estado === 'anulado' ? 'opacity-60' : ''}>
                           <TableCell>#{pago.id_pago}</TableCell>
-                          <TableCell className="font-mono text-xs">{pago.referencia || '-'}</TableCell>
+                          <TableCell className="font-bold">{getProveedorName(pago.id_proveedor || 0)}</TableCell>
+                          <TableCell className="font-mono text-[10px]">{pago.referencia || '-'}</TableCell>
                           <TableCell className="font-medium">${pago.monto.toFixed(2)}</TableCell>
                           <TableCell>{getMetodoBadge(pago.metodo)}</TableCell>
-                          <TableCell>{new Date(pago.fecha + 'T00:00:00').toLocaleDateString('es-ES')}</TableCell>
+                          <TableCell className="text-xs">{new Date(pago.fecha + 'T00:00:00').toLocaleDateString('es-ES')}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize text-[10px] h-5">
+                              {pago.mes || 'N/A'}
+                            </Badge>
+                          </TableCell>
                           <TableCell>{getEstadoBadge(pago.estado)}</TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -1156,48 +1398,35 @@ export function PagosView() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Producto</TableHead>
                       <TableHead>Proveedor</TableHead>
-                      <TableHead>Cant. Vendida</TableHead>
-                      <TableHead>Precio Proveedor</TableHead>
-                      <TableHead>Monto a Pagar</TableHead>
-                      <TableHead>Fecha Entrega</TableHead>
+                      <TableHead className="text-center">Cant. Items</TableHead>
+                      <TableHead className="text-center">Productos</TableHead>
+                      <TableHead className="text-right text-[#D4AF37]">Total a Pagar</TableHead>
                       <TableHead className="text-right">Acciones</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {/* 1. Mostrar Pagos en estado Pendiente (Filtrados) */}
                     {filteredPagosPendientes.length > 0 && filteredPagosPendientes.map((pago) => {
-                      const consignacion = consignaciones.find(c => c.id_consignacion === pago.id_consignacion);
+                      const proveedor = mockProveedores.find(p => p.id_proveedor === pago.id_proveedor);
                       return (
                         <TableRow key={`pago-p-${pago.id_pago}`} className="bg-yellow-50/50">
-                          <TableCell className="font-medium text-blue-600">P-{pago.id_pago}</TableCell>
                           <TableCell>
                             <div>
-                              <p className="font-medium">{consignacion ? getProductoName(consignacion.id_producto) : 'N/A'}</p>
-                              <p className="text-xs text-muted-foreground">{pago.referencia || 'Sin ref'}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">{consignacion ? getProveedorName(consignacion.id_proveedor) : 'N/A'}</p>
-                              <p className="text-xs text-muted-foreground capitalize">{pago.metodo}</p>
+                              <p className="font-bold">{proveedor?.nombre || 'N/A'}</p>
+                              <p className="text-[10px] text-muted-foreground">{pago.referencia || 'Sin ref'}</p>
                             </div>
                           </TableCell>
                           <TableCell className="text-center font-medium">
                             {pago.cantidad_vendida || 'N/A'}
                           </TableCell>
                           <TableCell className="text-center">
-                            <Badge className="bg-amber-100 text-amber-900 hover:bg-amber-200 border-amber-200">
+                            <Badge className="bg-amber-100 text-amber-900 border-amber-200 text-[10px]">
                               Pago Pendiente
                             </Badge>
                           </TableCell>
-                          <TableCell className="font-bold text-slate-900 text-center">
+                          <TableCell className="font-bold text-right text-slate-900">
                             ${pago.monto.toFixed(2)}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {pago.fecha}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex justify-end gap-2">
@@ -1206,8 +1435,7 @@ export function PagosView() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => handleEdit(pago)}
-                                  className="text-blue-600 hover:text-blue-700 h-8 w-8 p-0"
-                                  title="Aprobar / Editar"
+                                  className="text-blue-600 h-8 w-8 p-0"
                                 >
                                   <Pencil className="w-4 h-4" />
                                 </Button>
@@ -1217,7 +1445,6 @@ export function PagosView() {
                                 size="sm"
                                 onClick={() => handleView(pago)}
                                 className="h-8 w-8 p-0"
-                                title="Ver detalles"
                               >
                                 <Eye className="w-4 h-4" />
                               </Button>
@@ -1227,38 +1454,39 @@ export function PagosView() {
                       );
                     })}
 
-                    {/* 2. Mostrar Detalles de Venta sin pago (Filtrados) */}
-                    {filteredVentasPendientes.length === 0 && filteredPagosPendientes.length === 0 ? (
+                    {/* 2. Mostrar Grupos de Ventas Pendientes (Filtrados) */}
+                    {filteredGruposPendientes.length === 0 && filteredPagosPendientes.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                           No hay ventas pendientes por consignar {searchTermPendientes ? 'que coincidan con la búsqueda' : ''}
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filteredVentasPendientes.map((detalle) => {
-                        const producto = mockProductos.find(p => p.id_producto === detalle.id_producto);
-                        const provId = mockConsignaciones.find(c => c.id_producto === detalle.id_producto)?.id_proveedor;
-                        const proveedor = mockProveedores.find(p => p.id_proveedor === provId);
-
-                        // Si no hay info completa, no podemos calcular desglose pero mostramos lo básico
-                        const desglose = (producto && proveedor) ? calcularDesgloseConsignacion(detalle, producto, proveedor) : null;
+                      filteredGruposPendientes.map((grupo: any) => {
+                        const proveedor = mockProveedores.find(p => p.id_proveedor === grupo.id_proveedor);
 
                         return (
-                          <TableRow key={`det-${detalle.id_venta}-${detalle.id_producto}`}>
-                            <TableCell className="font-medium">V-{detalle.id_venta}</TableCell>
-                            <TableCell>{producto?.nombre || 'Producto Desconocido'}</TableCell>
-                            <TableCell>{proveedor?.nombre || 'Proveedor Desconocido'}</TableCell>
-                            <TableCell className="text-center font-medium">{detalle.cantidad}</TableCell>
-                            <TableCell className="text-center">${detalle.precio_unitario.toFixed(2)}</TableCell>
-                            <TableCell className="font-bold text-slate-900 text-center">
-                              ${desglose ? desglose.pagoProveedor.toFixed(2) : '0.00'}
+                          <TableRow key={`grupo-${grupo.id_proveedor}`}>
+                            <TableCell>
+                              <p className="font-bold">{proveedor?.nombre || 'Desconocido'}</p>
                             </TableCell>
-                            <TableCell className="text-center">{/* Fecha de venta? Podríamos buscarla en mockVentas */}
-                              Sale
+                            <TableCell className="text-center font-medium">{grupo.cantidad_items}</TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex flex-col gap-1">
+                                {grupo.productos.slice(0, 2).map((p: any, idx: number) => (
+                                  <span key={idx} className="text-[10px] text-muted-foreground truncate max-w-[150px]">
+                                    • {p.nombre_producto}
+                                  </span>
+                                ))}
+                                {grupo.productos.length > 2 && <span className="text-[9px] text-blue-600 font-bold">+{grupo.productos.length - 2} más...</span>}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-black text-slate-900 text-right">
+                              ${grupo.total_pago.toFixed(2)}
                             </TableCell>
                             <TableCell className="text-right">
                               {isAdmin && (
-                                <Button onClick={() => handleGenerarPago(detalle)} size="sm" className="bg-[#D4AF37] hover:bg-[#B8941F]">
+                                <Button onClick={() => handleGenerarPagoProveedor(grupo)} size="sm" className="bg-[#D4AF37] hover:bg-[#B8941F]">
                                   <Plus className="w-4 h-4 mr-2" />
                                   Generar Pago
                                 </Button>
@@ -1287,165 +1515,7 @@ export function PagosView() {
         </TabsContent>
       </Tabs>
 
-      {/* Dialog Detalles del Pago */}
-      <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Detalles del Pago #{viewingPago?.id_pago}</DialogTitle>
-            <DialogDescription>Información completa del pago de consignación</DialogDescription>
-          </DialogHeader>
-          {viewingPago && (
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ID Pago</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">#{viewingPago.id_pago}</p>
-                  </div>
-                </div>
 
-                <div className="space-y-2">
-                  <Label>Número de Referencia</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-mono text-sm">{viewingPago.referencia}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Monto</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="text-2xl font-bold text-green-600">
-                      ${viewingPago.monto.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Método de Pago</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    {getMetodoBadge(viewingPago.metodo)}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fecha</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p>
-                      {new Date(viewingPago.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Estado del Pago</Label>
-                  <div className="p-3 bg-muted rounded-md shrink-0">
-                    {getEstadoBadge(viewingPago.estado)}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Venta Asociada</Label>
-                  <div className="p-3 bg-muted rounded-md shrink-0">
-                    <p className="font-medium">V-{viewingPago.id_venta || 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Producto</Label>
-                  <div className="p-3 bg-muted rounded-md shrink-0">
-                    <p className="font-medium truncate">{getProductoName(viewingPago.id_producto || 0)}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Proveedor</Label>
-                  <div className="p-3 bg-muted rounded-md shrink-0">
-                    <p className="font-medium truncate">{getProveedorName(viewingPago.id_proveedor || 0)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="border rounded-lg overflow-hidden">
-                <div className="bg-muted p-3 border-bottom">
-                  <p className="font-bold text-sm">Resumen de liquidación</p>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Cant. Vendida:</span>
-                    <span className="font-medium">{viewingPago.cantidad_vendida || 0} de und</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Total Vendido:</span>
-                    <span className="font-medium">${viewingPago.total_vendido?.toFixed(2) || '0.00'}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-muted-foreground">Ganancia Barbería:</span>
-                    <span className="font-medium text-blue-600">- ${viewingPago.comision_barberia?.toFixed(2) || '0.00'}</span>
-                  </div>
-                  <div className="pt-2 border-t flex justify-between items-center">
-                    <span className="font-bold text-slate-900">VALOR NETO PAGADO:</span>
-                    <span className="text-xl font-bold text-green-600">${viewingPago.monto.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {viewingPago.estado === 'aprobado' && (
-                <Alert className="bg-green-50 border-green-200">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <AlertTitle className="text-green-800">Pago Aprobado</AlertTitle>
-                  <AlertDescription className="text-green-700">
-                    Este pago ha sido aprobado y procesado exitosamente.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {viewingPago.estado === 'anulado' && (
-                <Alert className="bg-red-50 border-red-200">
-                  <Ban className="h-4 w-4 text-red-600" />
-                  <AlertTitle className="text-red-800">Pago Anulado</AlertTitle>
-                  <AlertDescription className="text-red-700">
-                    <p><strong>Motivo:</strong> {viewingPago.motivo_anulacion}</p>
-                    {viewingPago.fecha_anulacion && (
-                      <p className="mt-1"><strong>Fecha de anulación:</strong> {new Date(viewingPago.fecha_anulacion + 'T00:00:00').toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                    )}
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {viewingPago.estado === 'pendiente' && (
-                <Alert className="bg-yellow-50 border-yellow-200">
-                  <Clock className="h-4 w-4 text-yellow-600" />
-                  <AlertTitle className="text-yellow-800">Pago Pendiente</AlertTitle>
-                  <AlertDescription className="text-yellow-700">
-                    Este pago está pendiente de revisión y aprobación.
-                  </AlertDescription>
-                </Alert>
-              )}
-
-              {viewingPago.estado === 'rechazado' && (
-                <Alert className="bg-red-50 border-red-200">
-                  <XCircle className="h-4 w-4 text-red-600" />
-                  <AlertTitle className="text-red-800">Pago Rechazado</AlertTitle>
-                  <AlertDescription className="text-red-700">
-                    Este pago ha sido rechazado. Por favor, contacta con el administrador para más información.
-                  </AlertDescription>
-                </Alert>
-              )}
-            </div>
-          )}
-          <DialogFooter className="flex gap-2">
-            <Button variant="outline" onClick={() => viewingPago && handlePrint(viewingPago)}>
-              <Printer className="w-4 h-4 mr-2" />
-              Imprimir
-            </Button>
-            <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Dialog Anular Pago */}
       <AlertDialog open={anularDialogOpen} onOpenChange={setAnularDialogOpen}>
