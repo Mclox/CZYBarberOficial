@@ -263,7 +263,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
   user: any;
 }) {
   const { logout, roleName, user: authUser } = useAuth();
-  const isAdmin = roleName === 'Admin';
+  const isAdmin = roleName === 'Administrador' || roleName === 'Admin'; // Soportamos ambos por si acaso
   const isBarbero = roleName === 'Barbero';
   const isCliente = roleName === 'Cliente';
 
@@ -412,7 +412,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
   // No renderizar el layout si no hay usuario autenticado (evita errores de referencia)
   if (!user) return null;
 
-  const isAdmin = roleName === 'Admin';
+  const isAdmin = roleName === 'Administrador';
   const isCliente = roleName === 'Cliente';
 
   // Notificaciones dinámicas por rol
