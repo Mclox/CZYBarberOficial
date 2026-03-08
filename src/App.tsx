@@ -75,7 +75,7 @@ function AuthPages() {
 }
 
 function AppContent() {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth(); // <-- Agrega isLoading
   const [currentView, setCurrentView] = useState<string>(() => {
     try {
       return localStorage.getItem('currentView') || 'dashboard';
@@ -95,6 +95,17 @@ function AppContent() {
       // ignore storage errors
     }
   };
+
+  // <-- PEGA ESTE BLOQUE NUEVO AQUÍ
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+        <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-gray-500 font-medium tracking-widest uppercase text-sm">Autenticando...</p>
+      </div>
+    );
+  }
+  // <-- HASTA AQUÍ
 
   if (!isAuthenticated) {
     return <AuthPages />;

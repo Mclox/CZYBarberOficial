@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '../../../components/ui/button';
 import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
@@ -34,10 +34,11 @@ import {
 } from '../../../components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Plus, Pencil, Trash2, Shield, Eye, Search, Power } from 'lucide-react';
-import { mockRoles, Role, Permiso } from '../../../shared/lib/mockData';
+import { Permiso } from '../../../shared/lib/mockData';
 import { toast } from 'sonner';
 import { SearchBar } from '../../../components/common/SearchBar';
 import { Pagination } from '../../../components/common/Pagination';
+import { fetchApi } from '../../../lib/api'; // Conexión a la API real
 
 const MODULOS = [
   'Roles',
@@ -59,21 +60,44 @@ const MODULOS = [
 ];
 
 export function RolesView() {
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
+  const [roles, setRoles] = useState<any[]>([]); // Array vacío, conectaremos a la BD
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<any | null>(null);
   const [roleToDelete, setRoleToDelete] = useState<number | null>(null);
+  const [viewingRole, setViewingRole] = useState<any | null>(null);
+  
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
-    estado: 'activo' as 'activo' | 'inactivo',
+    estado: 'Activo', // Ajustado a mayúscula para coincidir con BD
   });
   const [permissions, setPermissions] = useState<Permiso[]>([]);
 
+  // --- 1. CARGAR DATOS DE LA BD (GET) ---
+  const fetchRoles = async () => {
+    setLoading(true);
+    try {
+      const response = await fetchApi('/roles');
+      if (response.success) {
+        setRoles(response.data);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cargar los roles');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRoles();
+  }, []);
+
   const handleCreate = () => {
     setEditingRole(null);
-    setFormData({ nombre: '', descripcion: '', estado: 'activo' });
+    setFormData({ nombre: '', descripcion: '', estado: 'Activo' });
     // Initialize permissions with all modules set to false
     setPermissions(MODULOS.map(modulo => ({
       modulo,
@@ -85,17 +109,17 @@ export function RolesView() {
     setDialogOpen(true);
   };
 
-  const handleEdit = (role: Role) => {
+  const handleEdit = (role: any) => {
     setEditingRole(role);
     setFormData({
       nombre: role.nombre,
       descripcion: role.descripcion || '',
-      estado: role.nombre.toLowerCase() === 'admin' ? 'activo' : role.estado || 'activo',
+      estado: role.nombre.toLowerCase() === 'administrador' || role.nombre.toLowerCase() === 'admin' ? 'Activo' : role.estado || 'Activo',
     });
     // Ensure all modules are present in permissions
     const rolePermissions = role.permisos || [];
     const fullPermissions = MODULOS.map(modulo => {
-      const existing = rolePermissions.find(p => p.modulo === modulo);
+      const existing = rolePermissions.find((p: any) => p.modulo === modulo);
       return existing || {
         modulo,
         crear: false,
@@ -113,83 +137,89 @@ export function RolesView() {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  // --- 2. ELIMINAR (DELETE) ---
+  const confirmDelete = async () => {
     if (roleToDelete) {
-      setRoles(roles.filter(r => r.id_rol !== roleToDelete));
-      toast.success('Rol eliminado correctamente');
+      try {
+        await fetchApi(`/roles/${roleToDelete}`, { method: 'DELETE' });
+        toast.success('Rol eliminado correctamente');
+        fetchRoles(); // Recargar la tabla
+      } catch (error: any) {
+        toast.error(error.message || 'Error al eliminar el rol. Puede estar en uso.');
+      }
     }
     setDeleteDialogOpen(false);
     setRoleToDelete(null);
   };
 
-  const handleToggleEstado = (role: Role) => {
+  // --- 3. CAMBIAR ESTADO RÁPIDO (PUT) ---
+  const handleToggleEstado = async (role: any) => {
     // No permitir cambiar estado del rol Admin
-    if (role.nombre.toLowerCase() === 'admin') {
-      toast.error('No se puede modificar el estado del rol Admin', {
-        description: 'El rol Admin siempre debe permanecer activo para mantener la integridad del sistema',
-        style: { background: '#ef4444', color: '#fff' }
+    if (role.nombre.toLowerCase() === 'administrador' || role.nombre.toLowerCase() === 'admin') {
+      toast.error('No se puede modificar el estado del rol Administrador', {
+        description: 'Este rol siempre debe permanecer activo para mantener la integridad del sistema',
       });
       return;
     }
 
-    const newEstado = role.estado === 'activo' ? 'inactivo' : 'activo';
-    setRoles(roles.map(r =>
-      r.id_rol === role.id_rol
-        ? { ...r, estado: newEstado }
-        : r
-    ));
-    toast.success(
-      `Rol ${newEstado === 'activo' ? 'activado' : 'desactivado'} correctamente`,
-      {
-        description: `El rol "${role.nombre}" ahora está ${newEstado}`,
-        style: { background: '#10b981', color: '#fff' }
-      }
-    );
+    const newEstado = role.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    try {
+      await fetchApi(`/roles/${role.id_rol}`, {
+        method: 'PUT',
+        body: JSON.stringify({ ...role, estado: newEstado })
+      });
+      toast.success(`Rol ${newEstado} correctamente`);
+      fetchRoles();
+    } catch (error: any) {
+      toast.error('Error al cambiar el estado del rol');
+    }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // --- 4. GUARDAR / CREAR (POST/PUT) ---
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Validar que el nombre no comience con caracteres especiales
     const nombreStartsWithSpecialChar = /^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(formData.nombre.trim());
-    
     if (nombreStartsWithSpecialChar) {
       toast.error('Error de validación', {
-        description: 'El nombre del rol no puede comenzar con caracteres especiales, números o espacios. Debe comenzar con una letra.',
-        style: { background: '#ef4444', color: '#fff' }
+        description: 'El nombre del rol no puede comenzar con caracteres especiales o números.',
       });
       return;
     }
 
-    // Validar que el nombre no esté vacío
     if (!formData.nombre.trim()) {
-      toast.error('Error de validación', {
-        description: 'El nombre del rol es obligatorio',
-        style: { background: '#ef4444', color: '#fff' }
-      });
+      toast.error('El nombre del rol es obligatorio');
       return;
     }
 
-    if (editingRole) {
-      setRoles(roles.map(r =>
-        r.id_rol === editingRole.id_rol
-          ? { ...r, ...formData, permisos: permissions }
-          : r
-      ));
-      toast.success('Rol actualizado correctamente');
-    } else {
-      const newRole: Role = {
-        id_rol: Math.max(...roles.map(r => r.id_rol)) + 1,
-        ...formData,
-        permisos: permissions,
-      };
-      setRoles([...roles, newRole]);
-      toast.success('Rol creado correctamente');
-    }
+    // Preparamos el payload incluyendo los permisos
+    const payload = {
+      nombre: formData.nombre,
+      descripcion: formData.descripcion,
+      estado: formData.estado,
+      permisos: permissions
+    };
 
-    setDialogOpen(false);
-    setFormData({ nombre: '', descripcion: '', estado: 'activo' });
-    setPermissions([]);
+    try {
+      if (editingRole) {
+        await fetchApi(`/roles/${editingRole.id_rol}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        toast.success('Rol actualizado correctamente');
+      } else {
+        await fetchApi('/roles', {
+          method: 'POST',
+          body: JSON.stringify(payload)
+        });
+        toast.success('Rol creado correctamente');
+      }
+      setDialogOpen(false);
+      fetchRoles(); // Recargamos datos de la BD
+    } catch (error: any) {
+      toast.error(error.message || 'Error guardando el rol');
+    }
   };
 
   const updatePermission = (modulo: string, tipo: 'crear' | 'leer' | 'actualizar' | 'eliminar', value: boolean) => {
@@ -200,9 +230,7 @@ export function RolesView() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
-  const [viewingRole, setViewingRole] = useState<Role | null>(null);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const filteredRoles = useMemo(() => {
     return roles.filter(role => {
@@ -210,7 +238,7 @@ export function RolesView() {
       const id = role.id_rol.toString();
       const nombre = role.nombre.toLowerCase();
       const descripcion = (role.descripcion || '').toLowerCase();
-      const estado = (role.nombre.toLowerCase() === 'admin' ? 'sistema' : (role.estado || 'activo')).toLowerCase();
+      const estado = (role.estado || 'Activo').toLowerCase();
       
       return (
         id.includes(lowerSearch) ||
@@ -227,14 +255,25 @@ export function RolesView() {
     currentPage * itemsPerPage
   );
 
-  const handleViewDetails = (role: Role) => {
-    setViewingRole(role);
+  const handleViewDetails = (role: any) => {
+    // Normalizar permisos para que no falte ninguno en la vista visual
+    const rolePermissions = role.permisos || [];
+    const fullPermissions = MODULOS.map(modulo => {
+      const existing = rolePermissions.find((p: any) => p.modulo === modulo);
+      return existing || {
+        modulo,
+        crear: false,
+        leer: false,
+        actualizar: false,
+        eliminar: false,
+      };
+    });
+    setViewingRole({ ...role, permisos: fullPermissions });
     setDetailsDialogOpen(true);
   };
 
-  // Función para verificar si un rol puede ser eliminado (Admin no se puede eliminar)
   const canDeleteRole = (roleName: string) => {
-    return roleName.toLowerCase() !== 'admin';
+    return roleName.toLowerCase() !== 'admin' && roleName.toLowerCase() !== 'administrador';
   };
 
   return (
@@ -260,7 +299,6 @@ export function RolesView() {
           <CardTitle>Lista de Roles</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Barra de búsqueda */}
           <div className="mb-4">
             <SearchBar
               value={searchTerm}
@@ -269,92 +307,96 @@ export function RolesView() {
             />
           </div>
 
-          <div className="rounded-md border overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Descripción</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead className="text-right">Acciones</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {currentRoles.length === 0 ? (
+          {loading ? (
+             <div className="text-center py-8 text-muted-foreground">Cargando roles desde la base de datos...</div>
+          ) : (
+            <div className="rounded-md border overflow-x-auto">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
-                      No se encontraron roles
-                    </TableCell>
+                    <TableHead>ID</TableHead>
+                    <TableHead>Nombre</TableHead>
+                    <TableHead>Descripción</TableHead>
+                    <TableHead>Estado</TableHead>
+                    <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
-                ) : (
-                  currentRoles.map((role) => (
-                    <TableRow key={role.id_rol}>
-                      <TableCell>{role.id_rol}</TableCell>
-                      <TableCell className="font-medium">{role.nombre}</TableCell>
-                      <TableCell>{role.descripcion || '-'}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={role.estado === 'activo' ? 'default' : 'secondary'}
-                          className={role.estado === 'activo' ? 'bg-green-600' : 'bg-gray-600'}
-                        >
-                          {role.estado === 'activo' ? 'Activo' : 'Inactivo'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleViewDetails(role)}
-                            title="Ver detalles"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleEstado(role)}
-                            className={role.estado === 'activo' ? 'hover:bg-red-50 hover:border-red-200' : 'hover:bg-green-50 hover:border-green-200'}
-                            title={role.estado === 'activo' ? 'Desactivar rol' : 'Activar rol'}
-                          >
-                            <Power className={`w-4 h-4 ${role.estado === 'activo' ? 'text-red-600' : 'text-green-600'}`} />
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(role)}
-                            title="Editar rol"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          {canDeleteRole(role.nombre) ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDelete(role.id_rol)}
-                              title="Eliminar rol"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled
-                              title="El rol Admin no se puede eliminar"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
+                </TableHeader>
+                <TableBody>
+                  {currentRoles.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center text-muted-foreground">
+                        No se encontraron roles
                       </TableCell>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                  ) : (
+                    currentRoles.map((role) => (
+                      <TableRow key={role.id_rol}>
+                        <TableCell>{role.id_rol}</TableCell>
+                        <TableCell className="font-medium">{role.nombre}</TableCell>
+                        <TableCell>{role.descripcion || '-'}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={role.estado === 'Activo' ? 'default' : 'secondary'}
+                            className={role.estado === 'Activo' ? 'bg-green-600' : 'bg-gray-600'}
+                          >
+                            {role.estado || 'Activo'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleViewDetails(role)}
+                              title="Ver detalles"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleToggleEstado(role)}
+                              className={role.estado === 'Activo' ? 'hover:bg-red-50 hover:border-red-200' : 'hover:bg-green-50 hover:border-green-200'}
+                              title={role.estado === 'Activo' ? 'Desactivar rol' : 'Activar rol'}
+                            >
+                              <Power className={`w-4 h-4 ${role.estado === 'Activo' ? 'text-red-600' : 'text-green-600'}`} />
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(role)}
+                              title="Editar rol"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                            {canDeleteRole(role.nombre) ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDelete(role.id_rol)}
+                                title="Eliminar rol"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled
+                                title="El rol Admin no se puede eliminar"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
           
           {/* Paginación */}
           {filteredRoles.length > itemsPerPage && (
@@ -414,14 +456,14 @@ export function RolesView() {
                 <Label htmlFor="estado">Estado <span className="text-red-500">*</span></Label>
                 <Select
                   value={formData.estado}
-                  onValueChange={(value) => setFormData({ ...formData, estado: value as 'activo' | 'inactivo' })}
+                  onValueChange={(value) => setFormData({ ...formData, estado: value as 'Activo' | 'Inactivo' })}
                 >
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Selecciona un estado" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="inactivo">Inactivo</SelectItem>
+                    <SelectItem value="Activo">Activo</SelectItem>
+                    <SelectItem value="Inactivo">Inactivo</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">
@@ -500,7 +542,7 @@ export function RolesView() {
                 Cancelar
               </Button>
               <Button type="submit">
-                {editingRole ? 'Actualizar' : 'Crear'}
+                {editingRole ? 'Actualizar BD' : 'Crear en BD'}
               </Button>
             </DialogFooter>
           </form>
@@ -518,7 +560,7 @@ export function RolesView() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete}>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700">
               Eliminar
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -543,6 +585,7 @@ export function RolesView() {
                 <Input
                   value={viewingRole.nombre}
                   readOnly
+                  className="bg-muted"
                 />
               </div>
               <div className="space-y-2">
@@ -551,6 +594,7 @@ export function RolesView() {
                   value={viewingRole.descripcion || ''}
                   readOnly
                   rows={2}
+                  className="bg-muted"
                 />
               </div>
               <div className="space-y-2">
@@ -567,39 +611,27 @@ export function RolesView() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {viewingRole.permisos.map((permiso) => (
+                      {viewingRole.permisos.map((permiso: any) => (
                         <TableRow key={permiso.modulo}>
                           <TableCell>{permiso.modulo}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.crear}
-                                readOnly
-                              />
+                              <Checkbox checked={permiso.crear} disabled />
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.leer}
-                                readOnly
-                              />
+                              <Checkbox checked={permiso.leer} disabled />
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.actualizar}
-                                readOnly
-                              />
+                              <Checkbox checked={permiso.actualizar} disabled />
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.eliminar}
-                                readOnly
-                              />
+                              <Checkbox checked={permiso.eliminar} disabled />
                             </div>
                           </TableCell>
                         </TableRow>

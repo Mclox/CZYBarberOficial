@@ -23,6 +23,8 @@ export interface Usuario {
   telefono?: string;
   avatar?: string;
   estado: 'activo' | 'inactivo';
+  rol?: string;
+  rol_nombre?: string;
 }
 
 export interface Producto {
