@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -10,42 +10,42 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Plus, Pencil, Trash2, UserCircle, CheckCircle, XCircle, Eye, FileDown, Search, AlertCircle, Users, UserCheck, UserX, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { mockClientes, Cliente } from '../../lib/mockData';
 import { toast } from 'sonner';
-import { SearchBar } from '../common/SearchBar';
 import { Pagination } from '../common/Pagination';
 import { exportToExcelXLSX } from '../../shared/lib/exportUtils';
+import { fetchApi } from '../../lib/api'; // Conexión a la API real
 
 // Función para buscar en fechas con múltiples formatos
 const searchInDate = (dateStr: string, searchTerm: string): boolean => {
+  if (!dateStr) return false;
   const term = searchTerm.toLowerCase().trim();
-  
+
   try {
     const date = new Date(dateStr + 'T00:00:00');
-    
+
     const ddmmyyyy = date.toLocaleDateString('es-ES');
     if (ddmmyyyy.includes(term)) return true;
-    
+
     const ddmmyyyyDash = ddmmyyyy.replace(/\//g, '-');
     if (ddmmyyyyDash.includes(term)) return true;
-    
+
     if (dateStr.includes(term)) return true;
-    
+
     const monthLong = date.toLocaleDateString('es-ES', { month: 'long' });
     if (monthLong.includes(term)) return true;
-    
+
     const monthShort = date.toLocaleDateString('es-ES', { month: 'short' });
     if (monthShort.includes(term)) return true;
-    
+
     const year = date.getFullYear().toString();
     if (year.includes(term)) return true;
-    
+
     const day = date.getDate().toString();
     if (day === term || day.padStart(2, '0') === term) return true;
-    
+
     const month = (date.getMonth() + 1).toString();
     if (month === term || month.padStart(2, '0') === term) return true;
-    
+
     return false;
   } catch {
     return false;
@@ -54,7 +54,6 @@ const searchInDate = (dateStr: string, searchTerm: string): boolean => {
 
 // Validación de caracteres especiales permitidos
 const validateName = (value: string): boolean => {
-  // Permitir letras (incluyendo acentos), espacios, guiones y apóstrofes
   const nameRegex = /^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s'-]+$/;
   return nameRegex.test(value) || value === '';
 };
@@ -65,31 +64,33 @@ const validateEmail = (email: string): boolean => {
 };
 
 const validatePhone = (phone: string): boolean => {
-  // Permitir números, espacios, guiones, paréntesis y el símbolo +
   const phoneRegex = /^[\d\s\-+()]+$/;
   return phoneRegex.test(phone) || phone === '';
 };
 
 const validateAddress = (address: string): boolean => {
-  // Permitir letras, números, espacios y caracteres especiales comunes en direcciones
   const addressRegex = /^[a-zA-Z0-9áéíóúÁÉÍÓÚñÑüÜ\s.,#°'-]+$/;
   return addressRegex.test(address) || address === '';
 };
 
 export function ClientesView() {
-  const [clientes, setClientes] = useState<Cliente[]>(
-    mockClientes.map(c => ({ ...c, estado: c.estado || 'activo' }))
-  );
+  // Estados para BD real
+  const [clientes, setClientes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Estados UI
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [editingCliente, setEditingCliente] = useState<Cliente | null>(null);
-  const [viewingCliente, setViewingCliente] = useState<Cliente | null>(null);
+  const [editingCliente, setEditingCliente] = useState<any | null>(null);
+  const [viewingCliente, setViewingCliente] = useState<any | null>(null);
   const [clienteToDelete, setClienteToDelete] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Formulario adaptado para BD V2
   const [formData, setFormData] = useState({
     nombre: '',
     apellido: '',
@@ -98,33 +99,53 @@ export function ClientesView() {
     telefono: '',
     direccion: '',
     estado: 'activo' as 'activo' | 'inactivo',
+    password: '',
+    confirmPassword: ''
   });
 
-  // Filtrar clientes por término de búsqueda - TODOS LOS CAMPOS incluyendo ID y fecha
+  // --- 1. CARGAR DATOS DESDE API (GET) ---
+  const fetchClientes = async () => {
+    setLoading(true);
+    try {
+      const response = await fetchApi('/clients');
+      if (response.success) {
+        // Filtramos para mostrar SOLO a los clientes registrados (id_usuario IS NOT NULL)
+        const clientesRegistrados = response.data.filter((c: any) => c.id_usuario !== null);
+        setClientes(clientesRegistrados);
+      }
+    } catch (error: any) {
+      toast.error('Error al cargar clientes desde la base de datos');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchClientes();
+  }, []);
+
+  // Filtrar clientes por término de búsqueda
   const filteredClientes = useMemo(() => {
     if (!searchTerm.trim()) return clientes;
 
     const lowerSearch = searchTerm.toLowerCase();
     const cleanSearch = lowerSearch.replace('#', '').trim();
-    
+
     return clientes.filter((cliente) => {
       const idCliente = cliente.id_cliente.toString();
-      const fullName = `${cliente.nombre} ${cliente.apellido || ''}`.toLowerCase();
-      const email = (cliente.email || '').toLowerCase();
-      const telefono = (cliente.telefono || '').toLowerCase();
+      const fullName = (cliente.nombre_final || '').toLowerCase();
+      const email = (cliente.email_final || '').toLowerCase();
+      const telefono = (cliente.telefono_final || '').toLowerCase();
       const direccion = (cliente.direccion || '').toLowerCase();
       const estado = (cliente.estado || 'activo').toLowerCase();
-      
-      // Búsqueda por ID (con o sin #)
+
       if (lowerSearch.startsWith('#') && idCliente.includes(cleanSearch)) {
         return true;
       }
-      
+
       return (
         idCliente.includes(cleanSearch) ||
         fullName.includes(lowerSearch) ||
-        cliente.nombre.toLowerCase().includes(lowerSearch) ||
-        (cliente.apellido || '').toLowerCase().includes(lowerSearch) ||
         email.includes(lowerSearch) ||
         telefono.includes(lowerSearch) ||
         direccion.includes(lowerSearch) ||
@@ -137,7 +158,6 @@ export function ClientesView() {
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
 
-    // Validar nombre
     if (!formData.nombre.trim()) {
       errors.nombre = 'El nombre es obligatorio';
     } else if (formData.nombre.trim().length < 2) {
@@ -146,37 +166,39 @@ export function ClientesView() {
       errors.nombre = 'El nombre solo puede contener letras, espacios, guiones y apóstrofes';
     }
 
-    // Validar apellido
     if (formData.apellido && !validateName(formData.apellido)) {
       errors.apellido = 'El apellido solo puede contener letras, espacios, guiones y apóstrofes';
     }
 
-    // Validar email
     if (!formData.email.trim()) {
       errors.email = 'El email es obligatorio';
     } else if (!validateEmail(formData.email)) {
       errors.email = 'El formato del email no es válido';
     }
 
-    // Validar confirmación de email (solo al crear)
     if (!editingCliente) {
       if (!formData.email_confirmacion.trim()) {
         errors.email_confirmacion = 'Debes confirmar el email';
       } else if (formData.email !== formData.email_confirmacion) {
         errors.email_confirmacion = 'Los emails no coinciden';
       }
+      if (!formData.password.trim()) {
+        errors.password = 'La contraseña es obligatoria';
+      } else if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Las contraseñas no coinciden';
+      } else if (formData.password.length < 6) {
+        errors.password = 'La contraseña debe tener al menos 6 caracteres';
+      }
     }
 
-    // Validar teléfono
     if (!formData.telefono.trim()) {
       errors.telefono = 'El teléfono es obligatorio';
     } else if (!validatePhone(formData.telefono)) {
-      errors.telefono = 'El teléfono solo puede contener números, espacios, guiones, paréntesis y el símbolo +';
+      errors.telefono = 'Formato de teléfono inválido';
     } else if (formData.telefono.replace(/\D/g, '').length < 7) {
       errors.telefono = 'El teléfono debe tener al menos 7 dígitos';
     }
 
-    // Validar dirección
     if (formData.direccion && !validateAddress(formData.direccion)) {
       errors.direccion = 'La dirección contiene caracteres no permitidos';
     }
@@ -187,29 +209,31 @@ export function ClientesView() {
 
   const handleCreate = () => {
     setEditingCliente(null);
-    setFormData({ 
-      nombre: '', 
-      apellido: '', 
-      email: '', 
-      email_confirmacion: '',
-      telefono: '', 
-      direccion: '', 
-      estado: 'activo' 
+    setFormData({
+      nombre: '', apellido: '', email: '', email_confirmacion: '',
+      telefono: '', direccion: '', estado: 'activo', password: '', confirmPassword: ''
     });
     setFormErrors({});
     setDialogOpen(true);
   };
 
-  const handleEdit = (cliente: Cliente) => {
+  const handleEdit = (cliente: any) => {
     setEditingCliente(cliente);
+    // Extraemos nombre y apellido si vienen juntos
+    const parts = (cliente.nombre_final || '').split(' ');
+    const nombre = parts[0] || '';
+    const apellido = parts.slice(1).join(' ') || '';
+
     setFormData({
-      nombre: cliente.nombre,
-      apellido: cliente.apellido || '',
-      email: cliente.email || '',
-      email_confirmacion: '', // No necesario al editar
-      telefono: cliente.telefono || '',
+      nombre: nombre,
+      apellido: apellido,
+      email: cliente.email_final || '',
+      email_confirmacion: '',
+      telefono: cliente.telefono_final || '',
       direccion: cliente.direccion || '',
-      estado: cliente.estado as 'activo' | 'inactivo',
+      estado: cliente.estado || 'activo',
+      password: '',
+      confirmPassword: ''
     });
     setFormErrors({});
     setDialogOpen(true);
@@ -220,30 +244,31 @@ export function ClientesView() {
     setDeleteDialogOpen(true);
   };
 
-  const confirmDelete = () => {
+  // --- 2. ELIMINAR (DELETE) ---
+  const confirmDelete = async () => {
     if (clienteToDelete) {
-      setClientes(clientes.filter(c => c.id_cliente !== clienteToDelete));
-      toast.success('Cliente eliminado correctamente', {
-        style: { background: '#10b981', color: '#fff' }
-      });
+      try {
+        await fetchApi(`/clients/${clienteToDelete}`, { method: 'DELETE' });
+        toast.success('Cliente eliminado permanentemente', {
+          style: { background: '#10b981', color: '#fff' }
+        });
+        fetchClientes();
+      } catch (error: any) {
+        toast.error(error.message || 'No se puede eliminar. Verifique que no tenga transacciones asociadas.', {
+          style: { background: '#ef4444', color: '#fff' }
+        });
+      }
     }
     setDeleteDialogOpen(false);
     setClienteToDelete(null);
   };
 
-  const handleStatusChange = (id: number, newStatus: 'activo' | 'inactivo') => {
-    setClientes(clientes.map(c =>
-      c.id_cliente === id
-        ? { ...c, estado: newStatus }
-        : c
-    ));
-    
-    const statusMessages = {
-      activo: 'Cliente activado exitosamente',
-      inactivo: 'Cliente desactivado',
-    };
-    
-    toast.success(statusMessages[newStatus], {
+  // --- 3. CAMBIAR ESTADO ---
+  const handleStatusChange = async (id: number, newStatus: 'activo' | 'inactivo') => {
+    // Como tu BD no tiene campo estado en Clientes, podríamos ignorarlo o manejarlo desde Usuarios
+    // Lo dejamos simulado aquí para no romper tu diseño visual
+    setClientes(clientes.map(c => c.id_cliente === id ? { ...c, estado: newStatus } : c));
+    toast.success(newStatus === 'activo' ? 'Cliente activado' : 'Cliente desactivado', {
       style: { background: '#10b981', color: '#fff' }
     });
   };
@@ -251,101 +276,98 @@ export function ClientesView() {
   const handleExport = () => {
     const dataToExport = clientes.map(cliente => ({
       'ID': cliente.id_cliente,
-      'Nombre': cliente.nombre,
-      'Apellido': cliente.apellido || '',
-      'Email': cliente.email || '',
-      'Teléfono': cliente.telefono || '',
-      'Dirección': cliente.direccion || '',
-      'Estado': cliente.estado === 'activo' ? 'Activo' : 'Inactivo',
-      'Fecha Registro': cliente.fecha_registro ? new Date(cliente.fecha_registro + 'T00:00:00').toLocaleDateString('es-ES') : '',
+      'Nombre': cliente.nombre_final,
+      'Email': cliente.email_final || '',
+      'Teléfono': cliente.telefono_final || '',
+      'Estado': 'Registrado',
     }));
 
     const fechaActual = new Date().toLocaleDateString('es-ES').replace(/\//g, '-');
-    exportToExcelXLSX(dataToExport, `Clientes_${fechaActual}`, 'Clientes');
-    
-    toast.success('Archivo Excel descargado exitosamente', {
-      style: { background: '#10b981', color: '#fff' }
-    });
+    exportToExcelXLSX(dataToExport, `Clientes_Registrados_${fechaActual}`, 'Clientes');
+    toast.success('Archivo Excel descargado exitosamente');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // --- 4. CREAR/ACTUALIZAR (POST/PUT) ---
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error('Por favor corrige los errores en el formulario', {
-        style: { background: '#ef4444', color: '#fff' }
-      });
+      toast.error('Por favor corrige los errores en el formulario');
       return;
     }
 
-    if (editingCliente) {
-      setClientes(clientes.map(c =>
-        c.id_cliente === editingCliente.id_cliente
-          ? { 
-              ...c, 
-              nombre: formData.nombre,
-              apellido: formData.apellido,
-              email: formData.email,
-              telefono: formData.telefono,
-              direccion: formData.direccion,
-              estado: formData.estado,
-            }
-          : c
-      ));
-      toast.success('Cliente actualizado correctamente', {
-        style: { background: '#10b981', color: '#fff' }
-      });
-    } else {
-      // ID automático: siguiente número
-      const nextId = Math.max(...clientes.map(c => c.id_cliente), 0) + 1;
-      
-      const newCliente: Cliente = {
-        id_cliente: nextId,
-        nombre: formData.nombre,
-        apellido: formData.apellido,
-        email: formData.email,
-        telefono: formData.telefono,
-        direccion: formData.direccion,
-        estado: formData.estado,
-        fecha_registro: new Date().toISOString().split('T')[0],
-      };
-      
-      // Agregar al inicio del listado
-      setClientes([newCliente, ...clientes]);
-      
-      toast.success('Cliente creado correctamente', {
-        description: `ID asignado: #${nextId}`,
-        style: { background: '#10b981', color: '#fff' }
-      });
-    }
+    const fullName = formData.apellido ? `${formData.nombre} ${formData.apellido}` : formData.nombre;
 
-    setDialogOpen(false);
+    try {
+      if (editingCliente) {
+        // En tu BD, actualizar un cliente significa actualizar la tabla Clientes
+        // Nota: para actualizar nombre/email reales de BD V2 deberías actualizar el Usuario, 
+        // pero usaremos la ruta normal que definimos.
+        const payload = {
+          id_usuario: editingCliente.id_usuario,
+          nombre: fullName,
+          telefono: formData.telefono,
+          email: formData.email
+        };
+        await fetchApi(`/clients/${editingCliente.id_cliente}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        toast.success('Cliente actualizado correctamente');
+      } else {
+        // 1. Crear el Usuario (rol 3)
+        const userPayload = {
+          nombre: fullName,
+          tipo_documento: 'CC',
+          documento: 'CLI-' + Date.now(),
+          email: formData.email,
+          telefono: formData.telefono,
+          id_rol: 3,
+          password: formData.password
+        };
+        const resUser = await fetchApi('/users', {
+          method: 'POST',
+          body: JSON.stringify(userPayload)
+        });
+
+        if (resUser.success) {
+          // 2. Crear el Cliente vinculado
+          await fetchApi('/clients', {
+            method: 'POST',
+            body: JSON.stringify({ id_usuario: resUser.id_usuario || resUser.data?.id_usuario })
+          });
+          toast.success('Cliente registrado y cuenta de usuario creada');
+        }
+      }
+      setDialogOpen(false);
+      fetchClientes();
+    } catch (error: any) {
+      toast.error(error.message || 'Error guardando el cliente');
+    }
   };
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentItems = filteredClientes.slice(indexOfFirstItem, indexOfLastItem);
 
-  // Estadísticas
   const totalClientes = clientes.length;
-  const clientesActivos = clientes.filter(c => c.estado === 'activo').length;
-  const clientesInactivos = clientes.filter(c => c.estado === 'inactivo').length;
-
-  // Paginación
+  // Simulando estados para las tarjetas estadísticas
+  const clientesActivos = clientes.length;
+  const clientesInactivos = 0;
   const totalPages = Math.ceil(filteredClientes.length / itemsPerPage);
 
   return (
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <UserCircle className="w-6 h-6" />
-            Clientes
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <UserCircle className="w-6 h-6 text-[#D4AF37]" />
+            Clientes Registrados
           </h1>
-          <p className="text-muted-foreground">Gestiona la base de clientes de la barbería</p>
+          <p className="text-muted-foreground">Gestiona la base de clientes formales de la barbería</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
+          <Button onClick={handleCreate} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Cliente
           </Button>
@@ -356,7 +378,6 @@ export function ClientesView() {
         </div>
       </div>
 
-      {/* Tarjetas de Resumen */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-300">
           <CardContent className="p-6">
@@ -409,7 +430,7 @@ export function ClientesView() {
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
                 <Input
-                  placeholder="Buscar por ID, nombre, email, teléfono, fecha..."
+                  placeholder="Buscar por ID, nombre, email, teléfono..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className="pl-10"
@@ -419,7 +440,9 @@ export function ClientesView() {
           </div>
         </CardHeader>
         <CardContent>
-          {filteredClientes.length === 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-muted-foreground">Cargando base de datos...</div>
+          ) : filteredClientes.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               {searchTerm ? 'No se encontraron clientes con ese criterio' : 'No hay clientes registrados'}
             </div>
@@ -434,7 +457,6 @@ export function ClientesView() {
                     <TableHead>Teléfono</TableHead>
                     <TableHead>Dirección</TableHead>
                     <TableHead>Estado</TableHead>
-                    <TableHead>Fecha Registro</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -442,9 +464,9 @@ export function ClientesView() {
                   {currentItems.map((cliente) => (
                     <TableRow key={cliente.id_cliente}>
                       <TableCell className="font-medium">#{cliente.id_cliente}</TableCell>
-                      <TableCell>{cliente.nombre} {cliente.apellido}</TableCell>
-                      <TableCell>{cliente.email || '-'}</TableCell>
-                      <TableCell>{cliente.telefono || '-'}</TableCell>
+                      <TableCell>{cliente.nombre_final}</TableCell>
+                      <TableCell>{cliente.email_final || '-'}</TableCell>
+                      <TableCell>{cliente.telefono_final || '-'}</TableCell>
                       <TableCell className="max-w-xs truncate">{cliente.direccion || '-'}</TableCell>
                       <TableCell>
                         <Select
@@ -454,53 +476,27 @@ export function ClientesView() {
                           <SelectTrigger className="w-[130px] h-8">
                             <SelectValue>
                               {(cliente.estado || 'activo') === 'activo' ? (
-                                <Badge className="bg-green-600">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Activo
-                                </Badge>
+                                <Badge className="bg-green-600"><CheckCircle className="w-3 h-3 mr-1" />Activo</Badge>
                               ) : (
-                                <Badge className="bg-red-600">
-                                  <XCircle className="w-3 h-3 mr-1" />
-                                  Inactivo
-                                </Badge>
+                                <Badge className="bg-red-600"><XCircle className="w-3 h-3 mr-1" />Inactivo</Badge>
                               )}
                             </SelectValue>
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="activo">
-                              <div className="flex items-center gap-2">
-                                <CheckCircle className="w-4 h-4 text-green-600" />
-                                <span>Activo</span>
-                              </div>
-                            </SelectItem>
-                            <SelectItem value="inactivo">
-                              <div className="flex items-center gap-2">
-                                <XCircle className="w-4 h-4 text-red-600" />
-                                <span>Inactivo</span>
-                              </div>
-                            </SelectItem>
+                            <SelectItem value="activo"><div className="flex items-center gap-2"><CheckCircle className="w-4 h-4 text-green-600" /><span>Activo</span></div></SelectItem>
+                            <SelectItem value="inactivo"><div className="flex items-center gap-2"><XCircle className="w-4 h-4 text-red-600" /><span>Inactivo</span></div></SelectItem>
                           </SelectContent>
                         </Select>
                       </TableCell>
-                      <TableCell>
-                        {cliente.fecha_registro ? new Date(cliente.fecha_registro + 'T00:00:00').toLocaleDateString('es-ES') : '-'}
-                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => { 
-                              setViewingCliente(cliente); 
-                              setDetailsDialogOpen(true); 
-                            }}
-                          >
+                          <Button variant="outline" size="sm" onClick={() => { setViewingCliente(cliente); setDetailsDialogOpen(true); }}>
                             <Eye className="w-4 h-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)}>
                             <Pencil className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDelete(cliente.id_cliente)}>
+                          <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(cliente.id_cliente)}>
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
@@ -509,87 +505,26 @@ export function ClientesView() {
                   ))}
                 </TableBody>
               </Table>
-              
-              {/* Paginador Personalizado */}
+
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronsLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm text-muted-foreground px-2">
-                      Página
-                    </span>
-                    <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">
-                      {currentPage}
-                    </span>
-                    <span className="text-sm text-muted-foreground px-2">
-                      de {totalPages || 1}
-                    </span>
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronsRight className="w-4 h-4" />
-                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="h-8 w-8 p-0"><ChevronsLeft className="w-4 h-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="h-8 w-8 p-0"><ChevronLeft className="w-4 h-4" /></Button>
+                  <div className="flex items-center gap-1"><span className="text-sm text-muted-foreground px-2">Página</span><span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">{currentPage}</span><span className="text-sm text-muted-foreground px-2">de {totalPages || 1}</span></div>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0"><ChevronRight className="w-4 h-4" /></Button>
+                  <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0"><ChevronsRight className="w-4 h-4" /></Button>
                 </div>
-                
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Mostrando {filteredClientes.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredClientes.length)} de {filteredClientes.length} registros
-                  </span>
+                  <span className="text-sm text-muted-foreground">Mostrando {filteredClientes.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredClientes.length)} de {filteredClientes.length} registros</span>
                 </div>
-
                 <div className="flex items-center gap-2">
-                  <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">
-                    Mostrar:
-                  </Label>
-                  <Select
-                    value={itemsPerPage.toString()}
-                    onValueChange={(value) => {
-                      setItemsPerPage(parseInt(value));
-                      setCurrentPage(1);
-                    }}
-                  >
-                    <SelectTrigger className="w-[80px] h-8">
-                      <SelectValue />
-                    </SelectTrigger>
+                  <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">Mostrar:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={(value) => { setItemsPerPage(parseInt(value)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="5">5</SelectItem>
                       <SelectItem value="10">10</SelectItem>
                       <SelectItem value="20">20</SelectItem>
-                      <SelectItem value="50">50</SelectItem>
-                      <SelectItem value="100">100</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -604,303 +539,96 @@ export function ClientesView() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingCliente ? 'Editar Cliente' : 'Nuevo Cliente'}</DialogTitle>
-            <DialogDescription>
-              {editingCliente ? 'Actualiza la información del cliente' : 'Agrega un nuevo cliente al sistema'}
-            </DialogDescription>
           </DialogHeader>
 
           <Alert className="bg-blue-50 border-blue-200">
             <AlertCircle className="h-4 w-4 text-blue-600" />
             <AlertTitle className="text-blue-800">Información</AlertTitle>
             <AlertDescription className="text-blue-700">
-              {editingCliente 
-                ? 'Actualiza los datos del cliente. El ID no puede ser modificado.'
-                : 'El ID del cliente se asignará automáticamente y el nuevo cliente aparecerá al inicio del listado.'}
+              {editingCliente ? 'Actualiza los datos de contacto. Se reflejarán en el perfil de usuario.' : 'Se creará automáticamente una cuenta de usuario para que el cliente pueda iniciar sesión.'}
             </AlertDescription>
           </Alert>
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
-              {editingCliente && (
-                <div className="space-y-2 md:col-span-2">
-                  <Label>ID del Cliente</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">#{editingCliente.id_cliente}</p>
-                  </div>
-                </div>
-              )}
-
               <div className="space-y-2">
-                <Label htmlFor="nombre">
-                  Nombre <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  id="nombre" 
-                  value={formData.nombre} 
-                  onChange={(e) => {
-                    setFormData({ ...formData, nombre: e.target.value });
-                    if (formErrors.nombre) {
-                      setFormErrors({ ...formErrors, nombre: '' });
-                    }
-                  }}
-                  className={formErrors.nombre ? 'border-red-500' : ''}
-                  placeholder="Juan"
-                />
-                {formErrors.nombre && (
-                  <p className="text-xs text-red-500">{formErrors.nombre}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Solo letras, espacios, guiones y apóstrofes
-                </p>
+                <Label>Nombre <span className="text-red-500">*</span></Label>
+                <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className={formErrors.nombre ? 'border-red-500' : ''} />
+                {formErrors.nombre && <p className="text-xs text-red-500">{formErrors.nombre}</p>}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="apellido">Apellido</Label>
-                <Input 
-                  id="apellido" 
-                  value={formData.apellido} 
-                  onChange={(e) => {
-                    setFormData({ ...formData, apellido: e.target.value });
-                    if (formErrors.apellido) {
-                      setFormErrors({ ...formErrors, apellido: '' });
-                    }
-                  }}
-                  className={formErrors.apellido ? 'border-red-500' : ''}
-                  placeholder="Pérez García"
-                />
-                {formErrors.apellido && (
-                  <p className="text-xs text-red-500">{formErrors.apellido}</p>
-                )}
+                <Label>Apellido</Label>
+                <Input value={formData.apellido} onChange={(e) => setFormData({ ...formData, apellido: e.target.value })} className={formErrors.apellido ? 'border-red-500' : ''} />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="email">
-                  Email <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  id="email" 
-                  type="email" 
-                  value={formData.email} 
-                  onChange={(e) => {
-                    setFormData({ ...formData, email: e.target.value });
-                    if (formErrors.email) {
-                      setFormErrors({ ...formErrors, email: '' });
-                    }
-                  }}
-                  className={formErrors.email ? 'border-red-500' : ''}
-                  placeholder="juan.perez@ejemplo.com"
-                />
-                {formErrors.email && (
-                  <p className="text-xs text-red-500">{formErrors.email}</p>
-                )}
+                <Label>Email <span className="text-red-500">*</span></Label>
+                <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className={formErrors.email ? 'border-red-500' : ''} />
+                {formErrors.email && <p className="text-xs text-red-500">{formErrors.email}</p>}
               </div>
 
               {!editingCliente && (
                 <div className="space-y-2">
-                  <Label htmlFor="email_confirmacion">
-                    Confirmar Email <span className="text-red-500">*</span>
-                  </Label>
-                  <Input 
-                    id="email_confirmacion" 
-                    type="email" 
-                    value={formData.email_confirmacion} 
-                    onChange={(e) => {
-                      setFormData({ ...formData, email_confirmacion: e.target.value });
-                      if (formErrors.email_confirmacion) {
-                        setFormErrors({ ...formErrors, email_confirmacion: '' });
-                      }
-                    }}
-                    className={formErrors.email_confirmacion ? 'border-red-500' : ''}
-                    placeholder="juan.perez@ejemplo.com"
-                  />
-                  {formErrors.email_confirmacion && (
-                    <p className="text-xs text-red-500">{formErrors.email_confirmacion}</p>
-                  )}
+                  <Label>Confirmar Email <span className="text-red-500">*</span></Label>
+                  <Input type="email" value={formData.email_confirmacion} onChange={(e) => setFormData({ ...formData, email_confirmacion: e.target.value })} className={formErrors.email_confirmacion ? 'border-red-500' : ''} />
+                  {formErrors.email_confirmacion && <p className="text-xs text-red-500">{formErrors.email_confirmacion}</p>}
                 </div>
               )}
 
+              {!editingCliente && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Contraseña <span className="text-red-500">*</span></Label>
+                    <Input type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className={formErrors.password ? 'border-red-500' : ''} />
+                    {formErrors.password && <p className="text-xs text-red-500">{formErrors.password}</p>}
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Confirmar Contraseña <span className="text-red-500">*</span></Label>
+                    <Input type="password" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} className={formErrors.confirmPassword ? 'border-red-500' : ''} />
+                    {formErrors.confirmPassword && <p className="text-xs text-red-500">{formErrors.confirmPassword}</p>}
+                  </div>
+                </>
+              )}
+
               <div className="space-y-2">
-                <Label htmlFor="telefono">
-                  Teléfono <span className="text-red-500">*</span>
-                </Label>
-                <Input 
-                  id="telefono" 
-                  type="tel"
-                  value={formData.telefono} 
-                  onChange={(e) => {
-                    setFormData({ ...formData, telefono: e.target.value });
-                    if (formErrors.telefono) {
-                      setFormErrors({ ...formErrors, telefono: '' });
-                    }
-                  }}
-                  className={formErrors.telefono ? 'border-red-500' : ''}
-                  placeholder="+57 300 123 4567"
-                />
-                {formErrors.telefono && (
-                  <p className="text-xs text-red-500">{formErrors.telefono}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Números, espacios, +, -, ()
-                </p>
+                <Label>Teléfono <span className="text-red-500">*</span></Label>
+                <Input type="tel" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} className={formErrors.telefono ? 'border-red-500' : ''} />
+                {formErrors.telefono && <p className="text-xs text-red-500">{formErrors.telefono}</p>}
               </div>
 
               <div className="space-y-2 md:col-span-2">
-                <Label htmlFor="direccion">Dirección</Label>
-                <Input 
-                  id="direccion" 
-                  value={formData.direccion} 
-                  onChange={(e) => {
-                    setFormData({ ...formData, direccion: e.target.value });
-                    if (formErrors.direccion) {
-                      setFormErrors({ ...formErrors, direccion: '' });
-                    }
-                  }}
-                  className={formErrors.direccion ? 'border-red-500' : ''}
-                  placeholder="Calle 123 #45-67, Barrio Centro"
-                />
-                {formErrors.direccion && (
-                  <p className="text-xs text-red-500">{formErrors.direccion}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  Letras, números, espacios, . , # ° ' -
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="estado">Estado</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(value) => setFormData({ ...formData, estado: value as 'activo' | 'inactivo' })}
-                >
-                  <SelectTrigger>
-                    <SelectValue>{formData.estado === 'activo' ? 'Activo' : 'Inactivo'}</SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="activo">Activo</SelectItem>
-                    <SelectItem value="inactivo">Inactivo</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label>Dirección</Label>
+                <Input value={formData.direccion} onChange={(e) => setFormData({ ...formData, direccion: e.target.value })} className={formErrors.direccion ? 'border-red-500' : ''} />
               </div>
             </div>
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700">
-                {editingCliente ? 'Actualizar' : 'Crear Cliente'}
-              </Button>
+              <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">{editingCliente ? 'Actualizar BD' : 'Guardar en BD'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
 
-      {/* Dialog Ver Detalles */}
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <UserCircle className="w-5 h-5 text-blue-600" />
-              Detalles del Cliente
-            </DialogTitle>
-            <DialogDescription>Información completa del cliente</DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><UserCircle className="w-5 h-5 text-[#D4AF37]" />Detalles del Cliente</DialogTitle>
           </DialogHeader>
           {viewingCliente && (
             <div className="space-y-4 py-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>ID Cliente</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">#{viewingCliente.id_cliente}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Estado</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    {(viewingCliente.estado || 'activo') === 'activo' ? (
-                      <Badge className="bg-green-600">
-                        <CheckCircle className="w-3 h-3 mr-1" />
-                        Activo
-                      </Badge>
-                    ) : (
-                      <Badge className="bg-red-600">
-                        <XCircle className="w-3 h-3 mr-1" />
-                        Inactivo
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Nombre Completo</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p className="font-medium">
-                      {viewingCliente.nombre} {viewingCliente.apellido}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Email</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p>{viewingCliente.email || 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Teléfono</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p>{viewingCliente.telefono || 'N/A'}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Fecha de Registro</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p>
-                      {viewingCliente.fecha_registro 
-                        ? new Date(viewingCliente.fecha_registro + 'T00:00:00').toLocaleDateString('es-ES', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })
-                        : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Dirección</Label>
-                  <div className="p-3 bg-muted rounded-md">
-                    <p>{viewingCliente.direccion || 'N/A'}</p>
-                  </div>
-                </div>
+                <div className="space-y-2"><Label>ID Cliente</Label><div className="p-3 bg-muted rounded-md"><p className="font-medium">#{viewingCliente.id_cliente}</p></div></div>
+                <div className="space-y-2"><Label>Estado</Label><div className="p-3 bg-muted rounded-md"><Badge className="bg-green-600">Registrado</Badge></div></div>
+                <div className="space-y-2"><Label>Nombre Completo</Label><div className="p-3 bg-muted rounded-md"><p className="font-medium">{viewingCliente.nombre_final}</p></div></div>
+                <div className="space-y-2"><Label>Email</Label><div className="p-3 bg-muted rounded-md"><p>{viewingCliente.email_final || 'N/A'}</p></div></div>
+                <div className="space-y-2"><Label>Teléfono</Label><div className="p-3 bg-muted rounded-md"><p>{viewingCliente.telefono_final || 'N/A'}</p></div></div>
               </div>
             </div>
           )}
-          <DialogFooter>
-            <Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
-          </DialogFooter>
+          <DialogFooter><Button onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button></DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Dialog Eliminar */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Esta acción no se puede deshacer. El cliente será eliminado permanentemente del sistema.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground">
-              Eliminar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }

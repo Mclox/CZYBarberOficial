@@ -1,140 +1,140 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
-import {
-  Search,
-  X,
-  UserPlus,
-  UserCheck,
-  UserX,
-  DollarSign,
-  Settings,
-  Briefcase
-} from 'lucide-react';
+import { Search, X, UserPlus, UserCheck, UserX, DollarSign, Settings, Briefcase } from 'lucide-react';
 import { cn } from '../ui/utils';
-import { Empleado } from '../../shared/lib/mockData';
-import { dataStore } from '../../shared/lib/dataStore';
 import { toast } from 'sonner';
+import { fetchApi } from '../../lib/api'; // Conexión API real
 
 export function EmpleadosView() {
-  const [refreshKey, setRefreshKey] = useState(0);
-  const refreshData = () => setRefreshKey((prev: number) => prev + 1);
+  const [empleados, setEmpleados] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // --- Employee Management State ---
-  const [employeeFormData, setEmployeeFormData] = useState<Partial<Empleado>>({
+  const [employeeFormData, setEmployeeFormData] = useState({
     nombre: '',
     apellido: '',
     cargo: 'Barbero',
     telefono: '',
     email: '',
-    estado: 'activo',
+    estado: 'Activo',
     tipo_esquema: 'comision',
     porcentaje_comision: 60,
     porcentaje_dueno: 40,
     pago_silla_semanal: 0,
-    fecha_contratacion: new Date().toISOString().slice(0, 10),
   });
-  const [editingEmployee, setEditingEmployee] = useState<Empleado | null>(null);
+  
+  const [editingEmployee, setEditingEmployee] = useState<any | null>(null);
   const [showEmployeeForm, setShowEmployeeForm] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
 
+  // --- FETCH DATA ---
+  const fetchEmpleados = async () => {
+    setLoading(true);
+    try {
+      const response = await fetchApi('/employees');
+      if (response.success) {
+        setEmpleados(response.data);
+      }
+    } catch (error) {
+      toast.error('Error al cargar barberos de la BD');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEmpleados();
+  }, []);
+
   const filteredEmployees = useMemo(() => {
-    return dataStore.empleados.filter(e =>
-      e.nombre.toLowerCase().includes(employeeSearch.toLowerCase()) ||
-      e.apellido.toLowerCase().includes(employeeSearch.toLowerCase())
+    if (!employeeSearch.trim()) return empleados;
+    return empleados.filter(e =>
+      (e.nombre || '').toLowerCase().includes(employeeSearch.toLowerCase()) ||
+      (e.apellido || '').toLowerCase().includes(employeeSearch.toLowerCase())
     );
-  }, [employeeSearch, refreshKey]);
+  }, [empleados, employeeSearch]);
 
   const handleEmployeeCreate = () => {
     setEditingEmployee(null);
     setEmployeeFormData({
-      nombre: '',
-      apellido: '',
-      cargo: 'Barbero',
-      telefono: '',
-      email: '',
-      estado: 'activo',
-      tipo_esquema: 'comision',
-      porcentaje_comision: 60,
-      porcentaje_dueno: 40,
-      pago_silla_semanal: 0,
-      fecha_contratacion: new Date().toISOString().slice(0, 10),
+      nombre: '', apellido: '', cargo: 'Barbero', telefono: '', email: '',
+      estado: 'Activo', tipo_esquema: 'porcentaje', porcentaje_comision: 60,
+      porcentaje_dueno: 40, pago_silla_semanal: 0,
     });
     setShowEmployeeForm(true);
     window.scrollTo(0, 0);
   };
 
-  const handleEmployeeEdit = (emp: Empleado) => {
+  const handleEmployeeEdit = (emp: any) => {
     setEditingEmployee(emp);
-    setEmployeeFormData({ ...emp });
+    setEmployeeFormData({
+      nombre: emp.nombre || '',
+      apellido: emp.apellido || '',
+      cargo: emp.cargo || 'Barbero',
+      telefono: emp.telefono || '',
+      email: emp.email || '',
+      estado: emp.estado || 'Activo',
+      tipo_esquema: emp.tipo_esquema === 'alquiler' ? 'silla' : 'comision',
+      porcentaje_comision: emp.porcentaje_comision || 0,
+      porcentaje_dueno: 100 - (emp.porcentaje_comision || 0),
+      pago_silla_semanal: emp.pago_silla_semanal || 0,
+    });
     setShowEmployeeForm(true);
     window.scrollTo(0, 0);
   };
 
-  const handleEmployeeSave = (e: React.FormEvent) => {
+  const handleEmployeeSave = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validaciones
     if (employeeFormData.tipo_esquema === 'comision') {
       const com = employeeFormData.porcentaje_comision || 0;
       const due = employeeFormData.porcentaje_dueno || 0;
-      if (com + due !== 100) {
-        toast.error('La suma de porcentajes debe ser 100%');
-        return;
-      }
-    } else if (employeeFormData.tipo_esquema === 'silla') {
-      if (!employeeFormData.pago_silla_semanal || employeeFormData.pago_silla_semanal <= 0) {
-        toast.error('Indica un valor de alquiler válido');
-        return;
-      }
+      if (com + due !== 100) return toast.error('La suma de porcentajes debe ser 100%');
     }
 
-    if (editingEmployee) {
-      const idx = dataStore.empleados.findIndex(e => e.id_empleado === editingEmployee.id_empleado);
-      if (idx !== -1) {
-        dataStore.empleados[idx] = { ...editingEmployee, ...employeeFormData } as Empleado;
-        toast.success('Perfil de barbero actualizado');
-      }
-    } else {
-      const newEmp: Empleado = {
-        id_empleado: Math.max(...dataStore.empleados.map(e => e.id_empleado), 0) + 1,
-        ...employeeFormData
-      } as Empleado;
-      dataStore.empleados.push(newEmp);
-      toast.success('Nuevo barbero registrado');
-    }
+    // Adaptar nombres para la BD
+    const payload = {
+        ...employeeFormData,
+        tipo_esquema: employeeFormData.tipo_esquema === 'silla' ? 'alquiler' : 'porcentaje'
+    };
 
-    setShowEmployeeForm(false);
-    refreshData();
-  };
-
-  const toggleEmployeeStatus = (emp: Empleado) => {
-    const newStatus = emp.estado === 'activo' ? 'inactivo' : 'activo';
-    const idx = dataStore.empleados.findIndex(e => e.id_empleado === emp.id_empleado);
-    if (idx !== -1) {
-      dataStore.empleados[idx].estado = newStatus;
-      toast.info(`Barbero marcado como ${newStatus}`);
-      refreshData();
+    try {
+        if (editingEmployee) {
+            await fetchApi(`/employees/${editingEmployee.id_empleado}`, {
+                method: 'PUT',
+                body: JSON.stringify(payload)
+            });
+            toast.success('Perfil de barbero actualizado');
+        } else {
+            await fetchApi('/employees', {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            toast.success('Nuevo barbero registrado');
+        }
+        setShowEmployeeForm(false);
+        fetchEmpleados();
+    } catch (error: any) {
+        toast.error(error.message || 'Error guardando barbero');
     }
   };
 
-  const handleMarkChairPayment = (idControl: number) => {
-    const idx = dataStore.controlesPagoSilla.findIndex(c => c.id_control_pago === idControl);
-    if (idx !== -1) {
-      dataStore.controlesPagoSilla[idx].estado = 'pagado';
-      dataStore.controlesPagoSilla[idx].fecha_pago = new Date().toISOString().slice(0, 10);
-      toast.success('Pago de silla registrado');
-      refreshData();
+  const toggleEmployeeStatus = async (emp: any) => {
+    const newStatus = emp.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    try {
+        await fetchApi(`/employees/${emp.id_empleado}/status`, {
+            method: 'PUT',
+            body: JSON.stringify({ estado: newStatus })
+        });
+        toast.success(`Barbero marcado como ${newStatus}`);
+        fetchEmpleados();
+    } catch (e) {
+        toast.error('Error cambiando el estado');
     }
   };
 
@@ -146,7 +146,7 @@ export function EmpleadosView() {
             <Briefcase className="w-6 h-6 text-[#D4AF37]" />
             Gestión de Empleados
           </h1>
-          <p className="text-muted-foreground">Configura los barberos, esquemas de pago y controla el alquiler de sillas.</p>
+          <p className="text-muted-foreground">Configura los barberos y esquemas de pago.</p>
         </div>
       </div>
 
@@ -169,15 +169,13 @@ export function EmpleadosView() {
                     <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Personales</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2"><Label>Nombre *</Label><Input required value={employeeFormData.nombre} onChange={e => setEmployeeFormData({ ...employeeFormData, nombre: e.target.value })} /></div>
-                      <div className="space-y-2"><Label>Apellido *</Label><Input required value={employeeFormData.apellido} onChange={e => setEmployeeFormData({ ...employeeFormData, apellido: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Apellido (Opcional)</Label><Input value={employeeFormData.apellido} onChange={e => setEmployeeFormData({ ...employeeFormData, apellido: e.target.value })} /></div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2"><Label>Email</Label><Input type="email" value={employeeFormData.email} onChange={e => setEmployeeFormData({ ...employeeFormData, email: e.target.value })} /></div>
+                      <div className="space-y-2"><Label>Email</Label><Input type="email" value={employeeFormData.email} onChange={e => setEmployeeFormData({ ...employeeFormData, email: e.target.value })} disabled={!!editingEmployee} /></div>
                       <div className="space-y-2"><Label>Teléfono</Label><Input value={employeeFormData.telefono} onChange={e => setEmployeeFormData({ ...employeeFormData, telefono: e.target.value })} /></div>
                     </div>
-
-                    <div className="space-y-2"><Label>Cargo</Label><Input value={employeeFormData.cargo} onChange={e => setEmployeeFormData({ ...employeeFormData, cargo: e.target.value })} /></div>
                   </div>
 
                   <div className="space-y-6">
@@ -207,10 +205,10 @@ export function EmpleadosView() {
                         </div>
                       ) : (
                         <div className="space-y-2 animate-in slide-in-from-right-2">
-                          <Label>Valor Alquiler Semanal</Label>
+                          <Label>Valor Alquiler (No guardado en DB aún)</Label>
                           <div className="relative">
                             <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input type="number" className="pl-10" value={employeeFormData.pago_silla_semanal} onChange={e => setEmployeeFormData({ ...employeeFormData, pago_silla_semanal: parseInt(e.target.value) })} />
+                            <Input type="number" className="pl-10" value={employeeFormData.pago_silla_semanal} onChange={e => setEmployeeFormData({ ...employeeFormData, pago_silla_semanal: parseInt(e.target.value) })} disabled />
                           </div>
                         </div>
                       )}
@@ -236,71 +234,54 @@ export function EmpleadosView() {
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
-              {filteredEmployees.map(emp => (
-                <Card key={emp.id_empleado} className={cn("hover:shadow-lg transition-all border-l-4 h-full flex flex-col", emp.estado === 'activo' ? "border-l-green-500" : "border-l-gray-300")}>
-                  <CardHeader className="pb-2">
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center font-bold text-lg">
-                          {emp.nombre[0]}{emp.apellido[0]}
-                        </div>
-                        <div>
-                          <CardTitle className="text-lg">{emp.nombre} {emp.apellido}</CardTitle>
-                          <CardDescription>{emp.cargo}</CardDescription>
-                        </div>
-                      </div>
-                      <Badge variant={emp.estado === 'activo' ? 'default' : 'secondary'} className={cn(emp.estado === 'activo' ? "bg-green-100 text-green-700" : "")}>
-                        {emp.estado}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4 pt-4 flex-1">
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground uppercase font-bold text-[9px]">Esquema</span>
-                        <span className="font-bold flex items-center gap-1">
-                          {emp.tipo_esquema === 'comision' ? <DollarSign className="w-3 h-3" /> : <Briefcase className="w-3 h-3" />}
-                          {emp.tipo_esquema.toUpperCase()}
-                        </span>
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-muted-foreground uppercase font-bold text-[9px]">Detalle</span>
-                        <span className="font-bold">
-                          {emp.tipo_esquema === 'comision' ? `${emp.porcentaje_comision}%` : `$${emp.pago_silla_semanal?.toLocaleString()}`}
-                        </span>
-                      </div>
-                    </div>
-
-                    {emp.tipo_esquema === 'silla' && (
-                      <div className="bg-muted/30 p-3 rounded-lg space-y-2">
-                        <div className="flex justify-between items-center text-[10px] font-bold">
-                          <span>CONTROL DE SILLA (SEMANAL)</span>
-                          <Button variant="link" size="sm" className="h-auto p-0 text-[10px]">Ver historial</Button>
-                        </div>
-                        {dataStore.controlesPagoSilla.filter(c => c.id_empleado === emp.id_empleado).slice(0, 1).map(ctrl => (
-                          <div key={ctrl.id_control_pago} className="flex justify-between items-center">
-                            <span className="text-xs text-muted-foreground">{ctrl.fecha_inicio_semana} al {ctrl.fecha_fin_semana}</span>
-                            {ctrl.estado === 'pendiente' ? (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] border-orange-500 text-orange-600 hover:bg-orange-50" onClick={() => handleMarkChairPayment(ctrl.id_control_pago)}>Marcar Pagado</Button>
-                            ) : (
-                              <Badge className="bg-green-100 text-green-700 text-[10px]">PAGADO</Badge>
-                            )}
+            {loading ? <p className="text-center text-muted-foreground py-10">Cargando barberos...</p> : (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+                {filteredEmployees.map(emp => (
+                  <Card key={emp.id_empleado} className={cn("hover:shadow-lg transition-all border-l-4 h-full flex flex-col", emp.estado === 'Activo' ? "border-l-green-500" : "border-l-gray-300")}>
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center font-bold text-lg uppercase">
+                            {emp.nombre ? emp.nombre[0] : 'B'}
                           </div>
-                        ))}
+                          <div>
+                            <CardTitle className="text-lg">{emp.nombre}</CardTitle>
+                            <CardDescription>{emp.cargo}</CardDescription>
+                          </div>
+                        </div>
+                        <Badge variant={emp.estado === 'Activo' ? 'default' : 'secondary'} className={cn(emp.estado === 'Activo' ? "bg-green-100 text-green-700" : "")}>
+                          {emp.estado}
+                        </Badge>
                       </div>
-                    )}
-                  </CardContent>
-                  <CardFooter className="border-t bg-muted/10 p-4 flex justify-between mt-auto">
-                    <Button variant="ghost" size="sm" onClick={() => handleEmployeeEdit(emp)}><Settings className="w-4 h-4 mr-2" /> Configurar</Button>
-                    <Button variant="ghost" size="sm" className={cn(emp.estado === 'activo' ? "text-red-500" : "text-green-600")} onClick={() => toggleEmployeeStatus(emp)}>
-                      {emp.estado === 'activo' ? <UserX className="w-4 h-4 mr-2" /> : <UserCheck className="w-4 h-4 mr-2" />}
-                      {emp.estado === 'activo' ? 'Inactivar' : 'Activar'}
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
-            </div>
+                    </CardHeader>
+                    <CardContent className="space-y-4 pt-4 flex-1">
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground uppercase font-bold text-[9px]">Esquema</span>
+                          <span className="font-bold flex items-center gap-1">
+                            {emp.tipo_esquema === 'porcentaje' ? <DollarSign className="w-3 h-3" /> : <Briefcase className="w-3 h-3" />}
+                            {emp.tipo_esquema?.toUpperCase() || 'NO DEFINIDO'}
+                          </span>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-muted-foreground uppercase font-bold text-[9px]">Detalle</span>
+                          <span className="font-bold">
+                            {emp.tipo_esquema === 'porcentaje' ? `${emp.porcentaje_comision || 0}%` : `Fijo`}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                    <CardFooter className="border-t bg-muted/10 p-4 flex justify-between mt-auto">
+                      <Button variant="ghost" size="sm" onClick={() => handleEmployeeEdit(emp)}><Settings className="w-4 h-4 mr-2" /> Configurar</Button>
+                      <Button variant="ghost" size="sm" className={cn(emp.estado === 'Activo' ? "text-red-500" : "text-green-600")} onClick={() => toggleEmployeeStatus(emp)}>
+                        {emp.estado === 'Activo' ? <UserX className="w-4 h-4 mr-2" /> : <UserCheck className="w-4 h-4 mr-2" />}
+                        {emp.estado === 'Activo' ? 'Inactivar' : 'Activar'}
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
           </>
         )}
       </div>
