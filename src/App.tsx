@@ -10,14 +10,14 @@ import { ProductosView } from './features/productos';
 import { ProveedoresView } from './features/proveedores';
 import { ComprasView } from './features/compras';
 import { DevolucionesStockView } from './features/devoluciones';
-import { DevolucionesProveedorView } from './features/devoluciones-proveedor';
+// import { DevolucionesProveedorView } from './features/devoluciones-proveedor';
 import { ConsignacionesView } from './features/consignaciones';
+import { EntradaProductosView } from './features/entrada-productos';
 import { ServiciosView } from './features/servicios';
 import { CitasView } from './features/citas';
 import { EmpleadosView } from './features/empleados';
 import { ClientesView } from './features/clientes';
 import { ClientesTemporalesView } from './features/clientes-temporales';
-import { PagosView } from './features/pagos';
 import { VentasView } from './features/ventas';
 import { LandingPage } from './components/LandingPage';
 import { MiPerfilView } from './features/mi-perfil';
@@ -128,14 +128,16 @@ function AppContent() {
         return <UsuariosView />;
       case 'productos':
         return <ProductosView />;
+      case 'entrada-productos':
+        return <EntradaProductosView />;
       case 'proveedores':
         return <ProveedoresView />;
       case 'compras':
         return <ComprasView />;
       case 'devoluciones':
         return <DevolucionesStockView preSelectedSale={navigationData?.sale} />;
-      case 'devoluciones-proveedor':
-        return <DevolucionesProveedorView />;
+      // case 'devoluciones-proveedor':
+      //   return <DevolucionesProveedorView />;
       case 'consignaciones':
         return <ConsignacionesView />;
       case 'servicios':
@@ -148,8 +150,6 @@ function AppContent() {
         return <ClientesView />;
       case 'clientes-temporales':
         return <ClientesTemporalesView />;
-      case 'pagos':
-        return <PagosView />;
       case 'ventas':
         return <VentasView onNavigate={handleNavigate} />;
       case 'mi-perfil':

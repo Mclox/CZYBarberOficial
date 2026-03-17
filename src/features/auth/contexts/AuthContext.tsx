@@ -42,9 +42,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await fetchApi('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, contrasena: password }) 
       });
-
+      
       if (response.success) {
         const userToSave = response.user;
         const token = response.token;

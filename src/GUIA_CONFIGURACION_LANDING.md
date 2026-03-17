@@ -28,7 +28,7 @@ https://i.imgur.com/tuimagen.png
 ```
 
 **Nombre del Negocio:**
-- Cambia "Barbería Elite" por el nombre de tu negocio
+- Cambia "CzBarber" por el nombre de tu negocio
 - Se muestra en el header y footer
 
 ### 2️⃣ Imágenes de Fondo

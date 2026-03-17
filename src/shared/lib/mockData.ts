@@ -229,6 +229,19 @@ export interface VentaProductoDetalle {
   estado_consignacion?: 'pendiente_consignar' | 'consignado';
 }
 
+export interface EntradaProducto {
+  id_entrada: number;
+  id_producto: number;
+  cantidad: number;
+  fecha: string;          // ISO date — asignada automáticamente por sistema
+  id_usuario: number;
+  nombre_usuario: string;
+  estado: 'activo' | 'anulado';
+  motivo_anulacion?: string;
+  fecha_anulacion?: string;
+  observaciones?: string;
+}
+
 // Mock Data
 export const mockRoles: Role[] = [
   {
@@ -1820,3 +1833,56 @@ export const mockVentasDetalle: VentaProductoDetalle[] = [
     subtotal: 2.50,
   },
 ];
+
+export const mockEntradasProductos: EntradaProducto[] = [
+  {
+    id_entrada: 1,
+    id_producto: 1,
+    cantidad: 20,
+    fecha: '2025-12-01',
+    id_usuario: 1,
+    nombre_usuario: 'Admin Principal',
+    estado: 'activo',
+    observaciones: 'Reposición mensual de pomada',
+  },
+  {
+    id_entrada: 2,
+    id_producto: 6,
+    cantidad: 30,
+    fecha: '2025-12-05',
+    id_usuario: 1,
+    nombre_usuario: 'Admin Principal',
+    estado: 'activo',
+  },
+  {
+    id_entrada: 3,
+    id_producto: 8,
+    cantidad: 5,
+    fecha: '2025-12-10',
+    id_usuario: 1,
+    nombre_usuario: 'Admin Principal',
+    estado: 'anulado',
+    motivo_anulacion: 'Se registró por error; el pedido fue cancelado.',
+    fecha_anulacion: '2025-12-11',
+  },
+  {
+    id_entrada: 4,
+    id_producto: 3,
+    cantidad: 15,
+    fecha: '2026-01-08',
+    id_usuario: 1,
+    nombre_usuario: 'Admin Principal',
+    estado: 'activo',
+  },
+  {
+    id_entrada: 5,
+    id_producto: 16,
+    cantidad: 48,
+    fecha: '2026-01-15',
+    id_usuario: 1,
+    nombre_usuario: 'Admin Principal',
+    estado: 'activo',
+    observaciones: 'Entrada por temporada alta',
+  },
+];
+

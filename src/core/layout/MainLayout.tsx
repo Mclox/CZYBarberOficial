@@ -88,13 +88,13 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
   const filteredMenuItems = menuItems.filter(item => {
     // Admin tiene acceso a todo
     if (isAdmin) return true;
-    
+
     // Barbero tiene acceso a items marcados con barberoAccess
     if (isBarbero && item.barberoAccess) return true;
-    
+
     // Cliente tiene acceso solo a items marcados con clienteAccess
     if (isCliente && item.clienteAccess) return true;
-    
+
     return false;
   });
 
@@ -106,7 +106,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
             <Building2 className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2>Barbería Elite</h2>
+            <h2>CzBarber</h2>
             <p className="text-sm text-muted-foreground">{roleName}</p>
           </div>
         </div>
@@ -119,7 +119,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
           {filteredMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentView === item.id;
-            
+
             return (
               <Button
                 key={item.id}
@@ -145,8 +145,8 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
           <p className="text-sm">{user?.nombre}</p>
           <p className="text-xs text-muted-foreground">{user?.email}</p>
         </div>
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           className="w-full justify-start gap-3"
           onClick={handleLogout}
         >
@@ -166,8 +166,8 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
     <div className="h-screen flex flex-col md:flex-row bg-gray-50">
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:w-64 bg-white border-r">
-        <SidebarContent 
-          currentView={currentView} 
+        <SidebarContent
+          currentView={currentView}
           onNavigate={onNavigate}
           user={user}
         />
@@ -179,9 +179,9 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
           <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
             <Building2 className="w-5 h-5 text-white" />
           </div>
-          <h2>Barbería Elite</h2>
+          <h2>CzBarber</h2>
         </div>
-        
+
         <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon">
@@ -189,8 +189,8 @@ export function MainLayout({ children, currentView, onNavigate }: MainLayoutProp
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="p-0 w-64">
-            <SidebarContent 
-              currentView={currentView} 
+            <SidebarContent
+              currentView={currentView}
               onNavigate={onNavigate}
               onClose={() => setSidebarOpen(false)}
               user={user}

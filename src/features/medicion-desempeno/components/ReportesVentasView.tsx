@@ -2,23 +2,23 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
 import { Button } from '../../../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
-import { 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer, 
-  LineChart, 
-  Line, 
-  PieChart, 
-  Pie, 
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
   Cell,
-  Legend 
+  Legend
 } from 'recharts';
-import { Download, FileSpreadsheet, FileText, Calendar, Filter } from 'lucide-react';
-import { mockVentas, mockServicios } from '../../../shared/lib/mockData';
+import { FileSpreadsheet, FileText, Calendar } from 'lucide-react';
+import { mockVentas } from '../../../shared/lib/mockData';
 import { exportData } from '../../../lib/exportUtils';
 import { toast } from 'sonner';
 
@@ -60,9 +60,9 @@ export function ReportesVentasView() {
         { header: 'Total', dataKey: 'total' },
         { header: 'Estado', dataKey: 'estado' },
       ];
-      
+
       const dataToExport = Array.isArray(mockVentas) ? mockVentas : [];
-      
+
       exportData(
         dataToExport,
         columns,
@@ -70,7 +70,7 @@ export function ReportesVentasView() {
         'Reporte de Ventas Detallado',
         format
       );
-      
+
       toast.success(`Reporte exportado en formato ${format.toUpperCase()}`);
     } catch (error) {
       console.error('Error al exportar:', error);
@@ -87,7 +87,7 @@ export function ReportesVentasView() {
           <h1 className="text-3xl font-bold text-gray-900">Reportes de Ventas</h1>
           <p className="text-gray-500">Análisis detallado de ingresos y tendencias</p>
         </div>
-        
+
         <div className="flex flex-wrap gap-2">
           <Select value={periodo} onValueChange={setPeriodo}>
             <SelectTrigger className="w-[180px] bg-white border-gray-200">
@@ -101,7 +101,7 @@ export function ReportesVentasView() {
               <SelectItem value="anual">Este Año</SelectItem>
             </SelectContent>
           </Select>
-          
+
           <Button variant="outline" className="gap-2 border-gray-200 bg-white" onClick={() => handleExport('excel')}>
             <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
             Excel
@@ -132,27 +132,27 @@ export function ReportesVentasView() {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={ventasPorDia}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#6B7280', fontSize: 12 }} 
+                  <XAxis
+                    dataKey="name"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#6B7280', fontSize: 12 }}
                   />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
                     tick={{ fill: '#6B7280', fontSize: 12 }}
                     tickFormatter={(value) => `$${value}`}
                   />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                     formatter={(value) => [`$${value}`, 'Ingresos']}
                   />
-                  <Line 
-                    type="monotone" 
-                    dataKey="total" 
-                    stroke="#D4AF37" 
-                    strokeWidth={3} 
+                  <Line
+                    type="monotone"
+                    dataKey="total"
+                    stroke="#D4AF37"
+                    strokeWidth={3}
                     dot={{ r: 4, fill: '#D4AF37', strokeWidth: 2, stroke: '#fff' }}
                     activeDot={{ r: 6, fill: '#D4AF37' }}
                   />
@@ -181,12 +181,12 @@ export function ReportesVentasView() {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {ventasPorCategoria.map((entry, index) => (
+                    {ventasPorCategoria.map((_entry, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
                   <Tooltip formatter={(value) => [`$${value}`, 'Total']} />
-                  <Legend verticalAlign="bottom" height={36}/>
+                  <Legend verticalAlign="bottom" height={36} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -216,15 +216,15 @@ export function ReportesVentasView() {
                 <BarChart data={serviciosMasVendidos} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#E5E7EB" />
                   <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    axisLine={false} 
-                    tickLine={false} 
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
                     width={100}
                     tick={{ fill: '#6B7280', fontSize: 11 }}
                   />
-                  <Tooltip 
+                  <Tooltip
                     cursor={{ fill: '#f9fafb' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
@@ -265,9 +265,8 @@ export function ReportesVentasView() {
                       <td className="px-6 py-4 text-gray-600">Venta de Productos</td>
                       <td className="px-6 py-4 text-right font-bold text-gray-900">${venta.total.toFixed(2)}</td>
                       <td className="px-6 py-4 text-center">
-                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
-                          venta.estado === 'pagada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${venta.estado === 'pagada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                          }`}>
                           {venta.estado}
                         </span>
                       </td>

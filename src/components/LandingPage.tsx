@@ -31,21 +31,21 @@ interface LandingConfig {
 
 const defaultConfig: LandingConfig = {
   logo: '',
-  businessName: 'Barbería Elite',
+  businessName: 'CzBarber',
   heroBackground: 'https://images.unsplash.com/photo-1667539916671-b9e7039ccee5?w=1600',
   servicesBackground: 'https://images.unsplash.com/photo-1656921350183-7935040cf7fb?w=1600',
   aboutBackground: 'https://images.unsplash.com/photo-1674287146797-87c893c7407a?w=1600',
   heroTitle: 'El Arte de la Barbería Clásica',
   heroSubtitle: 'Estilo • Elegancia • Excelencia',
   heroDescription: 'Donde la tradición se encuentra con el estilo moderno. Experimenta el mejor servicio de barbería en la ciudad.',
-  aboutTitle: 'Sobre Barbería Elite',
+  aboutTitle: 'Sobre CzBarber',
   aboutDescription1: 'Con más de 10 años de experiencia, somos la barbería líder en ofrecer servicios de calidad premium. Nuestro equipo de barberos profesionales está dedicado a brindarte la mejor experiencia.',
   aboutDescription2: 'Combinamos técnicas tradicionales con las últimas tendencias para crear looks únicos y personalizados.',
   yearsExperience: '10+',
   happyClients: '5000+',
   contactAddress: 'Calle Principal 123\nCentro, Ciudad',
   contactPhone: '+1 (555) 123-4567',
-  contactEmail: 'info@barberiaelite.com',
+  contactEmail: 'info@czbarber.com',
 };
 
 export function LandingPage({ onGetStarted, config: providedConfig }: LandingPageProps) {
@@ -87,7 +87,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
       {/* Hero Section with Background Image */}
       <div className="relative overflow-hidden">
         {/* Background Image with Overlay */}
-        <div 
+        <div
           className="absolute inset-0 z-0"
           style={{
             backgroundImage: `url('${config.heroBackground}')`,
@@ -104,9 +104,9 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
           <div className="container mx-auto px-4 py-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               {config.logo ? (
-                <ImageWithFallback 
-                  src={config.logo} 
-                  alt="Logo" 
+                <ImageWithFallback
+                  src={config.logo}
+                  alt="Logo"
                   className="w-8 h-8 object-contain"
                 />
               ) : (
@@ -138,16 +138,16 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
               {config.heroDescription}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 onClick={() => setBookingOpen(true)}
                 className="bg-[#D4AF37] hover:bg-[#B8941F] text-black text-lg px-8 py-6"
               >
                 <Calendar className="w-5 h-5 mr-2" />
                 Agendar Cita
               </Button>
-              <Button 
-                size="lg" 
+              <Button
+                size="lg"
                 variant="outline"
                 className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black text-lg px-8 py-6"
               >
@@ -161,7 +161,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
       {/* Services Section */}
       <section id="servicios" className="py-20 bg-black relative overflow-hidden">
         {/* Background Image with Overlay */}
-        <div 
+        <div
           className="absolute inset-0 z-0 opacity-20"
           style={{
             backgroundImage: `url('${config.servicesBackground}')`,
@@ -172,7 +172,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
         >
           <div className="absolute inset-0 bg-black/70"></div>
         </div>
-        
+
         <div className="container mx-auto px-4 relative z-10">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold text-white mb-4">Nuestros Servicios</h2>
@@ -197,7 +197,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
       {/* About Section */}
       <section id="nosotros" className="py-20 bg-gray-900 relative overflow-hidden">
         {/* Background Image with Overlay */}
-        <div 
+        <div
           className="absolute inset-0 z-0 opacity-15"
           style={{
             backgroundImage: `url('${config.aboutBackground}')`,
@@ -208,7 +208,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
         >
           <div className="absolute inset-0 bg-gray-900/80"></div>
         </div>
-        
+
         <div className="container mx-auto px-4 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>
@@ -297,9 +297,9 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
         <div className="container mx-auto px-4 text-center text-gray-400">
           <div className="flex items-center justify-center gap-2 mb-4">
             {config.logo ? (
-              <ImageWithFallback 
-                src={config.logo} 
-                alt="Logo" 
+              <ImageWithFallback
+                src={config.logo}
+                alt="Logo"
                 className="w-6 h-6 object-contain"
               />
             ) : (

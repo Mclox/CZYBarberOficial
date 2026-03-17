@@ -1,4 +1,4 @@
-# 📋 Guía de Instalación - Barbería Elite
+# 📋 Guía de Instalación - CzBarber
 
 ## ✅ Requisitos Previos
 
@@ -83,7 +83,7 @@ Si no se abre automáticamente, ábrelo manualmente y visita esa URL.
 
 ## 🎯 Verificar que Funciona
 
-1. Deberías ver la **Landing Page** de Barbería Elite
+1. Deberías ver la **Landing Page** de CzBarber
 2. Haz clic en "Acceder"
 3. Usa estas credenciales para probar:
 

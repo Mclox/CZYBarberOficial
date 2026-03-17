@@ -32,21 +32,21 @@ interface LandingConfig {
 
 const defaultConfig: LandingConfig = {
   logo: '',
-  businessName: 'Barbería Elite',
+  businessName: 'CzBarber',
   heroBackground: 'https://images.unsplash.com/photo-1667539916671-b9e7039ccee5?w=1600',
   servicesBackground: 'https://images.unsplash.com/photo-1656921350183-7935040cf7fb?w=1600',
   aboutBackground: 'https://images.unsplash.com/photo-1674287146797-87c893c7407a?w=1600',
   heroTitle: 'El Arte de la Barbería Clásica',
   heroSubtitle: 'Estilo • Elegancia • Excelencia',
   heroDescription: 'Donde la tradición se encuentra con el estilo moderno. Experimenta el mejor servicio de barbería en la ciudad.',
-  aboutTitle: 'Sobre Barbería Elite',
+  aboutTitle: 'Sobre CzBarber',
   aboutDescription1: 'Con más de 10 años de experiencia, somos la barbería líder en ofrecer servicios de calidad premium. Nuestro equipo de barberos profesionales está dedicado a brindarte la mejor experiencia.',
   aboutDescription2: 'Combinamos técnicas tradicionales con las últimas tendencias para crear looks únicos y personalizados.',
   yearsExperience: '10+',
   happyClients: '5000+',
   contactAddress: 'Calle Principal 123\nCentro, Ciudad',
   contactPhone: '+1 (555) 123-4567',
-  contactEmail: 'info@barberiaelite.com',
+  contactEmail: 'info@czbarber.com',
 };
 
 export function ConfiguracionLandingView() {
@@ -84,23 +84,23 @@ export function ConfiguracionLandingView() {
           <p className="text-gray-400 mt-1">Personaliza la apariencia de tu landing page</p>
         </div>
         <div className="flex gap-3">
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => setPreviewMode(true)}
             className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black"
           >
             <Eye className="w-4 h-4 mr-2" />
             Vista Previa Completa
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={handleReset}
             className="border-gray-700 text-gray-300 hover:bg-gray-800"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
             Restaurar
           </Button>
-          <Button 
+          <Button
             onClick={handleSave}
             className="bg-[#D4AF37] hover:bg-[#B8941F] text-black"
           >
@@ -133,7 +133,7 @@ export function ConfiguracionLandingView() {
                 Si no agregas un logo, se usará el icono de tijeras por defecto
               </p>
             </div>
-            
+
             {config.logo && (
               <div className="border border-gray-700 rounded p-4 bg-gray-800">
                 <p className="text-xs text-gray-400 mb-2">Vista previa del logo:</p>
@@ -301,7 +301,7 @@ export function ConfiguracionLandingView() {
               />
             </div>
           </div>
-          
+
           <div>
             <Label htmlFor="heroDescription" className="text-gray-300">Descripción</Label>
             <Textarea
@@ -386,15 +386,15 @@ export function ConfiguracionLandingView() {
 
       {/* Botón final para guardar */}
       <div className="flex justify-end gap-3">
-        <Button 
-          variant="outline" 
+        <Button
+          variant="outline"
           onClick={handleReset}
           className="border-gray-700 text-gray-300 hover:bg-gray-800"
         >
           <RefreshCw className="w-4 h-4 mr-2" />
           Restaurar Valores por Defecto
         </Button>
-        <Button 
+        <Button
           onClick={handleSave}
           className="bg-[#D4AF37] hover:bg-[#B8941F] text-black"
         >

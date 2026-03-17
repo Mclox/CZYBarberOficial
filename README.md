@@ -1,4 +1,4 @@
-# 💈 Barbería Elite - Sistema de Gestión Empresarial
+# 💈 CzBarber - Sistema de Gestión Empresarial
 
 Sistema completo de gestión empresarial para barbería desarrollado en React + TypeScript + Tailwind CSS.
 
@@ -186,4 +186,4 @@ MIT License
 
 ---
 
-Desarrollado con ❤️ para Barbería Elite
+Desarrollado con ❤️ para CzBarber

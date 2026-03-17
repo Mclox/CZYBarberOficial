@@ -17,10 +17,8 @@ import {
   Users,
   Shield,
   Package,
-  Truck,
   ShoppingCart,
   RotateCcw,
-  PackageOpen,
   Briefcase,
   Calendar,
   UserCircle,
@@ -34,7 +32,8 @@ import {
   BarChart3,
   Store,
   CalendarClock,
-  DollarSign
+  DollarSign,
+  PackagePlus
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import {
@@ -101,13 +100,10 @@ const processMenuItems: ProcessItem[] = [
     id: 'compras-proceso',
     label: 'Compras',
     icon: ShoppingCart,
-    adminOnly: false,
-    barberoAccess: true,
+    adminOnly: true,
     subItems: [
       { id: 'productos', label: 'Gestión de Productos', icon: Package },
-      { id: 'proveedores', label: 'Gestión de Proveedores', icon: Truck },
-      { id: 'compras', label: 'Gestión de Compras', icon: ShoppingCart },
-      { id: 'devoluciones-proveedor', label: 'Devoluciones a Proveedor', icon: PackageOpen },
+      { id: 'entrada-productos', label: 'Entrada de Productos', icon: PackagePlus },
     ]
   },
 
@@ -135,7 +131,6 @@ const processMenuItems: ProcessItem[] = [
     barberoAccess: true,
     subItems: [
       { id: 'clientes', label: 'Gestión de Clientes', icon: UserCircle },
-      { id: 'pagos', label: 'Gestión de pagos en consignación', icon: CreditCard },
       { id: 'ventas', label: 'Gestión de Ventas', icon: Receipt },
       { id: 'devoluciones', label: 'Devolución al Stock', icon: RotateCcw },
     ]
@@ -322,7 +317,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
             <Store className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h2 className="font-bold text-gray-900">Barbería Elite</h2>
+            <h2 className="font-bold text-gray-900">CzBarber</h2>
             <p className="text-xs text-gray-500">Gestión Profesional</p>
           </div>
         </div>

@@ -1,10 +1,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { 
-  Package, 
-  ShoppingCart, 
-  Receipt, 
-  Users, 
-  TrendingUp, 
+import {
+  Package,
+  ShoppingCart,
+  Receipt,
+  Users,
+  TrendingUp,
   AlertCircle,
   Calendar,
   DollarSign,
@@ -31,14 +31,14 @@ export function Dashboard() {
   if (isCliente) {
     const misCitas = mockCitas.filter(c => c.id_cliente === user?.id_usuario);
     const proximasCitas = misCitas.filter(c => c.estado === 'pendiente' || c.estado === 'confirmada');
-    
+
     return (
       <div className="p-4 md:p-8 space-y-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1>Bienvenido, {user?.nombre}</h1>
             <p className="text-muted-foreground">
-              Este es tu resumen personal en Barbería Elite
+              Este es tu resumen personal en CzBarber
             </p>
           </div>
         </div>
@@ -105,9 +105,8 @@ export function Dashboard() {
                             <p className="text-sm text-muted-foreground">{cita.fecha} a las {cita.hora}</p>
                           </div>
                         </div>
-                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          cita.estado === 'confirmada' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
-                        }`}>
+                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${cita.estado === 'confirmada' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          }`}>
                           {cita.estado.charAt(0).toUpperCase() + cita.estado.slice(1)}
                         </div>
                       </div>
@@ -223,7 +222,7 @@ export function Dashboard() {
       <div>
         <h1>Dashboard</h1>
         <p className="text-muted-foreground">
-          Resumen general de Barbería Elite
+          Resumen general de CzBarber
         </p>
       </div>
 
@@ -296,9 +295,8 @@ export function Dashboard() {
                           <p>{cliente?.nombre} {cliente?.apellido}</p>
                           <p className="text-sm text-muted-foreground">{cita.fecha} - {cita.hora}</p>
                         </div>
-                        <div className={`px-2 py-1 rounded text-xs ${
-                          cita.estado === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                        }`}>
+                        <div className={`px-2 py-1 rounded text-xs ${cita.estado === 'confirmada' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                          }`}>
                           {cita.estado}
                         </div>
                       </div>
@@ -331,10 +329,9 @@ export function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p>${venta.total.toFixed(2)}</p>
-                    <p className={`text-xs ${
-                      venta.estado === 'pagada' ? 'text-green-600' : 
-                      venta.estado === 'pendiente' ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
+                    <p className={`text-xs ${venta.estado === 'pagada' ? 'text-green-600' :
+                        venta.estado === 'pendiente' ? 'text-yellow-600' : 'text-red-600'
+                      }`}>
                       {venta.estado}
                     </p>
                   </div>
