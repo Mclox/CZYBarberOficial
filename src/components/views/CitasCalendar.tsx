@@ -38,7 +38,7 @@ export function CitasCalendar({
                 const colors = STATUS_COLORS[cita.estado?.toLowerCase()] || STATUS_COLORS.pendiente;
                 result.push({
                     id: String(cita.id_cita),
-                    title: `${cita.hora_inicio_corta} — ${cita.servicio_nombre || 'Servicio'}`,
+                    title: `${cita.hora_inicio_corta} — ${cita.cliente_nombre || 'Cliente'}`,
                     date, 
                     backgroundColor: colors.bg,
                     borderColor: colors.border,

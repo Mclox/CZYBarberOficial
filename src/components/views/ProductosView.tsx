@@ -248,7 +248,7 @@ export function ProductosView() {
                 )}
               </TableCell>
               <TableCell>${(producto.precio || 0).toFixed(2)}</TableCell>
-              <TableCell><Badge variant={producto.stock < 10 ? 'destructive' : 'default'}>{producto.stock}</Badge></TableCell>
+              <TableCell><Badge variant={producto.stock < 10 ? 'destructive' : 'default'} className={producto.stock >= 10 ? 'bg-blue-600' : ''}>{producto.stock}</Badge></TableCell>
               <TableCell>
                 <Badge variant={producto.estado === 'Activo' ? 'default' : 'secondary'} className={producto.estado === 'Activo' ? 'bg-green-600' : ''}>
                   {producto.estado || 'Activo'}

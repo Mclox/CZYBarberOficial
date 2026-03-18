@@ -4,12 +4,12 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '../ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
-import { Plus, Pencil, Trash2, Search, Eye, CheckCircle, XCircle, Clock, Calendar, X, Users, UserPlus, UserCheck, UserX, DollarSign, Settings, Briefcase, AlertCircle, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Clock, Calendar, X, Users, UserX, DollarSign, Settings, Briefcase, AlertCircle, Package } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useAuth } from '../../features/auth';
 import { toast } from 'sonner';
@@ -103,11 +103,27 @@ export function CitasView() {
       ]);
 
       if (resCitas.success) {
-        const formattedCitas = resCitas.data.map((c: any) => ({
-          ...c,
-          hora_inicio_corta: c.hora_inicio ? c.hora_inicio.substring(0, 5) : '00:00',
-          hora_fin_corta: c.hora_fin ? c.hora_fin.substring(0, 5) : '00:00'
-        }));
+        // Enriquecer citas con datos locales si faltan en la respuesta de la API
+        const formattedCitas = resCitas.data.map((c: any) => {
+          const sObj = resServicios.data.find((s: any) => s.id_servicio === c.id_servicio);
+          const clObj = resClientes.data.find((cl: any) => cl.id_cliente === c.id_cliente);
+          
+          const extractTime = (str: string) => {
+            if (!str) return '00:00';
+            if (str.includes('T')) return str.split('T')[1].substring(0, 5);
+            if (str.includes(' ')) return str.split(' ')[1].substring(0, 5);
+            return str.substring(0, 5);
+          };
+
+          return {
+            ...c,
+            hora_inicio_corta: extractTime(c.hora_inicio),
+            hora_fin_corta: extractTime(c.hora_fin),
+            precio_neto: c.precio_neto || sObj?.precio_neto || 0,
+            servicio_nombre: c.servicio_nombre || sObj?.nombre || 'Servicio',
+            cliente_nombre: c.cliente_nombre || clObj?.nombre_final || clObj?.nombre || 'Cliente'
+          };
+        });
         setCitas(formattedCitas);
       }
       if (resClientes.success) setClientes(resClientes.data);
@@ -128,7 +144,11 @@ export function CitasView() {
     return c ? (c.nombre_final || c.nombre) : 'N/A';
   };
   const getServicioName = (id: any) => servicios.find(s => s.id_servicio === parseInt(id))?.nombre || 'N/A';
-  const getBarberoName = (id: any) => barberos.find(b => b.id_barbero === parseInt(id) || b.id_usuario === parseInt(id))?.nombre || 'N/A';
+  const getBarberoName = (id: any) => {
+    const bId = parseInt(id);
+    const b = barberos.find(b => b.id_empleado === bId || b.id_barbero === bId || b.id_usuario === bId);
+    return b ? b.nombre : 'N/A';
+  };
   const getClienteInfo = (id: any) => clientes.find(c => c.id_cliente === parseInt(id)) || {};
 
   // --- CÁLCULOS DINÁMICOS FORMULARIO ---
@@ -141,7 +161,7 @@ export function CitasView() {
     let list = citas;
 
     if (isBarbero && user?.id_usuario) {
-      list = list.filter(c => c.id_barbero === user.id_usuario || c.id_usuario === user.id_usuario);
+      list = list.filter(c => c.id_barbero === user.id_usuario || c.id_usuario === user.id_usuario || c.id_empleado === user.id_usuario);
     }
     if (isCliente && user?.id_usuario) {
       const miCliente = clientes.find(c => c.id_usuario === user.id_usuario);
@@ -150,7 +170,7 @@ export function CitasView() {
 
     if (calendarEmpleadoFilter && calendarEmpleadoFilter !== 'all') {
       const empId = parseInt(calendarEmpleadoFilter);
-      list = list.filter(c => c.id_barbero === empId || c.id_usuario === empId);
+      list = list.filter(c => c.id_barbero === empId || c.id_usuario === empId || c.id_empleado === empId);
     }
 
     const statsObj = {
@@ -178,7 +198,7 @@ export function CitasView() {
       const start = parseTimeToMinutes(slot);
       const end = start + duracionEstimada;
       return citas.some(c => {
-        const cBarbero = c.id_barbero || c.id_usuario;
+        const cBarbero = c.id_barbero || c.id_usuario || c.id_empleado;
         if (cBarbero !== empId || c.fecha?.split('T')[0] !== fecha || c.id_cita === excludingId) return false;
         const cStart = parseTimeToMinutes(c.hora_inicio_corta);
         const cEnd = parseTimeToMinutes(c.hora_fin_corta);
@@ -208,7 +228,7 @@ export function CitasView() {
     setEditingCita(cita);
     setFormData({
       id_cliente: cita.id_cliente?.toString() || '',
-      id_barbero: cita.id_barbero?.toString() || cita.id_usuario?.toString() || '',
+      id_barbero: cita.id_barbero?.toString() || cita.id_usuario?.toString() || cita.id_empleado?.toString() || '',
       id_servicio: cita.id_servicio?.toString() || '',
       fecha: cita.fecha ? cita.fecha.split('T')[0] : '',
       hora_inicio: cita.hora_inicio_corta || '',
@@ -359,7 +379,10 @@ export function CitasView() {
                             <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="all">Todos los barberos</SelectItem>
-                              {barberos.map(b => <SelectItem key={b.id_barbero || b.id_usuario} value={(b.id_barbero || b.id_usuario).toString()}>{b.nombre}</SelectItem>)}
+                              {barberos.map(b => {
+                                const bId = (b.id_empleado || b.id_barbero || b.id_usuario).toString();
+                                return <SelectItem key={bId} value={bId}>{b.nombre}</SelectItem>
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
@@ -440,7 +463,10 @@ export function CitasView() {
                             <Select value={formData.id_barbero} onValueChange={v => setFormData({ ...formData, id_barbero: v })}>
                               <SelectTrigger className={cn("h-11", formErrors.id_barbero && "border-destructive")}><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
                               <SelectContent>
-                                {barberos.map(b => <SelectItem key={b.id_barbero || b.id_usuario} value={(b.id_barbero || b.id_usuario).toString()}>{b.nombre}</SelectItem>)}
+                                {barberos.map(b => {
+                                  const bId = (b.id_empleado || b.id_barbero || b.id_usuario).toString();
+                                  return <SelectItem key={bId} value={bId}>{b.nombre}</SelectItem>
+                                })}
                               </SelectContent>
                             </Select>
                           </div>
@@ -501,94 +527,76 @@ export function CitasView() {
               </Card>
             )}
 
-            {/* MODAL OSCURO DE DETALLES */}
+            {/* MODAL DE DETALLES REESTRUCTURADO */}
             <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-              <DialogContent className="max-w-xl p-0 overflow-hidden rounded-3xl border-none shadow-2xl">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Detalle de la Cita</DialogTitle>
+                </DialogHeader>
                 {viewingCita && (
-                  <>
-                    <div className="relative h-32 bg-gradient-to-r from-[#1a1a1a] to-[#2a2a2a] flex items-end p-8">
-                      <div className="absolute top-6 right-6">
-                        <Badge className={cn("px-4 py-1.5 rounded-full font-bold border shadow-sm", getStatusConfig(viewingCita.estado).color)}>
-                          {getStatusConfig(viewingCita.estado).label}
-                        </Badge>
+                  <div className="py-4 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Cod. Registro</Label>
+                        <Input value={`#${viewingCita.id_cita}`} readOnly className="bg-muted" />
                       </div>
-                      <div className="space-y-1">
-                        <h2 className="text-white text-2xl font-black tracking-tight uppercase">Detalle de la Cita</h2>
-                        <p className="text-white/40 text-xs font-mono uppercase tracking-widest">Cod. Registro: #{viewingCita.id_cita}</p>
+                      <div className="space-y-2">
+                        <Label>Estado</Label>
+                        <div>
+                          <Badge variant="outline" className={cn("px-4 py-1.5 rounded-md font-medium border", getStatusConfig(viewingCita.estado).color)}>
+                            {getStatusConfig(viewingCita.estado).label}
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Cliente Solicitante</Label>
+                        <Input value={viewingCita.cliente_nombre || getClienteName(viewingCita.id_cliente)} readOnly className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Teléfono Cliente</Label>
+                        <Input value={getClienteInfo(viewingCita.id_cliente).telefono || 'Sin teléfono'} readOnly className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Profesional Asignado</Label>
+                        <Input value={viewingCita.barbero_nombre || getBarberoName(viewingCita.id_barbero || viewingCita.id_usuario || viewingCita.id_empleado)} readOnly className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Fecha Agendada</Label>
+                        <Input value={viewingCita.fecha?.split('T')[0]} readOnly className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Horario</Label>
+                        <Input value={`${viewingCita.hora_inicio_corta} a ${viewingCita.hora_fin_corta}`} readOnly className="bg-muted" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Servicio Seleccionado</Label>
+                        <Input value={viewingCita.servicio_nombre || getServicioName(viewingCita.id_servicio)} readOnly className="bg-muted" />
                       </div>
                     </div>
-
-                    <div className="p-8 space-y-8 bg-white text-foreground">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <div className="space-y-6">
-                          <div className="flex gap-4 items-start translate-y-1">
-                            <div className="p-3 bg-muted rounded-2xl"><UserPlus className="w-5 h-5 text-blue-600" /></div>
-                            <div className="space-y-1 text-left">
-                              <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">Cliente Solicitante</Label>
-                              <p className="text-lg font-bold leading-tight">{viewingCita.cliente_nombre || getClienteName(viewingCita.id_cliente)}</p>
-                              <p className="text-xs text-muted-foreground font-medium">{getClienteInfo(viewingCita.id_cliente).telefono || 'Sin teléfono'}</p>
-                            </div>
-                          </div>
-
-                          <div className="flex gap-4 items-start translate-y-1">
-                            <div className="p-3 bg-muted rounded-2xl"><Users className="w-5 h-5 text-blue-500" /></div>
-                            <div className="space-y-1 text-left">
-                              <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">Barbero Asignado</Label>
-                              <p className="text-lg font-bold leading-tight">{viewingCita.barbero_nombre || getBarberoName(viewingCita.id_barbero || viewingCita.id_usuario)}</p>
-                              <p className="text-xs text-muted-foreground font-medium">Profesional a cargo</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-6 bg-muted/30 p-6 rounded-3xl border border-muted-foreground/10">
-                          <div className="flex gap-4 items-center">
-                            <Calendar className="w-5 h-5 text-blue-600" />
-                            <div className="space-y-0.5 text-left">
-                              <Label className="text-[10px] uppercase font-black text-muted-foreground">Fecha Agendada</Label>
-                              <p className="font-black text-lg">{viewingCita.fecha?.split('T')[0]}</p>
-                            </div>
-                          </div>
-                          <div className="flex gap-4 items-center">
-                            <Clock className="w-5 h-5 text-blue-600" />
-                            <div className="space-y-0.5 text-left">
-                              <Label className="text-[10px] uppercase font-black text-muted-foreground">Horario Disponible</Label>
-                              <p className="font-black text-2xl text-blue-700">
-                                {viewingCita.hora_inicio_corta} <span className="text-sm font-medium text-muted-foreground mx-2">a</span> {viewingCita.hora_fin_corta}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="pt-6 border-t font-sans">
-                        <div className="flex justify-between items-center mb-4">
-                          <div className="space-y-1 text-left">
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Servicio Seleccionado</Label>
-                            <p className="text-xl font-bold flex items-center gap-2"><Briefcase className="w-5 h-5 text-muted-foreground" /> {viewingCita.servicio_nombre || getServicioName(viewingCita.id_servicio)}</p>
-                          </div>
-                          <div className="text-right">
-                            <Label className="text-[10px] uppercase font-black text-muted-foreground">Valor Estimado</Label>
-                            <p className="text-2xl font-black text-green-600">${(viewingCita.precio_neto || 0).toFixed(2)}</p>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex flex-col gap-3 pt-4">
-                        {(isAdmin || isBarbero) && viewingCita.estado?.toLowerCase() === 'pendiente' && (
-                          <div className="grid grid-cols-2 gap-4">
-                            <Button className="h-12 rounded-2xl font-bold bg-green-600 hover:bg-green-700 text-white" onClick={() => handleStatusChange(viewingCita.id_cita, 'completado')}>
-                              <CheckCircle className="w-4 h-4 mr-2" /> Completada
-                            </Button>
-                            <Button variant="outline" className="h-12 rounded-2xl font-bold border-red-200 text-red-600 hover:bg-red-50" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelado')}>
-                              <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
-                            </Button>
-                          </div>
-                        )}
-                        <Button variant="ghost" onClick={() => setDetailsDialogOpen(false)} className="h-12 rounded-2xl font-bold text-muted-foreground">Cerrar Vista</Button>
-                      </div>
+                    
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-md flex justify-between items-center mt-4">
+                      <span className="text-sm font-bold text-blue-800">Valor Estimado</span>
+                      <span className="text-xl font-bold text-blue-700">${(viewingCita.precio_neto || 0).toFixed(2)}</span>
                     </div>
-                  </>
+                  </div>
                 )}
+                <DialogFooter className="flex-col sm:flex-row gap-2 flex-wrap sm:justify-between items-center w-full">
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    {(isAdmin || isBarbero) && viewingCita?.estado?.toLowerCase() === 'pendiente' && (
+                      <>
+                        <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completado')}>
+                          <CheckCircle className="w-4 h-4 mr-2" /> Completada
+                        </Button>
+                        <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelado')}>
+                          <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                  <Button variant="outline" onClick={() => setDetailsDialogOpen(false)} className="w-full sm:w-auto">
+                    Cerrar
+                  </Button>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
 
@@ -628,8 +636,10 @@ export function CitasView() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {barberos.filter(e => e.nombre.toLowerCase().includes(employeeSearch.toLowerCase())).map(emp => (
-                <Card key={emp.id_barbero || emp.id_usuario} className="hover:shadow-lg transition-all border-l-4 border-l-blue-600">
+              {barberos.filter(e => e.nombre.toLowerCase().includes(employeeSearch.toLowerCase())).map(emp => {
+                const bId = emp.id_empleado || emp.id_barbero || emp.id_usuario;
+                return (
+                  <Card key={bId} className="hover:shadow-lg transition-all border-l-4 border-l-blue-600">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
@@ -650,8 +660,9 @@ export function CitasView() {
                       <p>Teléfono: {emp.telefono || 'No registrado'}</p>
                     </div>
                   </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           </div>
         </TabsContent>

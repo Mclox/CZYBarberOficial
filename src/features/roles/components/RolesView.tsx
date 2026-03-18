@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Plus, Pencil, Trash2, Shield, Eye, Search, Power } from 'lucide-react';
+import { Plus, Pencil, Shield, Eye, Search, Power } from 'lucide-react';
 import { Permiso } from '../../../shared/lib/mockData';
 import { toast } from 'sonner';
 import { SearchBar } from '../../../components/common/SearchBar';
@@ -369,25 +369,7 @@ export function RolesView() {
                             >
                               <Pencil className="w-4 h-4" />
                             </Button>
-                            {canDeleteRole(role.nombre) ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleDelete(role.id_rol)}
-                                title="Eliminar rol"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled
-                                title="El rol Admin no se puede eliminar"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
+                            {/* El botón de eliminar se ha ocultado por reglas de negocio */}
                           </div>
                         </TableCell>
                       </TableRow>
@@ -519,12 +501,14 @@ export function RolesView() {
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.eliminar}
-                                onCheckedChange={(checked) =>
-                                  updatePermission(permiso.modulo, 'eliminar', checked as boolean)
-                                }
-                              />
+                              {permiso.modulo !== 'Roles' && (
+                                <Checkbox
+                                  checked={permiso.eliminar}
+                                  onCheckedChange={(checked) =>
+                                    updatePermission(permiso.modulo, 'eliminar', checked as boolean)
+                                  }
+                                />
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
@@ -631,7 +615,9 @@ export function RolesView() {
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox checked={permiso.eliminar} disabled />
+                              {permiso.modulo !== 'Roles' && (
+                                <Checkbox checked={permiso.eliminar} disabled />
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>
