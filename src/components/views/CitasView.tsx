@@ -4,7 +4,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '../ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
@@ -320,7 +320,7 @@ export function CitasView() {
                       {Object.entries(stats).map(([k, v]) => {
                         // SOLUCIÓN APLICADA: Extraer el componente Icono
                         const StatusIcon = getStatusConfig(k).icon;
-                        
+
                         return (
                           <Card key={k} className="flex-1 hover:shadow-md transition-shadow border-muted/60 min-w-[140px]">
                             <CardContent className="p-2">

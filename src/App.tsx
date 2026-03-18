@@ -34,22 +34,9 @@ function AuthPages() {
   }
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4">
-      {/* Background Image with Overlay - mismo que landing */}
-      <div
-        className="absolute inset-0 z-0"
-        style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1667539916671-b9e7039ccee5?w=1600')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/70 to-black"></div>
-      </div>
-
+    <div className="min-h-screen">
       {/* Content */}
-      <div className="w-full max-w-md relative z-10">
+      <div className="w-full">
         {authView === 'login' && (
           <LoginForm
             onRegisterClick={() => setAuthView('register')}
@@ -100,7 +87,7 @@ function AppContent() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="w-12 h-12 border-4 border-[#D4AF37] border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-[#0057FF] border-t-transparent rounded-full animate-spin"></div>
         <p className="mt-4 text-gray-500 font-medium tracking-widest uppercase text-sm">Autenticando...</p>
       </div>
     );

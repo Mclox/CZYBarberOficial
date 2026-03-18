@@ -83,7 +83,6 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
     // validate availability by summed duration
     const empleadoId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : undefined;
-    const desiredDuration = computeSelectedServicesDuration();
     if (empleadoId && hasConflictPublic(empleadoId, bookingData.fecha, bookingData.hora)) {
       toast.error('El barbero no está disponible en la fecha y hora seleccionadas');
       return;
@@ -139,13 +138,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     onClose();
   };
 
-  const getServiceName = (id: number) => {
-    return mockServicios.find(s => s.id_servicio === id)?.nombre || '';
-  };
 
-  const getServicePrice = (id: number) => {
-    return mockServicios.find(s => s.id_servicio === id)?.precio || 0;
-  };
 
   const formatDurationPublic = (minutes: number) => {
     if (!minutes) return '0 min';
@@ -229,7 +222,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           {step === 'info' && (
             <>
               <DialogTitle className="flex items-center gap-2">
-                <Scissors className="w-6 h-6 text-[#D4AF37]" />
+                <Scissors className="w-6 h-6 text-[#0057FF]" />
                 Reserva tu Cita
               </DialogTitle>
               <DialogDescription>
@@ -240,7 +233,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           {step === 'booking' && (
             <>
               <DialogTitle className="flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-[#D4AF37]" />
+                <Calendar className="w-6 h-6 text-[#0057FF]" />
                 Selecciona Servicio y Fecha
               </DialogTitle>
               <DialogDescription>
@@ -306,7 +299,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancelar
               </Button>
-              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
+              <Button type="submit" className="bg-[#0057FF] hover:bg-[#0046CC] text-white">
                 Continuar
               </Button>
             </DialogFooter>
@@ -399,7 +392,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-7 gap-1 bg-muted/20 p-2 rounded-lg border border-[#D4AF37]/20">
+                <div className="grid grid-cols-7 gap-1 bg-muted/20 p-2 rounded-lg border border-[#0057FF]/20">
                   {['D', 'L', 'M', 'X', 'J', 'V', 'S'].map(d => (
                     <div key={d} className="text-center text-[10px] font-bold text-muted-foreground uppercase py-1">{d}</div>
                   ))}
@@ -428,8 +421,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                           onClick={() => setBookingData({ ...bookingData, fecha: dateStr })}
                           className={`
                             h-8 w-full rounded-md text-xs font-medium transition-all
-                            ${isSelected ? 'bg-[#D4AF37] text-black scale-105 shadow-lg shadow-[#D4AF37]/20' : 'hover:bg-[#D4AF37]/20'}
-                            ${isToday && !isSelected ? 'border border-[#D4AF37] text-[#D4AF37]' : ''}
+                            ${isSelected ? 'bg-[#0057FF] text-white scale-105 shadow-lg shadow-[#0057FF]/20' : 'hover:bg-[#0057FF]/20'}
+                            ${isToday && !isSelected ? 'border border-[#0057FF] text-[#0057FF]' : ''}
                             ${isPast ? 'opacity-20 cursor-not-allowed text-muted-foreground' : 'cursor-pointer px-1'}
                           `}
                         >
@@ -476,8 +469,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
               </div>
 
               {((bookingData.id_servicios || []).length > 0 || bookingData.id_servicio) && (
-                <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/30 rounded-lg">
-                  <p className="font-semibold mb-2 text-sm text-[#D4AF37]">Resumen de tu cita:</p>
+                <div className="p-4 bg-[#0057FF]/10 border border-[#0057FF]/30 rounded-lg">
+                  <p className="font-semibold mb-2 text-sm text-[#0057FF]">Resumen de tu cita:</p>
                   <div className="space-y-1">
                     <p className="text-xs">
                       <span className="text-muted-foreground mr-1">Servicios:</span> {formatSelectedServicesPublic(bookingData)}
@@ -508,7 +501,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
               <Button type="button" variant="outline" onClick={() => setStep('info')}>
                 Atrás
               </Button>
-              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
+              <Button type="submit" className="bg-[#0057FF] hover:bg-[#0046CC] text-white">
                 Confirmar Cita
               </Button>
             </DialogFooter>
@@ -519,14 +512,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           <div className="py-6">
             <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white p-6 rounded-lg space-y-3">
               <div className="flex items-start gap-3">
-                <Scissors className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
+                <Scissors className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider">Servicios</p>
                   <p className="font-medium text-sm">{formatSelectedServicesPublic(bookingData)}</p>
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
+                <Calendar className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider">Fecha</p>
                   <p className="font-medium text-sm">
@@ -537,7 +530,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                 </div>
               </div>
               <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-[#D4AF37] flex-shrink-0 mt-1" />
+                <Clock className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
                 <div>
                   <p className="text-[10px] text-gray-400 uppercase tracking-wider">Hora</p>
                   <p className="font-medium text-sm">{bookingData.hora}</p>
@@ -553,7 +546,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
             <DialogFooter className="mt-6">
               <Button
                 onClick={handleClose}
-                className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black"
+                className="w-full bg-[#0057FF] hover:bg-[#0046CC] text-white"
               >
                 Cerrar
               </Button>
