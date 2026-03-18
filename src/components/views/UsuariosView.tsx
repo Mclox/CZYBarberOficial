@@ -223,13 +223,13 @@ export function UsuariosView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <Users className="w-6 h-6" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+            <Users className="w-6 h-6 text-blue-600" />
             Usuarios
           </h1>
           <p className="text-muted-foreground">Gestiona los usuarios del sistema</p>
         </div>
-        <Button onClick={handleCreate}>
+        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Usuario
         </Button>
@@ -371,7 +371,7 @@ export function UsuariosView() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-amber-50"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-blue-50"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
                   </Button>
@@ -395,7 +395,7 @@ export function UsuariosView() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-amber-50"
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-blue-50"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
                   </Button>
@@ -415,12 +415,12 @@ export function UsuariosView() {
                 </Select>
               </div>
             </div>
-            <div className="text-sm text-muted-foreground mb-4 p-3 bg-amber-50 rounded-md border border-amber-200">
+            <div className="text-sm text-muted-foreground mb-4 p-3 bg-blue-50 rounded-md border border-blue-200">
               <p><span className="text-red-500">*</span> Campos obligatorios</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit">{editingUsuario ? 'Actualizar' : 'Crear'}</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{editingUsuario ? 'Actualizar' : 'Crear'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -437,15 +437,15 @@ export function ComprasView() {
           </CardContent>
         </Card>
         
-        <Card className="bg-gradient-to-r from-[#D4AF37]/10 to-[#B8941F]/10 border-[#D4AF37]">
+        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-[#D4AF37] rounded-lg">
+              <div className="p-3 bg-blue-600 rounded-lg">
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total en Compras</p>
-                <p className="text-2xl font-bold text-[#D4AF37]">${totalCompras.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-800">${totalCompras.toFixed(2)}</p>
               </div>
             </div>
           </CardContent>

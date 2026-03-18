@@ -789,13 +789,13 @@ export function UsuariosView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <Users className="w-6 h-6" />
+          <h1 className="flex items-center gap-2 text-blue-800 font-bold">
+            <Users className="w-6 h-6 text-blue-600" />
             Usuarios
           </h1>
           <p className="text-muted-foreground">Gestiona los usuarios del sistema</p>
         </div>
-        <Button onClick={handleCreate}>
+        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Usuario
         </Button>
@@ -843,7 +843,7 @@ export function UsuariosView() {
                       <TableCell>{usuario.email}</TableCell>
                       <TableCell>{usuario.telefono || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
                           {usuario.rol_nombre || getRoleName(usuario.id_rol)}
                         </Badge>
                       </TableCell>
@@ -982,7 +982,7 @@ export function UsuariosView() {
             
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                 {editingUsuario ? 'Actualizar BD' : 'Guardar en BD'}
               </Button>
             </DialogFooter>

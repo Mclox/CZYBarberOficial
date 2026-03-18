@@ -191,8 +191,8 @@ export function ServiciosView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <Scissors className="w-6 h-6" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+            <Scissors className="w-6 h-6 text-blue-600" />
             Servicios
           </h1>
           <p className="text-muted-foreground">
@@ -200,7 +200,7 @@ export function ServiciosView() {
           </p>
         </div>
         {!isCliente && isAdmin && (
-          <Button onClick={handleCreate}>
+          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Servicio
           </Button>
@@ -343,7 +343,7 @@ export function ServiciosView() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                 {editingServicio ? 'Actualizar BD' : 'Guardar BD'}
               </Button>
             </DialogFooter>
@@ -370,13 +370,13 @@ export function ServiciosView() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Scissors className="w-5 h-5 text-[#D4AF37]" />
+              <Scissors className="w-5 h-5 text-blue-800" />
               Detalles del Servicio
             </DialogTitle>
           </DialogHeader>
           {viewingServicio && (
             <div className="space-y-4 py-4">
-              <div className="p-4 bg-amber-50 rounded-lg border border-amber-100">
+              <div className="p-4 bg-blue-50 rounded-lg border border-blue-100">
                 <h3 className="font-bold text-lg mb-1">{viewingServicio.nombre}</h3>
                 <p className="text-sm text-muted-foreground">{viewingServicio.descripcion || 'Sin descripción'}</p>
               </div>

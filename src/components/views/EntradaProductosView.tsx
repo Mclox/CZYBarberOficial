@@ -232,11 +232,11 @@ export function EntradaProductosView() {
             {/* Header */}
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
                 <div>
-                    <h1 className="flex items-center gap-2 text-2xl font-bold"><PackagePlus className="w-6 h-6 text-amber-600" /> Entrada de Productos</h1>
+                    <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800"><PackagePlus className="w-6 h-6 text-blue-600" /> Entrada de Productos</h1>
                     <p className="text-muted-foreground text-sm mt-1">Registro de ingresos de inventario — único mecanismo para aumentar el stock</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={handleOpenCreate} className="bg-amber-600 hover:bg-amber-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nueva Entrada</Button>
+                    <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nueva Entrada</Button>
                     <Button onClick={handleExport} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Exportar</Button>
                 </div>
             </div>
@@ -270,10 +270,10 @@ export function EntradaProductosView() {
             </div>
 
             {/* Info alert */}
-            <Alert className="bg-amber-50 border-amber-200">
-                <AlertCircle className="h-4 w-4 text-amber-600" />
-                <AlertTitle className="text-amber-800">Trazabilidad de Inventario</AlertTitle>
-                <AlertDescription className="text-amber-700">Las entradas <strong>no pueden editarse ni eliminarse</strong>. Solo se permite anular una entrada activa.</AlertDescription>
+            <Alert className="bg-blue-50 border-blue-200">
+                <AlertCircle className="h-4 w-4 text-blue-600" />
+                <AlertTitle className="text-blue-800">Trazabilidad de Inventario</AlertTitle>
+                <AlertDescription className="text-blue-700">Las entradas <strong>no pueden editarse ni eliminarse</strong>. Solo se permite anular una entrada activa.</AlertDescription>
             </Alert>
 
             {/* Table */}
@@ -343,7 +343,7 @@ export function EntradaProductosView() {
                                         <ChevronLeft className="w-4 h-4" />
                                     </Button>
                                     <span className="text-sm text-muted-foreground px-2">Página</span>
-                                    <span className="text-sm font-medium px-2 py-1 bg-amber-600 text-white rounded">{currentPage}</span>
+                                    <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">{currentPage}</span>
                                     <span className="text-sm text-muted-foreground px-2">de {totalPages || 1}</span>
                                     <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0">
                                         <ChevronRight className="w-4 h-4" />
@@ -371,7 +371,7 @@ export function EntradaProductosView() {
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
                 <DialogContent className="max-w-lg">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2"><PackagePlus className="w-5 h-5 text-amber-600" /> Nueva Entrada</DialogTitle>
+                        <DialogTitle className="flex items-center gap-2"><PackagePlus className="w-5 h-5 text-blue-600" /> Nueva Entrada</DialogTitle>
                         <DialogDescription>El stock aumentará automáticamente al confirmar en la Base de Datos.</DialogDescription>
                     </DialogHeader>
 
@@ -381,7 +381,7 @@ export function EntradaProductosView() {
                             <Label className="flex items-center gap-1 text-sm font-medium"><User className="w-4 h-4 text-muted-foreground" /> Registrado por</Label>
                             <div className="flex items-center gap-2 h-10 px-3 rounded-md border bg-muted text-sm text-muted-foreground">
                                 {user?.nombre ?? 'Sistema'}
-                                <span className="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded">Automático (Token JWT)</span>
+                                <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Automático (Token JWT)</span>
                             </div>
                         </div>
 
@@ -421,7 +421,7 @@ export function EntradaProductosView() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleCreate} className="bg-amber-600 hover:bg-amber-700 text-white"><PackagePlus className="w-4 h-4 mr-2" /> Guardar en BD</Button>
+                        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><PackagePlus className="w-4 h-4 mr-2" /> Guardar en BD</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
@@ -429,7 +429,7 @@ export function EntradaProductosView() {
             {/* ── Dialog: Ver Detalle ────────────────────────────── */}
             <Dialog open={viewDialogOpen} onOpenChange={setViewDialogOpen}>
                 <DialogContent className="max-w-lg">
-                    <DialogHeader><DialogTitle className="flex items-center gap-2"><Package className="w-5 h-5 text-amber-600" /> Detalle de Entrada #{viewingEntrada?.id_entrada}</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle className="flex items-center gap-2"><Package className="w-5 h-5 text-blue-600" /> Detalle de Entrada #{viewingEntrada?.id_entrada}</DialogTitle></DialogHeader>
                     {viewingEntrada && (
                         <div className="grid grid-cols-2 gap-4 py-2">
                             {[

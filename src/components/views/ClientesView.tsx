@@ -360,14 +360,14 @@ export function ClientesView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <UserCircle className="w-6 h-6 text-[#D4AF37]" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+            <UserCircle className="w-6 h-6" />
             Clientes Registrados
           </h1>
           <p className="text-muted-foreground">Gestiona la base de clientes formales de la barbería</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleCreate} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">
+          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Cliente
           </Button>
@@ -604,7 +604,7 @@ export function ClientesView() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">{editingCliente ? 'Actualizar BD' : 'Guardar en BD'}</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{editingCliente ? 'Actualizar BD' : 'Guardar en BD'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -613,7 +613,7 @@ export function ClientesView() {
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2"><UserCircle className="w-5 h-5 text-[#D4AF37]" />Detalles del Cliente</DialogTitle>
+            <DialogTitle className="flex items-center gap-2 text-blue-800"><UserCircle className="w-5 h-5" />Detalles del Cliente</DialogTitle>
           </DialogHeader>
           {viewingCliente && (
             <div className="space-y-4 py-4">

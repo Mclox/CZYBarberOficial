@@ -22,7 +22,7 @@ import { mockVentas } from '../../../shared/lib/mockData';
 import { exportData } from '../../../lib/exportUtils';
 import { toast } from 'sonner';
 
-const COLORS = ['#D4AF37', '#C0C0C0', '#4A4A4A', '#8E8E8E', '#B8860B'];
+const COLORS = ['#2563eb', '#C0C0C0', '#4A4A4A', '#8E8E8E', '#1e40af'];
 
 export function ReportesVentasView() {
   const [periodo, setPeriodo] = useState('mensual');
@@ -151,10 +151,10 @@ export function ReportesVentasView() {
                   <Line
                     type="monotone"
                     dataKey="total"
-                    stroke="#D4AF37"
+                    stroke="#2563eb"
                     strokeWidth={3}
-                    dot={{ r: 4, fill: '#D4AF37', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 6, fill: '#D4AF37' }}
+                    dot={{ r: 4, fill: '#2563eb', strokeWidth: 2, stroke: '#fff' }}
+                    activeDot={{ r: 6, fill: '#2563eb' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -228,7 +228,7 @@ export function ReportesVentasView() {
                     cursor={{ fill: '#f9fafb' }}
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                   />
-                  <Bar dataKey="cantidad" fill="#D4AF37" radius={[0, 4, 4, 0]} barSize={20} />
+                  <Bar dataKey="cantidad" fill="#2563eb" radius={[0, 4, 4, 0]} barSize={20} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

@@ -278,13 +278,13 @@ export function ProductosView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <Package className="w-6 h-6" /> Productos
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+            <Package className="w-6 h-6 text-blue-600" /> Productos
           </h1>
           <p className="text-muted-foreground">Gestiona el inventario de productos</p>
         </div>
         <div className="flex gap-2">
-          {isAdmin && <Button onClick={handleCreate}><Plus className="w-4 h-4 mr-2" /> Nuevo Producto</Button>}
+          {isAdmin && <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nuevo Producto</Button>}
           <Button onClick={() => exportToExcel(productos, 'productos')} variant="outline"><FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar</Button>
           <Button onClick={() => downloadMenu(productos)} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Catálogo</Button>
         </div>
@@ -369,7 +369,7 @@ export function ProductosView() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-[#D4AF37] hover:bg-[#B8941F] text-black">{editingProducto ? 'Actualizar BD' : 'Guardar BD'}</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{editingProducto ? 'Actualizar BD' : 'Guardar BD'}</Button>
             </DialogFooter>
           </form>
         </DialogContent>

@@ -214,7 +214,7 @@ function ProcessMenuItem({
           variant={isActive ? "secondary" : "ghost"}
           className={cn(
             "w-full justify-start gap-3 mb-1 text-gray-700 hover:text-gray-900 hover:bg-gray-100",
-            isActive && "bg-gradient-to-r from-amber-100 to-orange-50 border-l-4 border-amber-500 text-amber-700 font-medium"
+            isActive && "bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 text-blue-700 font-medium"
           )}
         >
           <Icon className="w-5 h-5" />
@@ -238,7 +238,7 @@ function ProcessMenuItem({
               onClick={() => onNavigate(subItem.id)}
               className={cn(
                 "w-full justify-start gap-3 pl-8 text-gray-600 hover:text-gray-900 hover:bg-gray-100",
-                isSubActive && "bg-amber-100 text-amber-700 font-medium"
+                isSubActive && "bg-blue-50 text-blue-700 font-medium"
               )}
             >
               <SubIcon className="w-4 h-4" />
@@ -313,7 +313,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
       {/* Header */}
       <div className="p-6 border-b border-gray-200 bg-white shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg flex items-center justify-center shadow-md">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
             <Store className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -324,9 +324,9 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
       </div>
 
       {/* User Info */}
-      <div className="px-6 py-4 bg-gradient-to-r from-amber-50 to-orange-50 border-b border-gray-200">
+      <div className="px-6 py-4 bg-gradient-to-r from-blue-50 to-blue-100 border-b border-gray-200">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-amber-500 rounded-full flex items-center justify-center shadow-md overflow-hidden">
+          <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-md overflow-hidden">
             {currentUser?.avatar ? (
               <img src={currentUser.avatar} alt={currentUser.nombre} className="w-full h-full object-cover" />
             ) : (
@@ -335,7 +335,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
           </div>
           <div className="flex-1 min-w-0">
             <p className="font-medium text-gray-900 truncate">{currentUser?.nombre || 'Usuario'}</p>
-            <p className="text-xs text-amber-600 font-medium">{roleName}</p>
+            <p className="text-xs text-blue-600 font-medium">{roleName}</p>
           </div>
         </div>
       </div>
@@ -357,7 +357,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
                 onClick={() => handleNavigate(item.id)}
                 className={cn(
                   "w-full justify-start gap-3 text-gray-700 hover:text-gray-900 hover:bg-gray-100",
-                  isActive && "bg-gradient-to-r from-amber-100 to-orange-50 border-l-4 border-amber-500 text-amber-700 font-medium"
+                  isActive && "bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500 text-blue-700 font-medium"
                 )}
               >
                 <Icon className="w-5 h-5" />
@@ -507,7 +507,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
                 <input
                   type="text"
                   placeholder={isCliente ? "Buscar servicios, barberos, citas..." : "Buscar clientes, citas, productos..."}
-                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all"
+                  className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />
               </div>
             </div>
@@ -517,7 +517,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
               {isAdmin && (
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-amber-200 text-amber-700 hover:bg-amber-50">
+                    <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-blue-200 text-blue-700 hover:bg-blue-50">
                       <Plus className="w-4 h-4" />
                       <span>Acción Rápida</span>
                     </Button>
@@ -561,7 +561,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
                     {notifications.map((notif, idx) => {
                       const NotifIcon = notif.icon;
                       return (
-                        <DropdownMenuItem key={idx} className="p-3 focus:bg-amber-50 cursor-pointer">
+                        <DropdownMenuItem key={idx} className="p-3 focus:bg-blue-50 cursor-pointer">
                           <div className="flex gap-3">
                             <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", notif.bgColor)}>
                               <NotifIcon className={cn("w-4 h-4", notif.color)} />
@@ -577,7 +577,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
                     })}
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="justify-center text-amber-600 font-medium text-xs cursor-pointer hover:text-amber-700">
+                  <DropdownMenuItem className="justify-center text-blue-600 font-medium text-xs cursor-pointer hover:text-blue-700">
                     Ver todas las notificaciones
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -591,18 +591,18 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
                 onClick={() => onNavigate('mi-perfil')}
                 className={cn(
                   "gap-2 text-gray-700 hover:text-gray-900 hover:bg-gray-100 px-3",
-                  currentView === 'mi-perfil' && "bg-amber-100 text-amber-700 font-medium"
+                  currentView === 'mi-perfil' && "bg-blue-100 text-blue-700 font-medium"
                 )}
               >
                 {user?.avatar ? (
                   <Avatar className="w-7 h-7">
                     <AvatarImage src={user.avatar} className="object-cover" />
-                    <AvatarFallback className="bg-amber-500 text-white text-[10px]">
+                    <AvatarFallback className="bg-blue-500 text-white text-[10px]">
                       {user?.nombre?.[0]}
                     </AvatarFallback>
                   </Avatar>
                 ) : (
-                  <div className="w-7 h-7 bg-amber-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                  <div className="w-7 h-7 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
                     {user?.nombre?.[0] || 'U'}
                   </div>
                 )}

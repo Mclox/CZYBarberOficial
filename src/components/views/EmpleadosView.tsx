@@ -143,7 +143,7 @@ export function EmpleadosView() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Briefcase className="w-6 h-6 text-[#D4AF37]" />
+            <Briefcase className="w-6 h-6 text-blue-800" />
             Gestión de Empleados
           </h1>
           <p className="text-muted-foreground">Configura los barberos y esquemas de pago.</p>
@@ -152,7 +152,7 @@ export function EmpleadosView() {
 
       <div className="space-y-8 animate-in fade-in duration-500">
         {showEmployeeForm ? (
-          <Card className="border-2 border-[#D4AF37]/20 shadow-2xl">
+          <Card className="border-2 border-blue-200 shadow-2xl">
             <CardHeader className="bg-muted/20 border-b pb-6">
               <div className="flex justify-between items-center">
                 <div>
@@ -166,7 +166,7 @@ export function EmpleadosView() {
               <CardContent className="p-8 space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                   <div className="space-y-6">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Personales</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-blue-800 border-b pb-2">Datos Personales</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2"><Label>Nombre *</Label><Input required value={employeeFormData.nombre} onChange={e => setEmployeeFormData({ ...employeeFormData, nombre: e.target.value })} /></div>
                       <div className="space-y-2"><Label>Apellido (Opcional)</Label><Input value={employeeFormData.apellido} onChange={e => setEmployeeFormData({ ...employeeFormData, apellido: e.target.value })} /></div>
@@ -179,7 +179,7 @@ export function EmpleadosView() {
                   </div>
 
                   <div className="space-y-6">
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Esquema de Pago</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-blue-800 border-b pb-2">Esquema de Pago</h3>
                     <div className="space-y-4">
                       <div className="space-y-2">
                         <Label>Tipo de Pago *</Label>
@@ -218,7 +218,7 @@ export function EmpleadosView() {
               </CardContent>
               <CardFooter className="bg-muted/30 p-8 flex justify-end gap-3 border-t mt-4">
                 <Button type="button" variant="outline" onClick={() => setShowEmployeeForm(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-[#D4AF37] text-black px-8 font-bold hover:bg-[#B8941F]">Guardar Barbero</Button>
+                <Button type="submit" className="bg-blue-600 text-black px-8 font-bold hover:bg-[#B8941F]">Guardar Barbero</Button>
               </CardFooter>
             </form>
           </Card>
@@ -229,7 +229,7 @@ export function EmpleadosView() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar barbero..." value={employeeSearch} onChange={e => setEmployeeSearch(e.target.value)} className="pl-10" />
               </div>
-              <Button onClick={handleEmployeeCreate} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black shadow-md hover:shadow-[#D4AF37]/20 transition-all">
+              <Button onClick={handleEmployeeCreate} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-blue-200/50 transition-all">
                 <UserPlus className="w-4 h-4 mr-2" /> Nuevo barbero
               </Button>
             </div>

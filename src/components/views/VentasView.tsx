@@ -504,7 +504,7 @@
 //           <p className="text-muted-foreground">Gestiona las ventas realizadas</p>
 //         </div>
 //         <div className="flex gap-2">
-//           <Button onClick={handleCreate} className="bg-[#D4AF37] hover:bg-[#B8941F]">
+//           <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700">
 //             <Plus className="w-4 h-4 mr-2" />
 //             Nueva Venta
 //           </Button>
@@ -517,15 +517,15 @@
 
 //       {/* Tarjetas de Resumen */}
 //       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//         <Card className="bg-gradient-to-r from-[#D4AF37]/10 to-[#B8941F]/10 border-[#D4AF37]">
+//         <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
 //           <CardContent className="p-6">
 //             <div className="flex items-center gap-4">
-//               <div className="p-3 bg-[#D4AF37] rounded-lg">
+//               <div className="p-3 bg-blue-600 rounded-lg">
 //                 <Receipt className="w-6 h-6 text-white" />
 //               </div>
 //               <div>
 //                 <p className="text-sm text-muted-foreground">Ingresos Totales</p>
-//                 <p className="text-2xl font-bold text-[#D4AF37]">${totalVentas.toFixed(2)}</p>
+//                 <p className="text-2xl font-bold text-blue-800">${totalVentas.toFixed(2)}</p>
 //               </div>
 //             </div>
 //           </CardContent>
@@ -694,7 +694,7 @@
 //                 <span className="text-sm text-muted-foreground px-2">
 //                   Página
 //                 </span>
-//                 <span className="text-sm font-medium px-2 py-1 bg-[#D4AF37] text-white rounded">
+//                 <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">
 //                   {currentPage}
 //                 </span>
 //                 <span className="text-sm text-muted-foreground px-2">
@@ -868,7 +868,7 @@
 //                 <div className="space-y-4 p-5 bg-muted/40 rounded-xl border-2 border-dashed border-muted">
 //                   <div className="flex items-center justify-between">
 //                     <h3 className="font-bold text-lg flex items-center gap-2">
-//                       <Plus className="w-5 h-5 text-[#D4AF37]" />
+//                       <Plus className="w-5 h-5 text-blue-800" />
 //                       Agregar Ítems
 //                     </h3>
 //                   </div>
@@ -992,7 +992,7 @@
 //                                 />
 //                               </TableCell>
 //                               <TableCell className="text-right">
-//                                 <p className="font-black text-[#D4AF37]">${item.subtotal.toFixed(2)}</p>
+//                                 <p className="font-black text-blue-800">${item.subtotal.toFixed(2)}</p>
 //                               </TableCell>
 //                               <TableCell className="text-center">
 //                                 <Button
@@ -1016,20 +1016,20 @@
 //               <div className="w-full space-y-4 pt-2">
 //                 <div className="flex items-center justify-between px-1">
 //                   <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-//                     <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
+//                     <TrendingUp className="w-4 h-4 text-blue-800" />
 //                     Resumen de Pago
 //                   </h3>
 //                 </div>
 
-//                 <Card className="overflow-hidden border-2 border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-background to-[#B8941F]/10 shadow-lg shadow-[#D4AF37]/5">
+//                 <Card className="overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-background to-blue-100 shadow-lg shadow-blue-200/50">
 //                   <CardContent className="p-0">
 //                     <div className="p-6 flex items-center justify-between">
 //                       <div className="flex items-center gap-4">
-//                         <div className="p-4 bg-[#D4AF37] rounded-2xl shadow-inner shadow-black/10">
+//                         <div className="p-4 bg-blue-600 rounded-2xl shadow-inner shadow-black/10">
 //                           <Receipt className="w-8 h-8 text-white" />
 //                         </div>
 //                         <div>
-//                           <p className="text-xs font-black uppercase text-[#B8941F] tracking-widest mb-1 leading-none">Total Cobrar</p>
+//                           <p className="text-xs font-black uppercase text-blue-700 tracking-widest mb-1 leading-none">Total Cobrar</p>
 //                           <p className="text-4xl md:text-5xl font-black text-foreground tracking-tighter tabular-nums drop-shadow-sm">
 //                             ${calcularTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
 //                           </p>
@@ -1038,7 +1038,7 @@
 //                     </div>
 
 //                     {/* Desglose de Subtotales */}
-//                     <div className="grid grid-cols-2 divide-x border-t border-[#D4AF37]/20 bg-[#D4AF37]/5">
+//                     <div className="grid grid-cols-2 divide-x border-t border-blue-200 bg-blue-600/5">
 //                       <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5">
 //                         <span className="text-[10px] uppercase font-bold text-blue-600/70 tracking-tighter">Productos</span>
 //                         <span className="text-sm font-black text-blue-700">
@@ -1062,7 +1062,7 @@
 //                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-12 font-bold hover:bg-red-50 hover:text-red-600 border-2">
 //                   Cancelar
 //                 </Button>
-//                 <Button type="submit" className="flex-[2] h-12 bg-[#D4AF37] hover:bg-[#B8941F] text-lg font-black shadow-lg shadow-[#D4AF37]/20">
+//                 <Button type="submit" className="flex-[2] h-12 bg-blue-600 hover:bg-blue-700 text-lg font-black shadow-lg shadow-blue-200/50">
 //                   {editingVenta ? 'Guardar Cambios' : 'Confirmar Venta'}
 //                 </Button>
 //               </div>
@@ -1197,7 +1197,7 @@
 //               )}
 
 //               {/* Total con desglose */}
-//               <div className="rounded-xl border-2 border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/5 to-[#B8941F]/5 overflow-hidden">
+//               <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 overflow-hidden">
 //                 <div className="p-4 space-y-2">
 //                   {viewingVenta.detalles?.some((d: any) => d.tipo === 'servicio') && (
 //                     <div className="flex justify-between items-center text-sm">
@@ -1219,9 +1219,9 @@
 //                       </span>
 //                     </div>
 //                   )}
-//                   <div className="flex justify-between items-center pt-2 border-t-2 border-[#D4AF37]/40">
+//                   <div className="flex justify-between items-center pt-2 border-t-2 border-blue-200">
 //                     <span className="font-black text-lg uppercase tracking-tight">Total</span>
-//                     <span className="font-black text-2xl text-[#D4AF37]">${viewingVenta.total.toFixed(2)}</span>
+//                     <span className="font-black text-2xl text-blue-800">${viewingVenta.total.toFixed(2)}</span>
 //                   </div>
 //                 </div>
 //               </div>
@@ -1606,23 +1606,23 @@ export function VentasView({ onNavigate }: VentasViewProps) {
       {/* HEADER */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 font-bold text-2xl"><Receipt className="w-6 h-6 text-[#D4AF37]" /> Ventas</h1>
+          <h1 className="flex items-center gap-2 font-bold text-2xl"><Receipt className="w-6 h-6 text-blue-800" /> Ventas</h1>
           <p className="text-muted-foreground">Gestiona las ventas realizadas</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleCreate} className="bg-[#D4AF37] hover:bg-[#B8941F]"><Plus className="w-4 h-4 mr-2" /> Nueva Venta</Button>
+          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-2" /> Nueva Venta</Button>
           <Button onClick={handleExport} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Exportar</Button>
         </div>
       </div>
 
       {/* TARJETAS RESUMEN */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card className="bg-gradient-to-r from-[#D4AF37]/10 to-[#B8941F]/10 border-[#D4AF37]">
+        <Card className="bg-gradient-to-r from-blue-50 to-blue-100 border-blue-200">
           <CardContent className="p-6 flex items-center gap-4">
-            <div className="p-3 bg-[#D4AF37] rounded-lg"><Receipt className="w-6 h-6 text-white" /></div>
+            <div className="p-3 bg-blue-600 rounded-lg"><Receipt className="w-6 h-6 text-white" /></div>
             <div>
               <p className="text-sm text-muted-foreground">Ingresos Totales (Real)</p>
-              <p className="text-2xl font-bold text-[#D4AF37]">${totalIngresos.toFixed(2)}</p>
+              <p className="text-2xl font-bold text-blue-800">${totalIngresos.toFixed(2)}</p>
             </div>
           </CardContent>
         </Card>
@@ -1673,7 +1673,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                       <TableCell>{venta.vendedor_nombre || 'Sistema'}</TableCell>
                       <TableCell>{new Date(venta.fecha).toLocaleDateString('es-ES')}</TableCell>
                       <TableCell><Badge variant="outline" className="font-bold bg-green-50 text-green-700">{venta.metodo_pago}</Badge></TableCell>
-                      <TableCell className="font-bold text-[#D4AF37]">${venta.total?.toFixed(2)}</TableCell>
+                      <TableCell className="font-bold text-blue-800">${venta.total?.toFixed(2)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleView(venta)}><Eye className="w-4 h-4" /></Button>
@@ -1700,7 +1700,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="h-8 w-8 p-0"><ChevronsLeft className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8 w-8 p-0"><ChevronLeft className="w-4 h-4" /></Button>
-              <span className="text-sm font-medium px-2 py-1 bg-[#D4AF37] text-white rounded">{currentPage}</span>
+              <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">{currentPage}</span>
               <span className="text-sm text-muted-foreground px-2">de {totalPages || 1}</span>
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0"><ChevronRight className="w-4 h-4" /></Button>
               <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0"><ChevronsRight className="w-4 h-4" /></Button>
@@ -1770,7 +1770,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
 
               {/* Selector de Ítems */}
               <div className="space-y-4 p-5 bg-muted/40 rounded-xl border-2 border-dashed border-muted">
-                <h3 className="font-bold text-lg flex items-center gap-2"><Plus className="w-5 h-5 text-[#D4AF37]" /> Agregar Ítems</h3>
+                <h3 className="font-bold text-lg flex items-center gap-2"><Plus className="w-5 h-5 text-blue-800" /> Agregar Ítems</h3>
                 <Tabs value={activeTab} onValueChange={(v: any) => { setActiveTab(v); setItemSeleccionado(''); }} className="w-full">
                   <TabsList className="grid w-full grid-cols-2 mb-4 bg-background border">
                     <TabsTrigger value="productos" className="data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700"><ShoppingCart className="w-4 h-4 mr-2" /> Productos</TabsTrigger>
@@ -1826,7 +1826,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                             </TableCell>
                             <TableCell className="text-right text-muted-foreground">${item.precio_unitario.toFixed(2)}</TableCell>
                             <TableCell><Input type="number" min="1" value={item.cantidad} onChange={e => handleCantidadChange(item.id_item, item.tipo, e.target.value)} className="h-8 w-16 text-center focus:ring-1 mx-auto" /></TableCell>
-                            <TableCell className="text-right"><p className="font-black text-[#D4AF37]">${item.subtotal.toFixed(2)}</p></TableCell>
+                            <TableCell className="text-right"><p className="font-black text-blue-800">${item.subtotal.toFixed(2)}</p></TableCell>
                             <TableCell className="text-center"><Button type="button" variant="ghost" size="icon" onClick={() => handleEliminarItem(item.id_item, item.tipo)} className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 className="w-4 h-4" /></Button></TableCell>
                           </TableRow>
                         ))}
@@ -1838,21 +1838,21 @@ export function VentasView({ onNavigate }: VentasViewProps) {
 
               {/* Total Summary */}
               <div className="w-full space-y-4 pt-2">
-                <div className="flex items-center justify-between px-1"><h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><TrendingUp className="w-4 h-4 text-[#D4AF37]" /> Resumen de Pago</h3></div>
-                <Card className="overflow-hidden border-2 border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/10 via-background to-[#B8941F]/10 shadow-lg shadow-[#D4AF37]/5">
+                <div className="flex items-center justify-between px-1"><h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2"><TrendingUp className="w-4 h-4 text-blue-800" /> Resumen de Pago</h3></div>
+                <Card className="overflow-hidden border-2 border-blue-200 bg-gradient-to-br from-blue-50 via-background to-blue-100 shadow-lg shadow-blue-200/50">
                   <CardContent className="p-0">
                     <div className="p-6 flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="p-4 bg-[#D4AF37] rounded-2xl shadow-inner shadow-black/10"><Receipt className="w-8 h-8 text-white" /></div>
+                        <div className="p-4 bg-blue-600 rounded-2xl shadow-inner shadow-black/10"><Receipt className="w-8 h-8 text-white" /></div>
                         <div>
-                          <p className="text-xs font-black uppercase text-[#B8941F] tracking-widest mb-1 leading-none">Total Cobrar</p>
+                          <p className="text-xs font-black uppercase text-blue-700 tracking-widest mb-1 leading-none">Total Cobrar</p>
                           <p className="text-4xl md:text-5xl font-black text-foreground tracking-tighter tabular-nums drop-shadow-sm">
                             ${calcularTotal().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </p>
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 divide-x border-t border-[#D4AF37]/20 bg-[#D4AF37]/5">
+                    <div className="grid grid-cols-2 divide-x border-t border-blue-200 bg-blue-600/5">
                       <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5"><span className="text-[10px] uppercase font-bold text-blue-600/70 tracking-tighter">Productos</span><span className="text-sm font-black text-blue-700">${productosVenta.filter(p => p.tipo === 'producto').reduce((sum, p) => sum + p.subtotal, 0).toFixed(2)}</span></div>
                       <div className="px-6 py-3 flex flex-col items-center justify-center gap-0.5"><span className="text-[10px] uppercase font-bold text-orange-600/70 tracking-tighter">Servicios</span><span className="text-sm font-black text-orange-700">${productosVenta.filter(p => p.tipo === 'servicio').reduce((sum, p) => sum + p.subtotal, 0).toFixed(2)}</span></div>
                     </div>
@@ -1864,7 +1864,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
             <SheetFooter className="p-4 border-t bg-background flex-none">
               <div className="flex gap-3 w-full">
                 <Button type="button" variant="outline" onClick={() => setDialogOpen(false)} className="flex-1 h-12 font-bold hover:bg-red-50 hover:text-red-600 border-2">Cancelar</Button>
-                <Button type="submit" className="flex-[2] h-12 bg-[#D4AF37] hover:bg-[#B8941F] text-lg font-black shadow-lg shadow-[#D4AF37]/20">Confirmar Venta</Button>
+                <Button type="submit" className="flex-[2] h-12 bg-blue-600 hover:bg-blue-700 text-lg font-black shadow-lg shadow-blue-200/50">Confirmar Venta</Button>
               </div>
             </SheetFooter>
           </form>
@@ -1941,7 +1941,7 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                   )}
 
                   {/* RESUMEN TOTAL */}
-                  <div className="rounded-xl border-2 border-[#D4AF37]/30 bg-gradient-to-br from-[#D4AF37]/5 to-[#B8941F]/5 overflow-hidden">
+                  <div className="rounded-xl border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 overflow-hidden">
                     <div className="p-4 space-y-2">
                       {detallesVenta.some((d: any) => d.tipo === 'Servicio') && (
                         <div className="flex justify-between items-center text-sm">
@@ -1955,9 +1955,9 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                           <span className="font-bold text-blue-700">${detallesVenta.filter((d: any) => d.tipo === 'Producto').reduce((s: number, d: any) => s + d.subtotal_item, 0).toFixed(2)}</span>
                         </div>
                       )}
-                      <div className="flex justify-between items-center pt-2 border-t-2 border-[#D4AF37]/40">
+                      <div className="flex justify-between items-center pt-2 border-t-2 border-blue-200">
                         <span className="font-black text-lg uppercase tracking-tight">Total</span>
-                        <span className="font-black text-2xl text-[#D4AF37]">${viewingVenta.total.toFixed(2)}</span>
+                        <span className="font-black text-2xl text-blue-800">${viewingVenta.total.toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

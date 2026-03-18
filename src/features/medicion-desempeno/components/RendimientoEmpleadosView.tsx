@@ -173,8 +173,8 @@ export function RendimientoEmpleadosView() {
                       <Radar
                         name={selectedBarbero.name}
                         dataKey="A"
-                        stroke="#D4AF37"
-                        fill="#D4AF37"
+                        stroke="#2563eb"
+                        fill="#2563eb"
                         fillOpacity={0.6}
                       />
                       <Tooltip />
@@ -207,7 +207,7 @@ export function RendimientoEmpleadosView() {
                         contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                       />
                       <Legend />
-                      <Bar name="Individual" dataKey="individual" fill="#D4AF37" radius={[4, 4, 0, 0]} />
+                      <Bar name="Individual" dataKey="individual" fill="#2563eb" radius={[4, 4, 0, 0]} />
                       <Bar name="Promedio Local" dataKey="average" fill="#E5E7EB" radius={[4, 4, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>

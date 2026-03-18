@@ -289,8 +289,8 @@ export function CitasView() {
         {/* ENCABEZADO */}
         <div className="flex items-center justify-between pb-6 border-b mb-8">
           <div>
-            <h1 className="flex items-center gap-2 text-2xl font-bold">
-              <Calendar className="w-6 h-6 text-[#D4AF37]" /> Agendamiento
+            <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+              <Calendar className="w-6 h-6" /> Agendamiento
             </h1>
             <p className="text-muted-foreground">Gestiona citas y el equipo de barberos</p>
           </div>
@@ -305,7 +305,7 @@ export function CitasView() {
           <div className="space-y-12">
             {!showForm && (
               <div className="flex justify-end mb-4">
-                <Button onClick={() => handleCreate()} className="bg-[#D4AF37] hover:bg-[#B8941F] text-black shadow-md transition-all">
+                <Button onClick={() => handleCreate()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all">
                   <Plus className="w-4 h-4 mr-2" /> Nueva Cita
                 </Button>
               </div>
@@ -370,9 +370,9 @@ export function CitasView() {
                     </Card>
 
                     {/* AGENDA DEL DÍA (Derecha) */}
-                    <Card className="lg:col-span-1 h-fit sticky top-4 shadow-sm border-[#D4AF37]/10">
-                      <CardHeader className="border-b bg-muted/20 pb-4">
-                        <CardTitle className="text-lg flex items-center gap-2"><Clock className="w-5 h-5 text-[#D4AF37]" /> Agenda del Día</CardTitle>
+                    <Card className="lg:col-span-1 h-fit sticky top-4 shadow-sm border-blue-200 bg-gradient-to-b from-blue-50/50 to-transparent">
+                      <CardHeader className="border-b bg-blue-50/50 pb-4">
+                        <CardTitle className="text-lg flex items-center gap-2 text-blue-800"><Clock className="w-5 h-5" /> Agenda del Día</CardTitle>
                         <CardDescription className="font-medium text-xs">
                           {selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' }) : 'Selecciona una fecha'}
                         </CardDescription>
@@ -399,7 +399,7 @@ export function CitasView() {
                         })()}
                       </CardContent>
                       <CardFooter className="p-4 bg-muted/30 border-t">
-                        <Button className="w-full bg-[#D4AF37] hover:bg-[#B8941F] text-black font-bold" onClick={() => handleCreate(selectedDate || todayStr)}>
+                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={() => handleCreate(selectedDate || todayStr)}>
                           <Plus className="w-4 h-4 mr-2" /> Agendar ahora
                         </Button>
                       </CardFooter>
@@ -409,7 +409,7 @@ export function CitasView() {
               </>
             ) : (
               /* FORMULARIO DE CITA (DISEÑO DORADO) */
-              <Card className="border-2 border-[#D4AF37]/20 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
+              <Card className="border-2 border-blue-200 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
                 <CardHeader className="bg-muted/20 border-b pb-6">
                   <div className="flex justify-between items-center">
                     <div>
@@ -424,7 +424,7 @@ export function CitasView() {
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                       {/* LADO IZQUIERDO */}
                       <div className="space-y-6">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Datos Principales</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-blue-800 border-b pb-2">Datos Principales</h3>
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Cliente Responsable *</Label>
@@ -464,7 +464,7 @@ export function CitasView() {
 
                       {/* LADO DERECHO */}
                       <div className="space-y-6">
-                        <h3 className="text-xs font-bold uppercase tracking-widest text-[#D4AF37] border-b pb-2">Servicios y Productos</h3>
+                        <h3 className="text-xs font-bold uppercase tracking-widest text-blue-800 border-b pb-2">Servicios y Productos</h3>
                         <div className="space-y-4">
                           <div className="space-y-2">
                             <Label>Servicio a Realizar *</Label>
@@ -486,8 +486,8 @@ export function CitasView() {
                           </div>
                         </div>
 
-                        <div className="p-5 bg-[#D4AF37]/10 rounded-xl border border-[#D4AF37]/30 flex justify-between items-center">
-                          <div className="flex flex-col"><span className="text-[10px] font-black text-[#D4AF37] uppercase">Total Servicio (Neto)</span><span className="text-3xl font-black text-[#D4AF37]">${precioEstimado.toFixed(2)}</span></div>
+                        <div className="p-5 bg-blue-50 rounded-xl border border-blue-200 flex justify-between items-center">
+                          <div className="flex flex-col"><span className="text-[10px] font-black text-blue-800 uppercase">Total Servicio (Neto)</span><span className="text-3xl font-black text-blue-700">${precioEstimado.toFixed(2)}</span></div>
                           <div className="text-right text-xs font-bold text-muted-foreground"><Clock className="inline w-3 h-3 mr-1" /> {formatDuration(duracionEstimada)}</div>
                         </div>
                       </div>
@@ -495,7 +495,7 @@ export function CitasView() {
                   </CardContent>
                   <CardFooter className="bg-muted/30 p-8 flex justify-end gap-3 border-t">
                     <Button type="button" variant="outline" onClick={() => setShowForm(false)} className="h-12 px-8">Cancelar</Button>
-                    <Button type="submit" className="bg-[#D4AF37] text-black h-12 px-12 font-black text-lg">Guardar registro</Button>
+                    <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white h-12 px-12 font-black text-lg">Guardar registro</Button>
                   </CardFooter>
                 </form>
               </Card>
@@ -522,7 +522,7 @@ export function CitasView() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-6">
                           <div className="flex gap-4 items-start translate-y-1">
-                            <div className="p-3 bg-muted rounded-2xl"><UserPlus className="w-5 h-5 text-[#D4AF37]" /></div>
+                            <div className="p-3 bg-muted rounded-2xl"><UserPlus className="w-5 h-5 text-blue-600" /></div>
                             <div className="space-y-1 text-left">
                               <Label className="text-[10px] uppercase font-black text-muted-foreground tracking-tighter">Cliente Solicitante</Label>
                               <p className="text-lg font-bold leading-tight">{viewingCita.cliente_nombre || getClienteName(viewingCita.id_cliente)}</p>
@@ -542,17 +542,17 @@ export function CitasView() {
 
                         <div className="space-y-6 bg-muted/30 p-6 rounded-3xl border border-muted-foreground/10">
                           <div className="flex gap-4 items-center">
-                            <Calendar className="w-5 h-5 text-[#D4AF37]" />
+                            <Calendar className="w-5 h-5 text-blue-600" />
                             <div className="space-y-0.5 text-left">
                               <Label className="text-[10px] uppercase font-black text-muted-foreground">Fecha Agendada</Label>
                               <p className="font-black text-lg">{viewingCita.fecha?.split('T')[0]}</p>
                             </div>
                           </div>
                           <div className="flex gap-4 items-center">
-                            <Clock className="w-5 h-5 text-[#D4AF37]" />
+                            <Clock className="w-5 h-5 text-blue-600" />
                             <div className="space-y-0.5 text-left">
                               <Label className="text-[10px] uppercase font-black text-muted-foreground">Horario Disponible</Label>
-                              <p className="font-black text-2xl text-[#AF8D1E]">
+                              <p className="font-black text-2xl text-blue-700">
                                 {viewingCita.hora_inicio_corta} <span className="text-sm font-medium text-muted-foreground mx-2">a</span> {viewingCita.hora_fin_corta}
                               </p>
                             </div>
@@ -629,11 +629,11 @@ export function CitasView() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
               {barberos.filter(e => e.nombre.toLowerCase().includes(employeeSearch.toLowerCase())).map(emp => (
-                <Card key={emp.id_barbero || emp.id_usuario} className="hover:shadow-lg transition-all border-l-4 border-l-[#D4AF37]">
+                <Card key={emp.id_barbero || emp.id_usuario} className="hover:shadow-lg transition-all border-l-4 border-l-blue-600">
                   <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-full bg-[#D4AF37] text-black flex items-center justify-center font-bold text-lg">
+                        <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-lg">
                           {emp.nombre[0]}
                         </div>
                         <div>

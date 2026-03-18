@@ -87,7 +87,7 @@ export function ConfiguracionLandingView() {
           <Button
             variant="outline"
             onClick={() => setPreviewMode(true)}
-            className="border-[#D4AF37] text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black"
+            className="border-blue-200 text-blue-800 hover:bg-blue-600 hover:text-black"
           >
             <Eye className="w-4 h-4 mr-2" />
             Vista Previa Completa
@@ -102,7 +102,7 @@ export function ConfiguracionLandingView() {
           </Button>
           <Button
             onClick={handleSave}
-            className="bg-[#D4AF37] hover:bg-[#B8941F] text-black"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             <Save className="w-4 h-4 mr-2" />
             Guardar Cambios
@@ -115,7 +115,7 @@ export function ConfiguracionLandingView() {
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Image className="w-5 h-5 text-[#D4AF37]" />
+              <Image className="w-5 h-5 text-blue-800" />
               Logo y Marca
             </CardTitle>
           </CardHeader>
@@ -161,7 +161,7 @@ export function ConfiguracionLandingView() {
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Image className="w-5 h-5 text-[#D4AF37]" />
+              <Image className="w-5 h-5 text-blue-800" />
               Imagen de Fondo - Hero
             </CardTitle>
           </CardHeader>
@@ -202,7 +202,7 @@ export function ConfiguracionLandingView() {
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Image className="w-5 h-5 text-[#D4AF37]" />
+              <Image className="w-5 h-5 text-blue-800" />
               Imagen de Fondo - Servicios
             </CardTitle>
           </CardHeader>
@@ -240,7 +240,7 @@ export function ConfiguracionLandingView() {
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white flex items-center gap-2">
-              <Image className="w-5 h-5 text-[#D4AF37]" />
+              <Image className="w-5 h-5 text-blue-800" />
               Imagen de Fondo - Nosotros
             </CardTitle>
           </CardHeader>
@@ -396,7 +396,7 @@ export function ConfiguracionLandingView() {
         </Button>
         <Button
           onClick={handleSave}
-          className="bg-[#D4AF37] hover:bg-[#B8941F] text-black"
+          className="bg-blue-600 hover:bg-blue-700 text-white"
         >
           <Save className="w-4 h-4 mr-2" />
           Guardar Todos los Cambios

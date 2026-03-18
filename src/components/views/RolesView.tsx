@@ -150,15 +150,15 @@ export function RolesView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2">
-            <Shield className="w-6 h-6" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+            <Shield className="w-6 h-6 text-blue-600" />
             Roles
           </h1>
           <p className="text-muted-foreground">
             Gestiona los roles y permisos del sistema
           </p>
         </div>
-        <Button onClick={handleCreate}>
+        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
           <Plus className="w-4 h-4 mr-2" />
           Nuevo Rol
         </Button>
@@ -417,14 +417,14 @@ export function RolesView() {
                 </p>
               </div>
             </div>
-            <div className="text-sm text-muted-foreground mb-4 p-3 bg-amber-50 rounded-md border border-amber-200">
+            <div className="text-sm text-muted-foreground mb-4 p-3 bg-blue-50 rounded-md border border-blue-200">
               <p><span className="text-red-500">*</span> Campos obligatorios</p>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
                 Cancelar
               </Button>
-              <Button type="submit">
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
                 {editingRole ? 'Actualizar' : 'Crear'}
               </Button>
             </DialogFooter>

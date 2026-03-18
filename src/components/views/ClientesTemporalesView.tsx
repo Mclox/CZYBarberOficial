@@ -204,8 +204,8 @@ export function ClientesTemporalesView() {
     <div className="p-4 md:p-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <Users className="w-6 h-6 text-amber-600" />
+          <h1 className="flex items-center gap-2 text-2xl font-bold text-blue-800">
+            <Users className="w-6 h-6 text-blue-600" />
             Pre-Registros (Invitados)
           </h1>
           <p className="text-muted-foreground">Gestiona clientes temporales agendados por la web o mostrador</p>
