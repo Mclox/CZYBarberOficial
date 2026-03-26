@@ -11,6 +11,7 @@ interface AuthContextType {
   register: (userData: Partial<Usuario>) => Promise<boolean>;
   logout: () => void;
   resetPassword: (email: string) => Promise<boolean>;
+  confirmResetPassword: (email: string, token: string, newPassword: string) => Promise<boolean>;
   isAuthenticated: boolean;
 }
 
@@ -105,9 +106,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const confirmResetPassword = async (email: string, token: string, newPassword: string): Promise<boolean> => {
+    try {
+      const response = await fetchApi('/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ email, token, newPassword })
+      });
+
+      if (response.success) {
+        toast.success(response.message);
+        return true;
+      }
+      return false;
+    } catch (error: any) {
+      toast.error(error.message || 'El enlace es inválido o ha caducado.');
+      return false;
+    }
+  };
+
   return (
     <AuthContext.Provider
-      value={{ user, roleName, isLoading, login, register, logout, resetPassword, isAuthenticated: !!user }}
+      value={{ user, roleName, isLoading, login, register, logout, resetPassword, confirmResetPassword, isAuthenticated: !!user }}
     >
       {children}
     </AuthContext.Provider>

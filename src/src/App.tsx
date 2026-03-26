@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth, LoginForm, RegisterForm, RecoverPasswordForm } from '../features/auth';
 import { Toaster } from '../components/ui/sonner';
 import { MainLayout } from '../core';
@@ -17,7 +17,6 @@ import { CitasView } from '../features/citas';
 import { EmpleadosView } from '../features/empleados';
 import { ClientesView } from '../features/clientes';
 import { ClientesTemporalesView } from '../features/clientes-temporales';
-import { PagosView } from '../features/pagos';
 import { VentasView } from '../features/ventas';
 import { LandingPage } from '../components/LandingPage';
 import { MiPerfilView } from '../features/mi-perfil';
@@ -26,8 +25,23 @@ import { ReportesVentasView, RendimientoEmpleadosView } from '../features/medici
 
 type AuthView = 'login' | 'register' | 'recover' | 'landing';
 
+// function AuthPages() {
+//   const [authView, setAuthView] = useState<AuthView>('landing');
+
+//   if (authView === 'landing') {
+//     return <LandingPage onGetStarted={() => setAuthView('login')} />;
+//   }
+
 function AuthPages() {
   const [authView, setAuthView] = useState<AuthView>('landing');
+
+  // Detectar si el usuario viene de un link de recuperación de correo
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('token') && params.get('email')) {
+      setAuthView('recover');
+    }
+  }, []);
 
   if (authView === 'landing') {
     return <LandingPage onGetStarted={() => setAuthView('login')} />;
@@ -86,7 +100,7 @@ function AppContent() {
     const isCliente = user?.id_rol === 3;
     
     // Función para manejar la reserva de cita desde cualquier vista
-    const handleReservarCita = (empleadoId?: number, servicioId?: number) => {
+    const handleReservarCita = (_empleadoId?: number, _servicioId?: number) => {
       setCurrentView('citas');
     };
     
@@ -119,8 +133,6 @@ function AppContent() {
         return <ClientesView />;
       case 'clientes-temporales':
         return <ClientesTemporalesView />;
-      case 'pagos':
-        return <PagosView />;
       case 'ventas':
         return <VentasView />;
       case 'mi-perfil':

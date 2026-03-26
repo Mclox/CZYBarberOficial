@@ -9,7 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Badge } from '../ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '../ui/card';
-import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Clock, Calendar, X, Users, UserX, DollarSign, Settings, Briefcase, AlertCircle, Package } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, CheckCircle, XCircle, Clock, Calendar, X, Users, AlertCircle, Package } from 'lucide-react';
 import { cn } from '../ui/utils';
 import { useAuth } from '../../features/auth';
 import { toast } from 'sonner';
@@ -60,11 +60,9 @@ export function CitasView() {
   // --- Estados UI ---
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [editingCita, setEditingCita] = useState<any | null>(null);
   const [viewingCita, setViewingCita] = useState<any | null>(null);
   const [citaToDelete, setCitaToDelete] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarEmpleadoFilter, setCalendarEmpleadoFilter] = useState<string>('all');
@@ -190,7 +188,7 @@ export function CitasView() {
     });
 
     return { displayCitas: list, citasByDate: byDate, stats: statsObj };
-  }, [citas, searchTerm, calendarEmpleadoFilter, user, clientes]);
+  }, [citas, calendarEmpleadoFilter, user, clientes]);
 
   const getOccupiedTimes = (fecha?: string, empId?: number, excludingId?: number) => {
     if (!fecha || !empId) return [];
@@ -388,7 +386,7 @@ export function CitasView() {
                         </div>
                       </CardHeader>
                       <CardContent className="pt-6">
-                        <CitasCalendar citasByDate={citasByDate} selectedDate={selectedDate} onSelectDay={(d) => { setSelectedDate(d); if (window.innerWidth < 1024) setDayDialogOpen(true); }} onEventClick={(c) => { setViewingCita(c); setDetailsDialogOpen(true); }} />
+                        <CitasCalendar citasByDate={citasByDate} selectedDate={selectedDate} onSelectDay={(d) => { setSelectedDate(d); }} onEventClick={(c) => { setViewingCita(c); setDetailsDialogOpen(true); }} />
                       </CardContent>
                     </Card>
 

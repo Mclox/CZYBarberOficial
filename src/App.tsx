@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AuthProvider, useAuth, LoginForm, RegisterForm, RecoverPasswordForm } from './features/auth';
 import { Toaster } from './components/ui/sonner';
 import { MainLayout } from './core';
@@ -28,6 +28,14 @@ type AuthView = 'login' | 'register' | 'recover' | 'landing';
 
 function AuthPages() {
   const [authView, setAuthView] = useState<AuthView>('landing');
+
+  // Detectar si venimos de un enlace de recuperación de contraseña
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('token') && params.get('email')) {
+      setAuthView('recover');
+    }
+  }, []);
 
   if (authView === 'landing') {
     return <LandingPage onGetStarted={() => setAuthView('login')} />;
