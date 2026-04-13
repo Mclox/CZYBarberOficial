@@ -1783,11 +1783,45 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                         <SelectTrigger className="h-11"><SelectValue placeholder={`Selecciona un ${activeTab.slice(0, -1)}...`} /></SelectTrigger>
                         <SelectContent className="max-h-[300px]">
                           {activeTab === 'productos'
-                            ? productos.filter(p => p.estado === 'Activo').map(p => <SelectItem key={p.id_producto} value={p.id_producto.toString()}>{p.nombre} — ${p.precio_neto?.toFixed(2)} (Stock: {p.stock})</SelectItem>)
-                            : servicios.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre} — ${s.precio_neto?.toFixed(2)}</SelectItem>)
+                            ? productos.filter(p => p.estado === 'Activo').map(p => <SelectItem key={p.id_producto} value={p.id_producto.toString()}>{p.nombre}</SelectItem>)
+                            : servicios.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre}</SelectItem>)
                           }
                         </SelectContent>
                       </Select>
+                      
+                      {/* Detalles adicionales del ítem seleccionado (Precio y Stock) */}
+                      {itemSeleccionado && (
+                        <div className="mt-2 p-3 bg-white rounded-lg border shadow-sm flex flex-col sm:flex-row sm:items-center gap-4 text-sm animate-in fade-in zoom-in-95 duration-200">
+                          {activeTab === 'productos' ? (() => {
+                            const p = productos.find(x => x.id_producto.toString() === itemSeleccionado);
+                            if (!p) return null;
+                            return (
+                              <>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Precio Unitario</span>
+                                  <span className="font-black text-blue-700 text-lg">${p.precio_neto?.toFixed(2) || '0.00'}</span>
+                                </div>
+                                <div className="hidden sm:block w-px h-8 bg-border"></div>
+                                <div className="flex flex-col">
+                                  <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Stock Disponible</span>
+                                  <Badge variant={p.stock > 5 ? 'secondary' : 'destructive'} className="w-fit font-bold rounded-md">
+                                    {p.stock} unidades
+                                  </Badge>
+                                </div>
+                              </>
+                            );
+                          })() : (() => {
+                            const s = servicios.find(x => x.id_servicio.toString() === itemSeleccionado);
+                            if (!s) return null;
+                            return (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5">Precio del Servicio</span>
+                                <span className="font-black text-orange-700 text-lg">${s.precio_neto?.toFixed(2) || '0.00'}</span>
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label className="text-xs uppercase font-bold text-muted-foreground tracking-wider">Cant.</Label>

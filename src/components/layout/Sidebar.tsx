@@ -36,7 +36,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     { id: 'usuarios', label: 'Usuarios', icon: Users, roles: ['Administrador'] },
     { id: 'productos', label: 'Productos', icon: Package, roles: ['Administrador', 'Almacén', 'Vendedor'] },
     { id: 'proveedores', label: 'Proveedores', icon: Truck, roles: ['Administrador', 'Compras'] },
-    { id: 'compras', label: 'Compras', icon: ShoppingCart, roles: ['Administrador', 'Compras'] },
+    { id: 'compras', label: 'Productos', icon: ShoppingCart, roles: ['Administrador', 'Compras'] },
     { id: 'devoluciones', label: 'Devoluciones', icon: RotateCcw, roles: ['Administrador', 'Vendedor'] },
     { id: 'servicios', label: 'Servicios', icon: Wrench, roles: ['Administrador', 'Vendedor'] },
     { id: 'citas', label: 'Citas', icon: Calendar, roles: ['Administrador', 'Vendedor'] },

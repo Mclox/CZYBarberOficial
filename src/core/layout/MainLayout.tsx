@@ -50,7 +50,7 @@ const menuItems: MenuItem[] = [
   { id: 'usuarios', label: 'Usuarios', icon: Users, adminOnly: true },
   { id: 'productos', label: 'Productos', icon: Package, barberoAccess: true },
   { id: 'proveedores', label: 'Proveedores', icon: Truck, adminOnly: true },
-  { id: 'compras', label: 'Compras', icon: ShoppingCart, adminOnly: true },
+  { id: 'compras', label: 'Productos', icon: ShoppingCart, adminOnly: true },
   { id: 'devoluciones', label: 'Devoluciones', icon: RotateCcw, barberoAccess: true },
   { id: 'devoluciones-proveedor', label: 'Dev. Proveedor', icon: PackageOpen, adminOnly: true },
   { id: 'consignaciones', label: 'Consignaciones', icon: Building2, adminOnly: true },

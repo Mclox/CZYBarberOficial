@@ -4,6 +4,7 @@ import { Card, CardContent } from './ui/card';
 import { useState, useEffect } from 'react';
 import { PublicBookingForm } from './PublicBookingForm';
 import { ImageWithFallback } from './figma/ImageWithFallback';
+import { CatalogProducts } from './CatalogProducts';
 
 interface LandingPageProps {
   onGetStarted?: () => void;
@@ -128,6 +129,7 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
             </div>
             <nav className="hidden md:flex gap-16 lg:gap-20" style={{ color: '#FFFFFF' }}>
               <a href="#servicios" className="text-[17px] font-bold tracking-wide transition-all duration-300 hover:scale-105 py-2 px-3 rounded-lg" style={{ color: '#FFFFFF' }} onMouseEnter={e => { e.currentTarget.style.color = '#E8EDF2'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }} onMouseLeave={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'transparent' }}>Servicios</a>
+              <a href="#productos" className="text-[17px] font-bold tracking-wide transition-all duration-300 hover:scale-105 py-2 px-3 rounded-lg" style={{ color: '#FFFFFF' }} onMouseEnter={e => { e.currentTarget.style.color = '#E8EDF2'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }} onMouseLeave={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'transparent' }}>Productos</a>
               <a href="#nosotros" className="text-[17px] font-bold tracking-wide transition-all duration-300 hover:scale-105 py-2 px-3 rounded-lg" style={{ color: '#FFFFFF' }} onMouseEnter={e => { e.currentTarget.style.color = '#E8EDF2'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }} onMouseLeave={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'transparent' }}>Nosotros</a>
               <a href="#contacto" className="text-[17px] font-bold tracking-wide transition-all duration-300 hover:scale-105 py-2 px-3 rounded-lg" style={{ color: '#FFFFFF' }} onMouseEnter={e => { e.currentTarget.style.color = '#E8EDF2'; e.currentTarget.style.background = 'rgba(255,255,255,0.1)' }} onMouseLeave={e => { e.currentTarget.style.color = '#FFFFFF'; e.currentTarget.style.background = 'transparent' }}>Contacto</a>
             </nav>
@@ -215,6 +217,9 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
           </div>
         </div>
       </section>
+
+      {/* Product Catalog Section */}
+      <CatalogProducts />
 
       {/* About Section */}
       <section id="nosotros" className="py-20 relative overflow-hidden" style={{ background: '#E8EDF2' }}>

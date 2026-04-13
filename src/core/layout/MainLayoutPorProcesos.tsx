@@ -22,7 +22,6 @@ import {
   Briefcase,
   Calendar,
   UserCircle,
-  CreditCard,
   Receipt,
   LogOut,
   User,
@@ -95,10 +94,10 @@ const processMenuItems: ProcessItem[] = [
     ]
   },
 
-  // PROCESO DE COMPRAS
+  // PROCESO DE PRODUCTOS
   {
     id: 'compras-proceso',
-    label: 'Compras',
+    label: 'Productos',
     icon: ShoppingCart,
     adminOnly: true,
     subItems: [
