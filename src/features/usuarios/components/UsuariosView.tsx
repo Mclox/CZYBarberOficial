@@ -782,6 +782,38 @@ export function UsuariosView() {
     }
   };
 
+  const handleToggleStatus = async (usuario: any) => {
+    const nuevoEstado = usuario.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    
+    // Mostramos un toast de carga
+    const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
+    
+    try {
+      // Preparamos el payload con los campos que el backend acepta
+      const payload = {
+        nombre: usuario.nombre,
+        tipo_documento: usuario.tipo_documento,
+        documento: usuario.documento,
+        email: usuario.email,
+        telefono: usuario.telefono,
+        direccion: usuario.direccion,
+        id_rol: usuario.id_rol,
+        img: usuario.img,
+        estado: nuevoEstado
+      };
+
+      await fetchApi(`/users/${usuario.id_usuario}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+      
+      toast.success(`Usuario ${nuevoEstado === 'Activo' ? 'activado' : 'inactivado'} correctamente`, { id: toastId });
+      fetchUsuarios(); // Recargar la tabla
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cambiar el estado', { id: toastId });
+    }
+  };
+
   const totalPages = Math.ceil(filteredUsuarios.length / itemsPerPage);
   const currentItems = filteredUsuarios.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
@@ -830,6 +862,7 @@ export function UsuariosView() {
                     <TableHead>Email</TableHead>
                     <TableHead>Teléfono</TableHead>
                     <TableHead>Rol</TableHead>
+                    <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -847,13 +880,29 @@ export function UsuariosView() {
                           {usuario.rol_nombre || getRoleName(usuario.id_rol)}
                         </Badge>
                       </TableCell>
+                      <TableCell>
+                        <button
+                          onClick={() => handleToggleStatus(usuario)}
+                          className="focus:outline-none transition-transform active:scale-95"
+                          title={`Cambiar a ${usuario.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                        >
+                          <Badge 
+                            className={`
+                              cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                              ${usuario.estado === 'Activo' 
+                                ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                                : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                            `}
+                          >
+                            <span className={`w-2 h-2 rounded-full mr-2 ${usuario.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                            {usuario.estado || 'Activo'}
+                          </Badge>
+                        </button>
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
                             <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50" onClick={() => handleDelete(usuario.id_usuario)}>
-                            <Trash2 className="w-4 h-4" />
                           </Button>
                           <Button variant="outline" size="sm" onClick={() => handleView(usuario)}>
                             <Eye className="w-4 h-4" />
@@ -978,6 +1027,19 @@ export function UsuariosView() {
                   />
                 </div>
               </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="estado">Estado <span className="text-red-500">*</span></Label>
+                <Select value={formData.estado} onValueChange={(value: string) => setFormData({ ...formData, estado: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Activo">Activo</SelectItem>
+                    <SelectItem value="Inactivo">Inactivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             
             <DialogFooter>
@@ -1029,6 +1091,14 @@ export function UsuariosView() {
               <div className="space-y-2">
                 <Label>Rol</Label>
                 <Input value={viewingUsuario.rol_nombre || getRoleName(viewingUsuario.id_rol)} readOnly className="bg-muted" />
+              </div>
+              <div className="space-y-2">
+                <Label>Estado</Label>
+                <Badge 
+                  className={viewingUsuario.estado === 'Activo' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}
+                >
+                  {viewingUsuario.estado || 'Activo'}
+                </Badge>
               </div>
             </div>
           )}

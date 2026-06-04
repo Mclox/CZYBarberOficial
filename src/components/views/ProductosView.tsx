@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -9,8 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Plus, Pencil, Trash2, Package, Eye, FileDown, MinusCircle, FileSpreadsheet, CheckCircle, XCircle, ShoppingCart, Handshake, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
-import { fetchApi } from '../../lib/api'; 
+import { Plus, Pencil, Trash2, Package, Eye, FileDown, MinusCircle, FileSpreadsheet, CheckCircle, XCircle, ShoppingCart, Handshake, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { fetchApi, API_BASE_URL } from '../../lib/api'; 
 import { toast } from 'sonner';
 import { exportToExcel, downloadMenu } from '../../shared/lib/exportUtils';
 import { useAuth } from '../../features/auth';
@@ -39,6 +39,10 @@ export function ProductosView() {
 
   const [cantidadBaja, setCantidadBaja] = useState(1);
   const [motivoBaja, setMotivoBaja] = useState('Uso interno del negocio');
+
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Estado para saber qué pestaña está activa
   const [activeTab, setActiveTab] = useState<'todos' | 'consignacion' | 'compra_directa'>('todos');
@@ -67,7 +71,7 @@ export function ProductosView() {
           ...p,
           precio: p.precio_neto, 
           categoria: p.categoria_nombre || 'Sin categoría',
-          imagen: p.img,
+          imagen: p.img ? (p.img.startsWith('http') ? p.img : `${API_BASE_URL}${p.img}`) : null,
           // Normalizamos el string por si viene null de la BD antigua
           tipo_adquisicion: p.tipo_adquisicion || 'compra_directa' 
         }));
@@ -122,6 +126,8 @@ export function ProductosView() {
       categoria: '', id_categoria: '1', id_marca: '1', codigo: '',
       imagen: '', estado: 'Activo', tipo_adquisicion: 'compra_directa', iva_porcentaje: '19.00'
     });
+    setImageFile(null);
+    setImagePreview(null);
     setDialogOpen(true);
   };
 
@@ -141,6 +147,8 @@ export function ProductosView() {
       tipo_adquisicion: producto.tipo_adquisicion || 'compra_directa',
       iva_porcentaje: producto.iva_porcentaje?.toString() || '19.00'
     });
+    setImageFile(null);
+    setImagePreview(producto.imagen || null);
     setDialogOpen(true);
   };
 
@@ -160,22 +168,59 @@ export function ProductosView() {
     setDeleteDialogOpen(false); setProductoToDelete(null);
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('La imagen no debe superar los 5MB');
+        return;
+      }
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeImage = () => {
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const payload = {
-      nombre: formData.nombre, descripcion: formData.descripcion,
-      precio_neto: parseFloat(formData.precio), stock: parseInt(formData.stock),
-      codigo: formData.codigo, img: formData.imagen, estado: formData.estado,
-      tipo_adquisicion: formData.tipo_adquisicion, iva_porcentaje: parseFloat(formData.iva_porcentaje),
-      id_categoria: parseInt(formData.id_categoria), id_marca: parseInt(formData.id_marca)
-    };
+    
+    const formDataObj = new FormData();
+    formDataObj.append('nombre', formData.nombre);
+    formDataObj.append('descripcion', formData.descripcion);
+    formDataObj.append('precio_neto', formData.precio);
+    formDataObj.append('stock', formData.stock);
+    formDataObj.append('codigo', formData.codigo);
+    formDataObj.append('estado', formData.estado);
+    formDataObj.append('tipo_adquisicion', formData.tipo_adquisicion);
+    formDataObj.append('iva_porcentaje', formData.iva_porcentaje);
+    formDataObj.append('id_categoria', formData.id_categoria);
+    formDataObj.append('id_marca', formData.id_marca);
+    
+    if (imageFile) {
+      formDataObj.append('imagen', imageFile);
+    }
 
     try {
       if (editingProducto) {
-        await fetchApi(`/products/${editingProducto.id_producto}`, { method: 'PUT', body: JSON.stringify(payload) });
+        await fetchApi(`/products/${editingProducto.id_producto}`, { 
+          method: 'PUT', 
+          body: formDataObj 
+        });
         toast.success('Producto actualizado correctamente');
       } else {
-        await fetchApi('/products', { method: 'POST', body: JSON.stringify(payload) });
+        await fetchApi('/products', { 
+          method: 'POST', 
+          body: formDataObj 
+        });
         toast.success('Producto creado correctamente');
       }
       setDialogOpen(false); fetchProductos();
@@ -365,7 +410,46 @@ export function ProductosView() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2 md:col-span-2"><Label>URL de la Imagen</Label><Input type="url" value={formData.imagen} onChange={(e) => setFormData({ ...formData, imagen: e.target.value })} placeholder="https://ejemplo.com/imagen.jpg" /></div>
+              <div className="space-y-2 md:col-span-2">
+                <Label>Imagen del Producto</Label>
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                >
+                  <div className="space-y-1 text-center">
+                    {imagePreview ? (
+                      <div className="relative inline-block">
+                        <img src={imagePreview} alt="Preview" className="mx-auto h-32 w-32 object-cover rounded-md shadow-md" />
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); removeImage(); }}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                        <div className="flex text-sm text-gray-600">
+                          <span className="relative cursor-pointer bg-white rounded-md font-medium text-blue-600 hover:text-blue-500">
+                            Sube una imagen
+                          </span>
+                          <p className="pl-1">o arrastra y suelta</p>
+                        </div>
+                        <p className="text-xs text-gray-500">PNG, JPG, WEBP hasta 5MB</p>
+                      </>
+                    )}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      className="hidden"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                    />
+                  </div>
+                </div>
+              </div>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>

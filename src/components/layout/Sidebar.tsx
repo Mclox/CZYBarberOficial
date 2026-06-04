@@ -30,20 +30,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
   const { user, roleName, logout } = useAuth();
 
   const menuItems = [
-    { id: 'mi-perfil', label: 'Mi Perfil', icon: User, roles: ['Administrador', 'Vendedor', 'Almacén', 'Compras'] },
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Administrador', 'Vendedor', 'Almacén', 'Compras'] },
+    { id: 'mi-perfil', label: 'Mi Perfil', icon: User, roles: ['Administrador', 'Barbero', 'Cliente'] },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['Administrador', 'Barbero', 'Cliente'] },
     { id: 'roles', label: 'Roles', icon: Shield, roles: ['Administrador'] },
     { id: 'usuarios', label: 'Usuarios', icon: Users, roles: ['Administrador'] },
-    { id: 'productos', label: 'Productos', icon: Package, roles: ['Administrador', 'Almacén', 'Vendedor'] },
-    { id: 'proveedores', label: 'Proveedores', icon: Truck, roles: ['Administrador', 'Compras'] },
-    { id: 'compras', label: 'Productos', icon: ShoppingCart, roles: ['Administrador', 'Compras'] },
-    { id: 'devoluciones', label: 'Devoluciones', icon: RotateCcw, roles: ['Administrador', 'Vendedor'] },
-    { id: 'servicios', label: 'Servicios', icon: Wrench, roles: ['Administrador', 'Vendedor'] },
-    { id: 'citas', label: 'Citas', icon: Calendar, roles: ['Administrador', 'Vendedor'] },
     { id: 'empleados', label: 'Empleados', icon: UserCog, roles: ['Administrador'] },
-    { id: 'clientes', label: 'Clientes', icon: UserCheck, roles: ['Administrador', 'Vendedor'] },
-    { id: 'pagos', label: 'Pagos', icon: CreditCard, roles: ['Administrador', 'Vendedor'] },
-    { id: 'ventas', label: 'Ventas', icon: ShoppingBag, roles: ['Administrador', 'Vendedor'] },
+    { id: 'clientes', label: 'Clientes', icon: UserCheck, roles: ['Administrador', 'Barbero'] },
+    { id: 'servicios', label: 'Servicios', icon: Wrench, roles: ['Administrador'] },
+    { id: 'productos', label: 'Gestión Productos', icon: Package, roles: ['Administrador', 'Barbero'] },
+    { id: 'entrada-productos', label: 'Entradas Inventario', icon: ShoppingCart, roles: ['Administrador'] },
+    { id: 'citas', label: 'Agendamiento', icon: Calendar, roles: ['Administrador', 'Barbero'] },
+    { id: 'ventas', label: 'Ventas', icon: ShoppingBag, roles: ['Administrador', 'Barbero'] },
+    { id: 'devoluciones', label: 'Devolución Stock', icon: RotateCcw, roles: ['Administrador'] },
+    // --- NUEVOS REPORTES DE MEDICIÓN DE DESEMPEÑO ---
+    { id: 'reporte-citas', label: 'Reporte Citas', icon: Calendar, roles: ['Administrador', 'Barbero'] },
+    { id: 'reporte-productos', label: 'Reporte Productos', icon: Package, roles: ['Administrador'] },
+    { id: 'reporte-servicios', label: 'Reporte Servicios', icon: Wrench, roles: ['Administrador', 'Barbero'] },
+    { id: 'reporte-empleados', label: 'Reporte Empleados', icon: Users, roles: ['Administrador', 'Barbero'] },
+    { id: 'reporte-ingresos', label: 'Reporte Ingresos', icon: CreditCard, roles: ['Administrador'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item => 

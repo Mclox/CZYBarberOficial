@@ -32,7 +32,9 @@ import {
   Store,
   CalendarClock,
   DollarSign,
-  PackagePlus
+  PackagePlus,
+  Scissors,
+  CalendarCheck
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import {
@@ -145,8 +147,11 @@ const processMenuItems: ProcessItem[] = [
     clienteAccess: false,
     subItems: [
       { id: 'dashboard', label: 'Dashboard General', icon: Home },
-      { id: 'reportes-ventas', label: 'Reportes de Ventas', icon: Receipt },
-      { id: 'rendimiento-empleados', label: 'Rendimiento de Empleados', icon: Users },
+      { id: 'reporte-citas', label: 'Reporte de Citas', icon: CalendarCheck },
+      { id: 'reporte-productos', label: 'Reporte de Productos', icon: Package },
+      { id: 'reporte-servicios', label: 'Reporte de Servicios', icon: Scissors },
+      { id: 'reporte-empleados', label: 'Reporte de Empleados', icon: Users },
+      { id: 'reporte-ingresos', label: 'Reporte de Ingresos', icon: DollarSign },
     ]
   },
 ];

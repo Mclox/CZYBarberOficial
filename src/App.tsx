@@ -22,7 +22,7 @@ import { VentasView } from './features/ventas';
 import { LandingPage } from './components/LandingPage';
 import { MiPerfilView } from './features/mi-perfil';
 import { ConfiguracionLandingView } from './features/configuracion-landing';
-import { ReportesVentasView, RendimientoEmpleadosView } from './features/medicion-desempeno';
+import { ReporteCitasView, ReporteProductosView, ReporteServiciosView, ReporteEmpleadosView, ReporteIngresosView } from './features/medicion-desempeno';
 
 type AuthView = 'login' | 'register' | 'recover' | 'landing';
 
@@ -151,10 +151,16 @@ function AppContent() {
         return <MiPerfilView />;
       case 'configuracion-landing':
         return <ConfiguracionLandingView />;
-      case 'reportes-ventas':
-        return <ReportesVentasView />;
-      case 'rendimiento-empleados':
-        return <RendimientoEmpleadosView />;
+      case 'reporte-citas':
+        return <ReporteCitasView />;
+      case 'reporte-productos':
+        return <ReporteProductosView />;
+      case 'reporte-servicios':
+        return <ReporteServiciosView />;
+      case 'reporte-empleados':
+        return <ReporteEmpleadosView />;
+      case 'reporte-ingresos':
+        return <ReporteIngresosView />;
       default:
         return isCliente ? <ClienteDashboard onReservarCita={handleReservarCita} /> : <Dashboard />;
     }
