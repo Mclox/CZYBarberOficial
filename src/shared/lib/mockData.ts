@@ -21,10 +21,14 @@ export interface Usuario {
   email: string;
   password: string;
   telefono?: string;
+  direccion?: string;
+  documento?: string;
   avatar?: string;
+  img?: string;
   estado: 'activo' | 'inactivo';
   rol?: string;
   rol_nombre?: string;
+  permisos?: Permiso[];
 }
 
 export interface Producto {

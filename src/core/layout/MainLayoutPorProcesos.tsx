@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../../features/auth';
 import { Button } from '../../components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '../../components/ui/sheet';
@@ -159,57 +159,52 @@ const processMenuItems: ProcessItem[] = [
 // Items individuales (fuera de procesos)
 const individualMenuItems: any[] = [];
 
+const moduloMapping: Record<string, string> = {
+  'roles': 'Roles',
+  'configuracion-landing': 'Roles', // Solo admin, pero mapeado para consistencia
+  'usuarios': 'Usuarios',
+  'productos': 'Productos',
+  'entrada-productos': 'Productos',
+  'servicios': 'Servicios',
+  'citas': 'Citas',
+  'empleados': 'Empleados',
+  'clientes': 'Clientes',
+  'ventas': 'Ventas',
+  'devoluciones': 'Devoluciones',
+  'reporte-citas': 'Citas',
+  'reporte-productos': 'Productos',
+  'reporte-servicios': 'Servicios',
+  'reporte-empleados': 'Empleados',
+  'reporte-ingresos': 'Ventas',
+};
+
+// Helper local para verificar rol admin (consistente con AuthContext)
+const isAdminRole = (role?: string | null): boolean => {
+  if (!role) return false;
+  const r = role.toLowerCase();
+  return r === 'administrador' || r === 'admin';
+};
+
 function ProcessMenuItem({
   process,
   currentView,
   onNavigate,
   isOpen,
   onToggle,
-  isAdmin,
-  isBarbero,
-  isCliente
 }: {
   process: ProcessItem;
   currentView: string;
   onNavigate: (view: string) => void;
   isOpen: boolean;
   onToggle: () => void;
-  isAdmin: boolean;
-  isBarbero: boolean;
-  isCliente: boolean;
 }) {
-  // Filtrar subitems basados en permisos
-  const filteredSubItems = process.subItems.filter(subItem => {
-    // Admin tiene acceso a todo dentro de procesos permitidos
-    if (isAdmin) return true;
+  // Los sub-ítems ya vienen filtrados desde SidebarContent
+  const visibleSubItems = process.subItems;
 
-    // Para Barbero
-    if (isBarbero) {
-      // Proveedores solo lectura (se manejará en la vista)
-      if (subItem.id === 'proveedores') return true;
-      // Compras solo puede registrar (se manejará en la vista)
-      if (subItem.id === 'compras') return true;
-      // Servicios solo lectura para barbero
-      if (subItem.id === 'servicios') return true;
-      // Todo lo demás con acceso normal
-      return true;
-    }
-
-    // Para Cliente
-    if (isCliente) {
-      // Solo ver servicios y agendar citas
-      if (subItem.id === 'servicios' || subItem.id === 'citas' || subItem.id === 'dashboard') {
-        return true;
-      }
-    }
-
-    return false;
-  });
-
-  if (filteredSubItems.length === 0) return null;
+  if (visibleSubItems.length === 0) return null;
 
   const Icon = process.icon;
-  const isActive = filteredSubItems.some(item => item.id === currentView);
+  const isActive = visibleSubItems.some(item => item.id === currentView);
 
   return (
     <Collapsible open={isOpen} onOpenChange={onToggle}>
@@ -231,7 +226,7 @@ function ProcessMenuItem({
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="pl-4 space-y-1">
-        {filteredSubItems.map((subItem) => {
+        {visibleSubItems.map((subItem) => {
           const SubIcon = subItem.icon;
           const isSubActive = currentView === subItem.id;
 
@@ -261,10 +256,15 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
   onClose?: () => void;
   user: any;
 }) {
-  const { logout, roleName, user: authUser } = useAuth();
-  const isAdmin = roleName === 'Administrador' || roleName === 'Admin'; // Soportamos ambos por si acaso
-  const isBarbero = roleName === 'Barbero';
-  const isCliente = roleName === 'Cliente';
+  const { logout, roleName, user: authUser, hasPermission, refetchProfile } = useAuth();
+
+  // Sincronizar permisos del usuario con la base de datos al montar y al cambiar de vista
+  useEffect(() => {
+    if (refetchProfile) {
+      refetchProfile();
+    }
+  }, [currentView, refetchProfile]);
+  const isAdmin = isAdminRole(roleName);
 
   // Usar el usuario de auth si no se proporciona uno por props
   const currentUser = user || authUser;
@@ -296,20 +296,35 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
     }));
   };
 
-  // Filtrar procesos basados en rol
-  const filteredProcesses = processMenuItems.filter(process => {
-    if (isAdmin) return true;
-    if (isBarbero && process.barberoAccess) return true;
-    if (isCliente && process.clienteAccess) return true;
-    return false;
-  });
+  // Filtrar procesos basados en rol y permisos de subitems
+  const filteredProcesses = processMenuItems.map(process => {
+    // Administrador ve todo
+    if (isAdmin) return process;
+
+    const filteredSub = process.subItems.filter(subItem => {
+      // Verificar permisos del módulo de forma dinámica según la base de datos
+      const moduloName = moduloMapping[subItem.id];
+      if (moduloName) {
+        return hasPermission(moduloName, 'leer');
+      }
+      // Items sin mapeo de módulo (ej: dashboard) → siempre visibles
+      return subItem.id === 'dashboard';
+    });
+
+    return {
+      ...process,
+      subItems: filteredSub
+    };
+  }).filter(process => process.subItems.length > 0);
 
   // Filtrar items individuales
   const filteredIndividualItems = individualMenuItems.filter(item => {
     if (isAdmin) return true;
-    if (isBarbero && item.barberoAccess) return true;
-    if (isCliente && item.clienteAccess) return true;
-    return false;
+    const moduloName = moduloMapping[item.id];
+    if (moduloName) {
+      return hasPermission(moduloName, 'leer');
+    }
+    return item.id === 'dashboard' || item.id === 'mi-perfil';
   });
 
   return (
@@ -372,7 +387,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
 
           {filteredIndividualItems.length > 0 && <Separator className="my-4 bg-gray-200" />}
 
-          {/* Procesos colapsables */}
+          {/* Procesos colapsables - sub-ítems ya filtrados */}
           {filteredProcesses.map((process) => (
             <ProcessMenuItem
               key={process.id}
@@ -381,9 +396,6 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
               onNavigate={handleNavigate}
               isOpen={openProcesses[process.id] ?? false}
               onToggle={() => toggleProcess(process.id)}
-              isAdmin={isAdmin}
-              isBarbero={isBarbero}
-              isCliente={isCliente}
             />
           ))}
         </div>
@@ -411,8 +423,8 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
   // No renderizar el layout si no hay usuario autenticado (evita errores de referencia)
   if (!user) return null;
 
-  const isAdmin = roleName === 'Administrador';
-  const isCliente = roleName === 'Cliente';
+  const isAdmin = isAdminRole(roleName);
+  const isCliente = roleName?.toLowerCase() === 'cliente';
 
   // Notificaciones dinámicas por rol
   const getNotifications = () => {

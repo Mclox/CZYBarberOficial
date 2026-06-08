@@ -154,6 +154,16 @@ export function CitasView() {
   const duracionEstimada = servicioSeleccionadoObj?.duracion_minutos || 30;
   const precioEstimado = servicioSeleccionadoObj?.precio_neto || 0;
 
+  const selectedClienteObj = clientes.find(c => c.id_cliente.toString() === formData.id_cliente);
+  const clienteDocumento = selectedClienteObj?.documento 
+    ? `${selectedClienteObj.tipo_documento || 'CC'} - ${selectedClienteObj.documento}` 
+    : '';
+
+  const selectedBarberoObj = barberos.find(b => (b.id_empleado || b.id_barbero || b.id_usuario).toString() === formData.id_barbero);
+  const barberoDocumento = selectedBarberoObj?.documento 
+    ? `${selectedBarberoObj.tipo_documento || 'CC'} - ${selectedBarberoObj.documento}` 
+    : '';
+
   // --- FILTROS Y ESTADÍSTICAS ---
   const { displayCitas, citasByDate, stats } = useMemo(() => {
     let list = citas;
@@ -257,9 +267,13 @@ export function CitasView() {
     if (!formData.fecha) errors.fecha = 'Requerido';
     if (!formData.hora_inicio) errors.hora_inicio = 'Requerido';
 
+    if (formData.fecha && formData.fecha < todayStr) {
+      errors.fecha = 'La fecha de la cita no puede ser anterior a la fecha actual';
+    }
+
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
-      toast.error('Completa los campos obligatorios');
+      toast.error(errors.fecha || 'Completa los campos obligatorios');
       return;
     }
 
@@ -300,6 +314,23 @@ export function CitasView() {
       fetchData();
     } catch (e: any) { toast.error(e.message || 'Error de conexión'); }
   };
+
+  const viewingClienteObj = viewingCita 
+    ? clientes.find(cl => cl.id_cliente === parseInt(viewingCita.id_cliente)) 
+    : null;
+  const viewingClienteDoc = viewingClienteObj?.documento 
+    ? `${viewingClienteObj.tipo_documento || 'CC'} - ${viewingClienteObj.documento}` 
+    : 'No registrado';
+
+  const viewingBarberId = viewingCita 
+    ? parseInt(viewingCita.id_barbero || viewingCita.id_usuario || viewingCita.id_empleado) 
+    : null;
+  const viewingBarberoObj = viewingBarberId 
+    ? barberos.find(b => b.id_empleado === viewingBarberId || b.id_barbero === viewingBarberId || b.id_usuario === viewingBarberId) 
+    : null;
+  const viewingBarberoDoc = viewingBarberoObj?.documento 
+    ? `${viewingBarberoObj.tipo_documento || 'CC'} - ${viewingBarberoObj.documento}` 
+    : 'No registrado';
 
   return (
     <div className="flex flex-col gap-12 p-4 md:p-8 max-w-[1600px] mx-auto w-full">
@@ -430,11 +461,11 @@ export function CitasView() {
               </>
             ) : (
               /* FORMULARIO DE CITA (DISEÑO DORADO) */
-              <Card className="border-2 border-blue-200 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
+              <Card className="border border-blue-200 shadow-2xl animate-in slide-in-from-bottom-2 fade-in duration-300">
                 <CardHeader className="bg-muted/20 border-b pb-6">
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle className="text-2xl font-black">{editingCita ? 'Actualizar Cita' : 'Programar Nueva Cita'}</CardTitle>
+                      <CardTitle className="text-2xl font-black text-blue-800">{editingCita ? 'Actualizar Cita' : 'Programar Nueva Cita'}</CardTitle>
                       <CardDescription>Completa los detalles para agendar el espacio</CardDescription>
                     </div>
                     <Button variant="ghost" size="icon" onClick={() => setShowForm(false)}><X /></Button>
@@ -443,36 +474,59 @@ export function CitasView() {
                 <form onSubmit={handleSubmit}>
                   <CardContent className="p-8">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
-                      {/* LADO IZQUIERDO */}
+                      {/* LADO IZQUIERDO: DATOS PRINCIPALES */}
                       <div className="space-y-6">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-blue-800 border-b pb-2">Datos Principales</h3>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Cliente Responsable *</Label>
-                            <Select value={formData.id_cliente} onValueChange={v => setFormData({ ...formData, id_cliente: v })}>
-                              <SelectTrigger className={cn("h-11", formErrors.id_cliente && "border-destructive")}>
-                                <SelectValue placeholder="Seleccionar cliente..." />
-                              </SelectTrigger>
-                              <SelectContent>{clientes.map(c => <SelectItem key={c.id_cliente} value={c.id_cliente.toString()}>{c.nombre_final || c.nombre}</SelectItem>)}</SelectContent>
-                            </Select>
+                        <div className="space-y-6">
+                          
+                          {/* CLIENTE */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">Cliente Responsable *</Label>
+                              <Select value={formData.id_cliente} onValueChange={v => setFormData({ ...formData, id_cliente: v })}>
+                                <SelectTrigger className={cn("h-11 border-muted-foreground/25 focus:ring-2 focus:ring-blue-500/20", formErrors.id_cliente && "border-destructive")}>
+                                  <SelectValue placeholder="Seleccionar cliente..." />
+                                </SelectTrigger>
+                                <SelectContent>{clientes.map(c => <SelectItem key={c.id_cliente} value={c.id_cliente.toString()}>{c.nombre_final || c.nombre}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold text-muted-foreground">Documento Identidad (Cliente)</Label>
+                              <Input value={clienteDocumento || 'No seleccionado'} readOnly className="h-11 bg-muted/40 border-muted/50 text-muted-foreground font-medium select-none" />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <Label>Profesional asignado *</Label>
-                            <Select value={formData.id_barbero} onValueChange={v => setFormData({ ...formData, id_barbero: v })}>
-                              <SelectTrigger className={cn("h-11", formErrors.id_barbero && "border-destructive")}><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
-                              <SelectContent>
-                                {barberos.map(b => {
-                                  const bId = (b.id_empleado || b.id_barbero || b.id_usuario).toString();
-                                  return <SelectItem key={bId} value={bId}>{b.nombre}</SelectItem>
-                                })}
-                              </SelectContent>
-                            </Select>
+
+                          {/* PROFESIONAL */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">Profesional asignado *</Label>
+                              <Select value={formData.id_barbero} onValueChange={v => setFormData({ ...formData, id_barbero: v })}>
+                                <SelectTrigger className={cn("h-11 border-muted-foreground/25 focus:ring-2 focus:ring-blue-500/20", formErrors.id_barbero && "border-destructive")}><SelectValue placeholder="Seleccionar barbero" /></SelectTrigger>
+                                <SelectContent>
+                                  {barberos.map(b => {
+                                    const bId = (b.id_empleado || b.id_barbero || b.id_usuario).toString();
+                                    return <SelectItem key={bId} value={bId}>{b.nombre}</SelectItem>
+                                  })}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold text-muted-foreground">Documento Identidad (Profesional)</Label>
+                              <Input value={barberoDocumento || 'No seleccionado'} readOnly className="h-11 bg-muted/40 border-muted/50 text-muted-foreground font-medium select-none" />
+                            </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2"><Label>Fecha *</Label><Input type="date" value={formData.fecha} onChange={e => setFormData({ ...formData, fecha: e.target.value })} className={cn("h-11", formErrors.fecha && "border-destructive")} /></div>
-                            <div className="space-y-2"><Label>Hora *</Label>
+
+                          {/* FECHA Y HORA */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">Fecha *</Label>
+                              <Input type="date" value={formData.fecha} onChange={e => setFormData({ ...formData, fecha: e.target.value })} className={cn("h-11 border-muted-foreground/25 focus:ring-2 focus:ring-blue-500/20", formErrors.fecha && "border-destructive")} />
+                              {formErrors.fecha && <p className="text-[11px] text-red-500 font-medium mt-0.5">{formErrors.fecha}</p>}
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">Hora *</Label>
                               <Select value={formData.hora_inicio} onValueChange={v => setFormData({ ...formData, hora_inicio: v })}>
-                                <SelectTrigger className={cn("h-11", formErrors.hora_inicio && "border-destructive")}><SelectValue placeholder="Bloque" /></SelectTrigger>
+                                <SelectTrigger className={cn("h-11 border-muted-foreground/25 focus:ring-2 focus:ring-blue-500/20", formErrors.hora_inicio && "border-destructive")}><SelectValue placeholder="Bloque" /></SelectTrigger>
                                 <SelectContent className="max-h-60">
                                   {timeSlots.map(s => {
                                     const occupied = getOccupiedTimes(formData.fecha, parseInt(formData.id_barbero), editingCita?.id_cita);
@@ -483,36 +537,56 @@ export function CitasView() {
                               </Select>
                             </div>
                           </div>
+
                         </div>
                       </div>
 
-                      {/* LADO DERECHO */}
+                      {/* LADO DERECHO: SERVICIOS Y PRODUCTOS */}
                       <div className="space-y-6">
                         <h3 className="text-xs font-bold uppercase tracking-widest text-blue-800 border-b pb-2">Servicios y Productos</h3>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Servicio a Realizar *</Label>
-                            <Select value={formData.id_servicio} onValueChange={v => setFormData({ ...formData, id_servicio: v })}>
-                              <SelectTrigger className={cn("h-11", formErrors.id_servicio && "border-destructive")}><SelectValue placeholder="Elegir servicio..." /></SelectTrigger>
-                              <SelectContent>{servicios.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre} — ${s.precio_neto?.toFixed(2)}</SelectItem>)}</SelectContent>
-                            </Select>
-                            {formData.id_servicio && (
-                              <Badge className="bg-foreground text-background py-1.5 px-3 mt-2">{getServicioName(formData.id_servicio)}</Badge>
-                            )}
-                          </div>
-
-                          <div className="space-y-2 pt-4">
-                            <Label className="text-muted-foreground flex items-center gap-2"><Package className="w-4 h-4" /> Venta de Productos</Label>
-                            <div className="p-4 border rounded-md bg-muted/20 text-xs text-muted-foreground">
-                              <AlertCircle className="w-4 h-4 inline mr-1 text-blue-500" />
-                              En la versión V2, los productos se agregan y facturan directamente en el módulo de <strong>Ventas</strong> al finalizar la cita.
+                        <div className="space-y-6">
+                          
+                          {/* SERVICIO */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">Servicio a Realizar *</Label>
+                              <Select value={formData.id_servicio} onValueChange={v => setFormData({ ...formData, id_servicio: v })}>
+                                <SelectTrigger className={cn("h-11 border-muted-foreground/25 focus:ring-2 focus:ring-blue-500/20", formErrors.id_servicio && "border-destructive")}><SelectValue placeholder="Elegir servicio..." /></SelectTrigger>
+                                <SelectContent>{servicios.map(s => <SelectItem key={s.id_servicio} value={s.id_servicio.toString()}>{s.nombre} — ${s.precio_neto?.toFixed(2)}</SelectItem>)}</SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2 flex flex-col justify-end">
+                              {formData.id_servicio && (
+                                <Badge className="bg-blue-600 text-white py-2.5 px-4 h-11 flex items-center justify-center font-bold text-xs rounded-md shadow-sm border border-blue-700">
+                                  {getServicioName(formData.id_servicio)}
+                                </Badge>
+                              )}
                             </div>
                           </div>
-                        </div>
 
-                        <div className="p-5 bg-blue-50 rounded-xl border border-blue-200 flex justify-between items-center">
-                          <div className="flex flex-col"><span className="text-[10px] font-black text-blue-800 uppercase">Total Servicio (Neto)</span><span className="text-3xl font-black text-blue-700">${precioEstimado.toFixed(2)}</span></div>
-                          <div className="text-right text-xs font-bold text-muted-foreground"><Clock className="inline w-3 h-3 mr-1" /> {formatDuration(duracionEstimada)}</div>
+                          {/* PRODUCTOS */}
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-muted-foreground flex items-center gap-2"><Package className="w-4 h-4" /> Venta de Productos</Label>
+                            <div className="p-4 border border-blue-100 rounded-lg bg-blue-50/35 text-xs text-muted-foreground leading-relaxed flex gap-3 items-start">
+                              <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                              <div>
+                                En la versión V2, los productos se agregan y facturan directamente en el módulo de <strong>Ventas</strong> al finalizar la cita.
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* SUMMARY BOX */}
+                          <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-50/50 rounded-xl border border-blue-200 flex justify-between items-center shadow-inner mt-8">
+                            <div className="flex flex-col">
+                              <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">Total Servicio (Neto)</span>
+                              <span className="text-4xl font-black text-blue-700 mt-1">${precioEstimado.toFixed(2)}</span>
+                            </div>
+                            <div className="text-right text-xs font-extrabold text-muted-foreground flex items-center gap-1.5 bg-white py-2 px-3.5 rounded-lg border shadow-sm">
+                              <Clock className="w-4 h-4 text-blue-600" />
+                              <span>{formatDuration(duracionEstimada)}</span>
+                            </div>
+                          </div>
+
                         </div>
                       </div>
                     </div>
@@ -546,18 +620,35 @@ export function CitasView() {
                           </Badge>
                         </div>
                       </div>
+                      {/* CLIENTE */}
                       <div className="space-y-2">
                         <Label>Cliente Solicitante</Label>
                         <Input value={viewingCita.cliente_nombre || getClienteName(viewingCita.id_cliente)} readOnly className="bg-muted" />
                       </div>
                       <div className="space-y-2">
+                        <Label>Documento Cliente</Label>
+                        <Input value={viewingClienteDoc} readOnly className="bg-muted" />
+                      </div>
+
+                      <div className="space-y-2">
                         <Label>Teléfono Cliente</Label>
                         <Input value={getClienteInfo(viewingCita.id_cliente).telefono || 'Sin teléfono'} readOnly className="bg-muted" />
                       </div>
                       <div className="space-y-2">
+                        {/* Spacing alignment */}
+                      </div>
+
+                      {/* PROFESIONAL */}
+                      <div className="space-y-2">
                         <Label>Profesional Asignado</Label>
                         <Input value={viewingCita.barbero_nombre || getBarberoName(viewingCita.id_barbero || viewingCita.id_usuario || viewingCita.id_empleado)} readOnly className="bg-muted" />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Documento Profesional</Label>
+                        <Input value={viewingBarberoDoc} readOnly className="bg-muted" />
+                      </div>
+
+                      {/* FECHA Y HORARIO */}
                       <div className="space-y-2">
                         <Label>Fecha Agendada</Label>
                         <Input value={viewingCita.fecha?.split('T')[0]} readOnly className="bg-muted" />
@@ -566,7 +657,8 @@ export function CitasView() {
                         <Label>Horario</Label>
                         <Input value={`${viewingCita.hora_inicio_corta} a ${viewingCita.hora_fin_corta}`} readOnly className="bg-muted" />
                       </div>
-                      <div className="space-y-2">
+
+                      <div className="space-y-2 md:col-span-2">
                         <Label>Servicio Seleccionado</Label>
                         <Input value={viewingCita.servicio_nombre || getServicioName(viewingCita.id_servicio)} readOnly className="bg-muted" />
                       </div>
