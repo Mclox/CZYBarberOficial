@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Users,
   Package,
-  Truck,
   ShoppingCart,
   RotateCcw,
   Wrench,

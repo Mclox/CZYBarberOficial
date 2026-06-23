@@ -33,7 +33,7 @@ import {
   AlertDialogTitle,
 } from '../../../components/ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
-import { Plus, Pencil, Shield, Eye, Search, Power } from 'lucide-react';
+import { Plus, Pencil, Shield, Eye } from 'lucide-react';
 import { Permiso } from '../../../shared/lib/mockData';
 import { toast } from 'sonner';
 import { SearchBar } from '../../../components/common/SearchBar';
@@ -44,19 +44,12 @@ const MODULOS = [
   'Roles',
   'Usuarios',
   'Productos',
-  'Proveedores',
-  'Compras',
-  'DetalleCompras',
   'Devoluciones',
-  'DevolucionesProveedor',
-  'Consignaciones',
   'Servicios',
   'Citas',
   'Empleados',
   'Clientes',
-  'Pagos',
   'Ventas',
-  'VentasDetalle',
 ];
 
 export function RolesView() {
@@ -132,10 +125,10 @@ export function RolesView() {
     setDialogOpen(true);
   };
 
-  const handleDelete = (id: number) => {
-    setRoleToDelete(id);
-    setDeleteDialogOpen(true);
-  };
+  // const handleDelete = (id: number) => {
+  //   setRoleToDelete(id);
+  //   setDeleteDialogOpen(true);
+  // };
 
   // --- 2. ELIMINAR (DELETE) ---
   const confirmDelete = async () => {
@@ -163,15 +156,16 @@ export function RolesView() {
     }
 
     const newEstado = role.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    const toastId = toast.loading(`Cambiando estado a ${newEstado}...`);
     try {
       await fetchApi(`/roles/${role.id_rol}`, {
         method: 'PUT',
         body: JSON.stringify({ ...role, estado: newEstado })
       });
-      toast.success(`Rol ${newEstado} correctamente`);
+      toast.success(`Rol ${newEstado === 'Activo' ? 'activado' : 'inactivado'} correctamente`, { id: toastId });
       fetchRoles();
     } catch (error: any) {
-      toast.error('Error al cambiar el estado del rol');
+      toast.error(error.message || 'Error al cambiar el estado del rol', { id: toastId });
     }
   };
 
@@ -230,7 +224,7 @@ export function RolesView() {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
 
   const filteredRoles = useMemo(() => {
     return roles.filter(role => {
@@ -272,9 +266,9 @@ export function RolesView() {
     setDetailsDialogOpen(true);
   };
 
-  const canDeleteRole = (roleName: string) => {
-    return roleName.toLowerCase() !== 'admin' && roleName.toLowerCase() !== 'administrador';
-  };
+  // const canDeleteRole = (roleName: string) => {
+  //   return roleName.toLowerCase() !== 'admin' && roleName.toLowerCase() !== 'administrador';
+  // };
 
   return (
     <div className="p-4 md:p-8 space-y-6">
@@ -335,12 +329,23 @@ export function RolesView() {
                         <TableCell className="font-medium">{role.nombre}</TableCell>
                         <TableCell>{role.descripcion || '-'}</TableCell>
                         <TableCell>
-                          <Badge 
-                            variant={role.estado === 'Activo' ? 'default' : 'secondary'}
-                            className={role.estado === 'Activo' ? 'bg-green-600' : 'bg-gray-600'}
+                          <button
+                            onClick={() => handleToggleEstado(role)}
+                            className="focus:outline-none transition-transform active:scale-95"
+                            title={`Cambiar a ${role.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
                           >
-                            {role.estado || 'Activo'}
-                          </Badge>
+                            <Badge 
+                              className={`
+                                cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                ${role.estado === 'Activo' 
+                                  ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                                  : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                              `}
+                            >
+                              <span className={`w-2 h-2 rounded-full mr-2 ${role.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                              {role.estado || 'Activo'}
+                            </Badge>
+                          </button>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -351,15 +356,6 @@ export function RolesView() {
                               title="Ver detalles"
                             >
                               <Eye className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleToggleEstado(role)}
-                              className={role.estado === 'Activo' ? 'hover:bg-red-50 hover:border-red-200' : 'hover:bg-green-50 hover:border-green-200'}
-                              title={role.estado === 'Activo' ? 'Desactivar rol' : 'Activar rol'}
-                            >
-                              <Power className={`w-4 h-4 ${role.estado === 'Activo' ? 'text-red-600' : 'text-green-600'}`} />
                             </Button>
                             <Button
                               variant="outline"
@@ -381,7 +377,7 @@ export function RolesView() {
           )}
           
           {/* Paginación */}
-          {filteredRoles.length > itemsPerPage && (
+          {filteredRoles.length > 0 && (
             <Pagination
               currentPage={currentPage}
               totalPages={totalPages}
@@ -526,7 +522,7 @@ export function RolesView() {
                 Cancelar
               </Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                {editingRole ? 'Actualizar BD' : 'Crear en BD'}
+                Guardar
               </Button>
             </DialogFooter>
           </form>

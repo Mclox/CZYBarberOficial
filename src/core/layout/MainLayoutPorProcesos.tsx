@@ -81,7 +81,7 @@ const processMenuItems: ProcessItem[] = [
     adminOnly: true,
     subItems: [
       { id: 'roles', label: 'Gestión de Roles', icon: Shield },
-      { id: 'configuracion-landing', label: 'Config. Landing Page', icon: Settings },
+      // { id: 'configuracion-landing', label: 'Config. Landing Page', icon: Settings },
     ]
   },
 

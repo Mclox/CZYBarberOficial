@@ -298,7 +298,7 @@ export function UsuariosView() {
               </Table>
 
               {/* Paginación */}
-              {filteredUsuarios.length > ITEMS_PER_PAGE && (
+              {filteredUsuarios.length > 0 && (
                 <Pagination
                   currentPage={currentPage}
                   totalPages={totalPages}

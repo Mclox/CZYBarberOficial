@@ -6,13 +6,16 @@ import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { Alert, AlertDescription } from '../ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { ShoppingBag, Search, Eye, FileDown, Package, TrendingDown, Plus, Trash2, Calendar, XCircle, AlertCircle, Pencil, CheckCircle, Clock, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, DollarSign } from 'lucide-react';
+import { ShoppingBag, Search, Eye, FileDown, Package, Plus, Trash2, Calendar, XCircle, AlertCircle, Pencil, CheckCircle, Clock, DollarSign } from 'lucide-react';
 import { mockCompras, mockProveedores, mockDetalleCompras, mockProductos } from '../../shared/lib/mockData';
 import { toast } from 'sonner';
 import { exportToExcelXLSX } from '../../shared/lib/exportUtils';
+import { formatCOP } from '../../lib/format';
+import { Pagination } from '../common/Pagination';
+
 
 // Función para buscar en fechas con múltiples formatos
 const searchInDate = (dateStr: string, searchTerm: string): boolean => {
@@ -194,7 +197,7 @@ export function ComprasView() {
       'ID': compra.id_compra,
       'Proveedor': getProveedorName(compra.id_proveedor),
       'Fecha': new Date(compra.fecha + 'T00:00:00').toLocaleDateString('es-ES'),
-      'Total': compra.total.toFixed(2),
+      'Total': formatCOP(compra.total),
       'Estado': compra.estado === 'completada' ? 'Completada' : compra.estado === 'pendiente' ? 'Pendiente' : 'Cancelada',
     }));
 
@@ -287,14 +290,14 @@ export function ComprasView() {
       id_proveedor: parseInt(formData.id_proveedor),
       fecha: formData.fecha,
       total: total,
-      estado: formData.estado,
+      estado: formData.estado as any,
     };
     
     // Agregar al inicio del listado
     setCompras([newCompra, ...compras]);
     
     toast.success('Compra registrada exitosamente', {
-      description: `ID: #${nextId} - Total: $${total.toFixed(2)}`,
+      description: `ID: #${nextId} - Total: ${formatCOP(total)}`,
       style: { background: '#10b981', color: '#fff' }
     });
     
@@ -320,7 +323,7 @@ export function ComprasView() {
           id_proveedor: parseInt(formData.id_proveedor),
           fecha: formData.fecha,
           total: total,
-          estado: formData.estado,
+          estado: formData.estado as any,
         };
       }
       return c;
@@ -329,7 +332,7 @@ export function ComprasView() {
     setCompras(updatedCompras);
     
     toast.success('Compra actualizada exitosamente', {
-      description: `Total actualizado: $${total.toFixed(2)}`,
+      description: `Total actualizado: ${formatCOP(total)}`,
       style: { background: '#10b981', color: '#fff' }
     });
     
@@ -339,7 +342,7 @@ export function ComprasView() {
   const handleStatusChange = (id: number, newStatus: string) => {
     const updatedCompras = compras.map(c => {
       if (c.id_compra === id) {
-        return { ...c, estado: newStatus };
+        return { ...c, estado: newStatus as any };
       }
       return c;
     });
@@ -379,7 +382,6 @@ export function ComprasView() {
   // Estadísticas
   const totalCompras = filteredCompras.reduce((sum, compra) => sum + compra.total, 0);
   const comprasCompletadas = filteredCompras.filter(c => c.estado === 'completada').length;
-  const comprasPendientes = filteredCompras.filter(c => c.estado === 'pendiente').length;
 
   // Paginación
   const totalPages = Math.ceil(filteredCompras.length / itemsPerPage);
@@ -445,7 +447,7 @@ export function ComprasView() {
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Total en Compras</p>
-                <p className="text-2xl font-bold text-blue-800">${totalCompras.toFixed(2)}</p>
+                <p className="text-2xl font-bold text-blue-800">{formatCOP(totalCompras)}</p>
               </div>
             </div>
           </CardContent>
@@ -495,7 +497,7 @@ export function ComprasView() {
                       <TableCell>
                         {new Date(compra.fecha + 'T00:00:00').toLocaleDateString('es-ES')}
                       </TableCell>
-                      <TableCell className="font-medium text-blue-600">${compra.total.toFixed(2)}</TableCell>
+                      <TableCell className="font-medium text-blue-600">{formatCOP(compra.total)}</TableCell>
                       <TableCell>
                         <Select
                           value={compra.estado}
@@ -554,64 +556,6 @@ export function ComprasView() {
               {/* Paginador Personalizado */}
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                 <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronsLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  
-                  <div className="flex items-center gap-1">
-                    <span className="text-sm text-muted-foreground px-2">
-                      Página
-                    </span>
-                    <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">
-                      {currentPage}
-                    </span>
-                    <span className="text-sm text-muted-foreground px-2">
-                      de {totalPages || 1}
-                    </span>
-                  </div>
-                  
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setCurrentPage(totalPages)}
-                    disabled={currentPage === totalPages || totalPages === 0}
-                    className="h-8 w-8 p-0"
-                  >
-                    <ChevronsRight className="w-4 h-4" />
-                  </Button>
-                </div>
-                
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    Mostrando {filteredCompras.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredCompras.length)} de {filteredCompras.length} registros
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2">
                   <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">
                     Mostrar:
                   </Label>
@@ -634,6 +578,13 @@ export function ComprasView() {
                     </SelectContent>
                   </Select>
                 </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={filteredCompras.length}
+                />
               </div>
             </div>
           )}
@@ -705,9 +656,9 @@ export function ComprasView() {
                         <TableRow key={index}>
                           <TableCell>{detalle.producto}</TableCell>
                           <TableCell>{detalle.cantidad}</TableCell>
-                          <TableCell>${detalle.precio_unitario.toFixed(2)}</TableCell>
+                          <TableCell>{formatCOP(detalle.precio_unitario)}</TableCell>
                           <TableCell className="text-right">
-                            ${(detalle.cantidad * detalle.precio_unitario).toFixed(2)}
+                            {formatCOP(detalle.cantidad * detalle.precio_unitario)}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -721,7 +672,7 @@ export function ComprasView() {
                   <div className="flex justify-between items-center py-2 border-t-2 border-blue-600">
                     <span className="font-semibold text-lg">Total:</span>
                     <span className="font-bold text-2xl text-blue-600">
-                      ${viewingCompra.total.toFixed(2)}
+                      {formatCOP(viewingCompra.total)}
                     </span>
                   </div>
                 </div>
@@ -744,13 +695,7 @@ export function ComprasView() {
             </DialogDescription>
           </DialogHeader>
           
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800">Información</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              El ID de la compra se asignará automáticamente y la compra aparecerá al inicio del listado.
-            </AlertDescription>
-          </Alert>
+
           
           <form onSubmit={handleSubmitCompra}>
             <div className="space-y-6 py-4">
@@ -908,7 +853,7 @@ export function ComprasView() {
                           <div className="flex justify-between items-center mt-4 pt-4 border-t">
                             <p className="text-sm text-muted-foreground">
                               Subtotal: <span className="font-medium text-blue-600">
-                                ${(producto.cantidad * producto.precio_unitario).toFixed(2)}
+                                {formatCOP(producto.cantidad * producto.precio_unitario)}
                               </span>
                             </p>
                             <Button
@@ -935,7 +880,7 @@ export function ComprasView() {
                     <div className="flex justify-between items-center py-3 border-t-2 border-blue-600">
                       <span className="font-semibold text-lg">Total:</span>
                       <span className="font-bold text-2xl text-blue-600">
-                        ${calcularTotal().toFixed(2)}
+                        {formatCOP(calcularTotal())}
                       </span>
                     </div>
                   </div>
@@ -965,13 +910,7 @@ export function ComprasView() {
             </DialogDescription>
           </DialogHeader>
           
-          <Alert className="bg-blue-50 border-blue-200">
-            <AlertCircle className="h-4 w-4 text-blue-600" />
-            <AlertTitle className="text-blue-800">Información</AlertTitle>
-            <AlertDescription className="text-blue-700">
-              El ID de la compra no puede ser modificado. Los cambios se aplicarán de inmediato.
-            </AlertDescription>
-          </Alert>
+
           
           <form onSubmit={handleUpdateCompra}>
             <div className="space-y-6 py-4">
@@ -1138,7 +1077,7 @@ export function ComprasView() {
                           <div className="flex justify-between items-center mt-4 pt-4 border-t">
                             <p className="text-sm text-muted-foreground">
                               Subtotal: <span className="font-medium text-blue-600">
-                                ${(producto.cantidad * producto.precio_unitario).toFixed(2)}
+                                {formatCOP(producto.cantidad * producto.precio_unitario)}
                               </span>
                             </p>
                             <Button
@@ -1165,7 +1104,7 @@ export function ComprasView() {
                     <div className="flex justify-between items-center py-3 border-t-2 border-blue-600">
                       <span className="font-semibold text-lg">Total:</span>
                       <span className="font-bold text-2xl text-blue-600">
-                        ${calcularTotal().toFixed(2)}
+                        {formatCOP(calcularTotal())}
                       </span>
                     </div>
                   </div>
@@ -1192,7 +1131,7 @@ export function ComprasView() {
             <AlertDialogTitle>¿Anular esta compra?</AlertDialogTitle>
             <AlertDialogDescription>
               Esta acción cambiará el estado de la compra a "Cancelada". 
-              La compra #{compraToAnular?.id_compra} por un total de ${compraToAnular?.total.toFixed(2)} será anulada.
+              La compra #{compraToAnular?.id_compra} por un total de {formatCOP(compraToAnular?.total)} será anulada.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

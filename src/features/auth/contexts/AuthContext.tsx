@@ -13,6 +13,7 @@ export interface AuthContextType {
   hasPermission: (modulo: string, accion?: 'crear' | 'leer' | 'actualizar' | 'eliminar') => boolean;
   isAuthenticated: boolean;
   refetchProfile: () => Promise<void>;
+  updateUser: (updatedData: Partial<Usuario>) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);

@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Package, Users, Search, Scissors, Mail, Phone, Calendar, Clock } from 'lucide-react';
 import { fetchApi } from '../../lib/api'; // Conexión a la API
 import { toast } from 'sonner';
+import { formatCOP } from '../../lib/format';
 
 interface ClienteDashboardProps {
   onReservarCita?: (empleadoId?: number, servicioId?: number) => void;
@@ -152,7 +153,7 @@ export function ClienteDashboard({ onReservarCita }: ClienteDashboardProps) {
                       </p>
                     </div>
                     <Badge className="bg-slate-900 text-white text-sm font-bold px-3 py-1">
-                      ${(producto.precio_neto || 0).toFixed(2)}
+                      {formatCOP(producto.precio_neto)}
                     </Badge>
                   </div>
                 </CardHeader>
@@ -285,7 +286,7 @@ export function ClienteDashboard({ onReservarCita }: ClienteDashboardProps) {
                   <div className="bg-muted/30 rounded-lg p-4 mb-4 flex justify-between items-center border border-muted">
                     <div className="flex flex-col">
                       <span className="text-[10px] uppercase font-bold text-muted-foreground">Inversión</span>
-                      <span className="text-xl font-black text-[#D4AF37]">${(servicio.precio_neto || 0).toFixed(2)}</span>
+                      <span className="text-xl font-black text-[#D4AF37]">{formatCOP(servicio.precio_neto)}</span>
                     </div>
                     <div className="h-8 w-px bg-border"></div>
                     <div className="flex flex-col text-right">

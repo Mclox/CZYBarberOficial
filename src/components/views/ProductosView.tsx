@@ -4,16 +4,17 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Plus, Pencil, Trash2, Package, Eye, FileDown, MinusCircle, FileSpreadsheet, CheckCircle, XCircle, ShoppingCart, Handshake, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Upload, Image as ImageIcon, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Eye, FileDown, /* MinusCircle, */ FileSpreadsheet, ShoppingCart, Handshake, Upload, X } from 'lucide-react';
 import { fetchApi, API_BASE_URL } from '../../lib/api'; 
 import { toast } from 'sonner';
 import { exportToExcel, downloadMenu } from '../../shared/lib/exportUtils';
 import { useAuth } from '../../features/auth';
+import { formatCOP } from '../../lib/format';
 
 import { SearchBar } from '../common/SearchBar';
 import { Pagination } from '../common/Pagination';
@@ -26,19 +27,22 @@ export function ProductosView() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [bajaDialogOpen, setBajaDialogOpen] = useState(false);
+  // Funcionalidad "Dar de Baja" deshabilitada temporalmente
+  // const [bajaDialogOpen, setBajaDialogOpen] = useState(false);
 
   const [editingProducto, setEditingProducto] = useState<any | null>(null);
   const [viewingProducto, setViewingProducto] = useState<any | null>(null);
   const [productoToDelete, setProductoToDelete] = useState<number | null>(null);
-  const [productoBaja, setProductoBaja] = useState<any | null>(null);
+  // Funcionalidad "Dar de Baja" deshabilitada temporalmente
+  // const [productoBaja, setProductoBaja] = useState<any | null>(null);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
 
-  const [cantidadBaja, setCantidadBaja] = useState(1);
-  const [motivoBaja, setMotivoBaja] = useState('Uso interno del negocio');
+  // Funcionalidad "Dar de Baja" deshabilitada temporalmente
+  // const [cantidadBaja, setCantidadBaja] = useState(1);
+  // const [motivoBaja, setMotivoBaja] = useState('Uso interno del negocio');
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -89,7 +93,7 @@ export function ProductosView() {
   }, []);
 
   const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
-  const isBarbero = user?.id_rol === 2 || user?.rol === 'Barbero';
+  // const isBarbero = user?.id_rol === 2 || user?.rol === 'Barbero';
 
   // 1. Filtrar solo por búsqueda de texto (Para que los contadores de las Tabs funcionen bien)
   const searchFilteredProductos = useMemo(() => {
@@ -227,33 +231,37 @@ export function ProductosView() {
     } catch (error: any) { toast.error(error.message || 'Error al guardar el producto'); }
   };
 
-  const handleBaja = (producto: any) => {
-    setProductoBaja(producto); setCantidadBaja(1); setMotivoBaja('Uso interno del negocio'); setBajaDialogOpen(true);
-  };
-
-  const confirmBaja = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (productoBaja && cantidadBaja > 0 && cantidadBaja <= productoBaja.stock) {
-      try {
-        const nuevoStock = productoBaja.stock - cantidadBaja;
-        await fetchApi(`/products/${productoBaja.id_producto}`, {
-          method: 'PUT', body: JSON.stringify({ ...productoBaja, precio_neto: productoBaja.precio, stock: nuevoStock })
-        });
-        toast.success(`${cantidadBaja} unidad(es) dada(s) de baja correctamente`);
-        setBajaDialogOpen(false); setProductoBaja(null); fetchProductos();
-      } catch (error: any) { toast.error(error.message || 'Error al dar de baja el producto'); }
-    } else { toast.error('Cantidad inválida'); }
-  };
+  // Funcionalidad "Dar de Baja" deshabilitada temporalmente
+  // const handleBaja = (producto: any) => {
+  //   setProductoBaja(producto); setCantidadBaja(1); setMotivoBaja('Uso interno del negocio'); setBajaDialogOpen(true);
+  // };
+  // 
+  // const confirmBaja = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+  //   if (productoBaja && cantidadBaja > 0 && cantidadBaja <= productoBaja.stock) {
+  //     try {
+  //       const nuevoStock = productoBaja.stock - cantidadBaja;
+  //       await fetchApi(`/products/${productoBaja.id_producto}`, {
+  //         method: 'PUT', body: JSON.stringify({ ...productoBaja, precio_neto: productoBaja.precio, stock: nuevoStock })
+  //       });
+  //       toast.success(`${cantidadBaja} unidad(es) dada(s) de baja correctamente`);
+  //       setBajaDialogOpen(false); setProductoBaja(null); fetchProductos();
+  //     } catch (error: any) { toast.error(error.message || 'Error al dar de baja el producto'); }
+  //     } else { toast.error('Cantidad inválida'); }
+  // };
 
   const handleToggleEstado = async (producto: any) => {
     const nuevoEstado = producto.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
     try {
       await fetchApi(`/products/${producto.id_producto}`, {
         method: 'PUT', body: JSON.stringify({ ...producto, precio_neto: producto.precio, estado: nuevoEstado })
       });
-      toast.success(`Producto ${nuevoEstado === 'Activo' ? 'activado' : 'desactivado'} correctamente`);
+      toast.success(`Producto ${nuevoEstado === 'Activo' ? 'activado' : 'inactivado'} correctamente`, { id: toastId });
       fetchProductos();
-    } catch (error: any) { toast.error('Error al cambiar estado'); }
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cambiar estado', { id: toastId });
+    }
   };
 
   const renderTable = (items: any[]) => (
@@ -292,24 +300,49 @@ export function ProductosView() {
                   <Badge variant="outline" className="flex items-center gap-1 w-fit"><ShoppingCart className="w-3 h-3" /> Directa</Badge>
                 )}
               </TableCell>
-              <TableCell>${(producto.precio || 0).toFixed(2)}</TableCell>
+              <TableCell>{formatCOP(producto.precio)}</TableCell>
               <TableCell><Badge variant={producto.stock < 10 ? 'destructive' : 'default'} className={producto.stock >= 10 ? 'bg-blue-600' : ''}>{producto.stock}</Badge></TableCell>
               <TableCell>
-                <Badge variant={producto.estado === 'Activo' ? 'default' : 'secondary'} className={producto.estado === 'Activo' ? 'bg-green-600' : ''}>
-                  {producto.estado || 'Activo'}
-                </Badge>
+                {isAdmin ? (
+                  <button
+                    onClick={() => handleToggleEstado(producto)}
+                    className="focus:outline-none transition-transform active:scale-95"
+                    title={`Cambiar a ${producto.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                  >
+                    <Badge 
+                      className={`
+                        cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                        ${producto.estado === 'Activo' 
+                          ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                          : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                      `}
+                    >
+                      <span className={`w-2 h-2 rounded-full mr-2 ${producto.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                      {producto.estado || 'Activo'}
+                    </Badge>
+                  </button>
+                ) : (
+                  <Badge 
+                    className={`
+                      px-3 py-1 rounded-full border-2
+                      ${producto.estado === 'Activo' 
+                        ? 'bg-green-600 text-white border-transparent shadow-sm' 
+                        : 'bg-red-600 text-white border-transparent shadow-sm'}
+                    `}
+                  >
+                    <span className={`w-2 h-2 rounded-full mr-2 ${producto.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                    {producto.estado || 'Activo'}
+                  </Badge>
+                )}
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
                   {isAdmin && <Button variant="outline" size="sm" onClick={() => handleEdit(producto)}><Pencil className="w-4 h-4" /></Button>}
                   {isAdmin && <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(producto.id_producto)}><Trash2 className="w-4 h-4" /></Button>}
                   <Button variant="outline" size="sm" onClick={() => handleView(producto)}><Eye className="w-4 h-4" /></Button>
+                  {/* Funcionalidad "Dar de Baja" deshabilitada temporalmente
                   {(isAdmin || isBarbero) && <Button variant="outline" size="sm" onClick={() => handleBaja(producto)} title="Dar de baja"><MinusCircle className="w-4 h-4" /></Button>}
-                  {isAdmin && (
-                    <Button variant="outline" size="sm" onClick={() => handleToggleEstado(producto)} title="Cambiar estado" className={producto.estado === 'Activo' ? 'text-green-600' : 'text-gray-500'}>
-                      {producto.estado === 'Activo' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-                    </Button>
-                  )}
+                  */}
                 </div>
               </TableCell>
             </TableRow>
@@ -377,7 +410,7 @@ export function ProductosView() {
             </TabsContent>
 
             {/* Paginación para todas las pestañas */}
-            {tabFilteredProductos.length > itemsPerPage && (
+            {tabFilteredProductos.length > 0 && (
               <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                 <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} itemsPerPage={itemsPerPage} totalItems={tabFilteredProductos.length} />
               </div>
@@ -453,7 +486,7 @@ export function ProductosView() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">{editingProducto ? 'Actualizar BD' : 'Guardar BD'}</Button>
+              <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">Guardar</Button>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -467,6 +500,7 @@ export function ProductosView() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Funcionalidad "Dar de Baja" deshabilitada temporalmente
       <Dialog open={bajaDialogOpen} onOpenChange={setBajaDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader><DialogTitle>Dar de Baja (Uso Interno)</DialogTitle></DialogHeader>
@@ -481,6 +515,7 @@ export function ProductosView() {
           )}
         </DialogContent>
       </Dialog>
+      */}
 
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-2xl">
@@ -488,7 +523,7 @@ export function ProductosView() {
           {viewingProducto && (
             <div className="grid grid-cols-2 gap-4 py-4">
               <div className="space-y-1"><Label className="text-xs text-muted-foreground">Nombre</Label><p className="font-bold">{viewingProducto.nombre}</p></div>
-              <div className="space-y-1"><Label className="text-xs text-muted-foreground">Precio Neto</Label><p className="font-bold">${viewingProducto.precio?.toFixed(2)}</p></div>
+              <div className="space-y-1"><Label className="text-xs text-muted-foreground">Precio Neto</Label><p className="font-bold">{formatCOP(viewingProducto.precio)}</p></div>
               <div className="space-y-1"><Label className="text-xs text-muted-foreground">Tipo Adquisición</Label><p className="font-bold capitalize">{viewingProducto.tipo_adquisicion?.replace('_', ' ')}</p></div>
             </div>
           )}

@@ -257,9 +257,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { CalendarCheck, CalendarX, CalendarClock, Calendar, Filter, Users } from 'lucide-react';
+import { CalendarCheck, CalendarX, CalendarClock, Calendar, Users } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { Pagination } from '../../../components/common/Pagination';
+import { Label } from '../../../components/ui/label';
+
 
 export function ReporteCitasView() {
   const today = new Date().toISOString().split('T')[0];
@@ -272,6 +275,9 @@ export function ReporteCitasView() {
   const [barberos, setBarberos] = useState<any[]>([]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
 
   useEffect(() => {
     // Cargar lista de barberos para el filtro
@@ -297,8 +303,16 @@ export function ReporteCitasView() {
         setLoading(false);
       }
     };
+    setCurrentPage(1);
     loadData();
   }, [fechaInicio, fechaFin, barberoFilter]);
+
+  const totalPages = Math.ceil((data?.detalle?.length || 0) / itemsPerPage);
+  const paginatedDetalle = (data?.detalle || []).slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
   
   const getStatusColor = (estado: string) => {
     switch(estado.toLowerCase()) {
@@ -331,7 +345,7 @@ export function ReporteCitasView() {
               <SelectTrigger className="w-[200px]"><Users className="w-4 h-4 mr-2 text-blue-600"/><SelectValue placeholder="Barbero" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Todos">Todos los barberos</SelectItem>
-                {barberos.map(b => <SelectItem key={b.id_usuario} value={b.id_usuario.toString()}>{b.nombre}</SelectItem>)}
+                {barberos.map(b => <SelectItem key={b.id_usuario} value={b.id_usuario.toString()}>{b.nombre} ({b.documento || 'Sin doc.'})</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -375,7 +389,7 @@ export function ReporteCitasView() {
               <Table>
                 <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Hora</TableHead><TableHead>Cliente</TableHead><TableHead>Barbero</TableHead><TableHead>Servicio</TableHead><TableHead>Estado</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {data.detalle.map((c: any) => (
+                  {paginatedDetalle.map((c: any) => (
                     <TableRow key={c.id}>
                       <TableCell>{new Date(c.fecha).toLocaleDateString('es-ES')}</TableCell>
                       <TableCell className="font-bold">{c.hora.substring(0,5)}</TableCell>
@@ -387,6 +401,25 @@ export function ReporteCitasView() {
                   ))}
                 </TableBody>
               </Table>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(parseInt(v)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['5', '10', '20', '50'].map(val => <SelectItem key={val} value={val}>{val}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={data.detalle.length}
+                />
+              </div>
             </CardContent>
           </Card>
         </>

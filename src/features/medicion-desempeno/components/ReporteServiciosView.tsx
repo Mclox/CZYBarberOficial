@@ -245,14 +245,18 @@
 
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Scissors, Trophy, Star, Users, TrendingUp } from 'lucide-react';
+import { Scissors, Trophy, Star, Users } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { formatCOP } from '../../../lib/format';
+import { Pagination } from '../../../components/common/Pagination';
+import { Label } from '../../../components/ui/label';
+
 
 const COLORS = ['#D4AF37', '#2563eb', '#8B5CF6', '#10B981', '#F59E0B'];
 
@@ -267,6 +271,9 @@ export function ReporteServiciosView() {
   const [barberos, setBarberos] = useState<any[]>([]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
 
   useEffect(() => {
     fetchApi('/employees').then(res => { if(res.success) setBarberos(res.data); });
@@ -285,8 +292,16 @@ export function ReporteServiciosView() {
         setLoading(false);
       }
     };
+    setCurrentPage(1);
     loadData();
   }, [fechaInicio, fechaFin, barberoFilter]);
+
+  const totalPages = Math.ceil((data?.ranking?.length || 0) / itemsPerPage);
+  const paginatedRanking = (data?.ranking || []).slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
 
   return (
     <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
@@ -330,7 +345,7 @@ export function ReporteServiciosView() {
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                   <XAxis type="number" hide />
                   <YAxis dataKey="servicio" type="category" axisLine={false} tickLine={false} width={130} tick={{ fill: '#374151', fontSize: 13, fontWeight: 600 }} />
-                  <Tooltip formatter={(value: number, _name: string, props: any) => [`${value} veces — $${props.payload.ingresos.toFixed(2)}`, 'Detalle']} />
+                  <Tooltip formatter={(value: number, _name: string, props: any) => [`${value} veces — ${formatCOP(props.payload.ingresos)}`, 'Detalle']} />
                   <Bar dataKey="veces" radius={[0, 6, 6, 0]}>
                     {data.ranking.slice(0, 5).map((_entry: any, index: number) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                   </Bar>
@@ -345,17 +360,36 @@ export function ReporteServiciosView() {
               <Table>
                 <TableHeader><TableRow><TableHead className="w-12 text-center">#</TableHead><TableHead>Servicio</TableHead><TableHead className="text-right">Veces</TableHead><TableHead className="text-right">Ingresos Totales</TableHead><TableHead className="text-right">Precio Promedio</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {data.ranking.map((s: any, idx: number) => (
+                  {paginatedRanking.map((s: any, idx: number) => (
                     <TableRow key={s.id} className="hover:bg-gray-50">
-                      <TableCell className="text-center font-bold text-gray-400">{idx + 1}</TableCell>
+                      <TableCell className="text-center font-bold text-gray-400">{(currentPage - 1) * itemsPerPage + idx + 1}</TableCell>
                       <TableCell className="font-semibold text-gray-900">{s.servicio}</TableCell>
                       <TableCell className="text-right font-bold text-blue-700">{s.veces}</TableCell>
-                      <TableCell className="text-right font-bold text-[#D4AF37]">${s.ingresos.toFixed(2)}</TableCell>
-                      <TableCell className="text-right text-gray-600">${s.precioPromedio.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold text-[#D4AF37]">{formatCOP(s.ingresos)}</TableCell>
+                      <TableCell className="text-right text-gray-600">{formatCOP(s.precioPromedio)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 pb-4 px-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(parseInt(v)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['5', '10', '20'].map(val => <SelectItem key={val} value={val}>{val}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={data.ranking.length}
+                />
+              </div>
             </CardContent>
           </Card>
         </>

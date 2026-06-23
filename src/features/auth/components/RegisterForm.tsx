@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Label } from '../../../components/ui/label';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
-import { ArrowLeft, Scissors } from 'lucide-react';
+import { ArrowLeft, Scissors, Eye, EyeOff } from 'lucide-react';
 
 interface RegisterFormProps {
   onBackToLogin: () => void;
@@ -18,6 +18,8 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin, onBac
     telefono: '',
   });
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { register } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -240,31 +242,89 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin, onBac
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="password" style={{ color: '#444444', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Contraseña</Label>
-                <input
-                  id="password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  required
-                  style={inputStyle}
-                  onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
-                />
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    required
+                    style={{ ...inputStyle, paddingRight: '48px' }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      padding: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#94a3b8',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#64748b')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                  >
+                    {showPassword ? (
+                      <EyeOff style={{ width: 18, height: 18 }} />
+                    ) : (
+                      <Eye style={{ width: 18, height: 18 }} />
+                    )}
+                  </button>
+                </div>
               </div>
               <div className="space-y-1.5">
-                <Label htmlFor="confirmPassword" style={{ color: '#444444', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Confirmar</Label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                  required
-                  style={inputStyle}
-                  onFocus={handleInputFocus}
-                  onBlur={handleInputBlur}
-                />
+                <Label htmlFor="confirmPassword" style={{ color: '#444444', fontWeight: 700, fontSize: 12, textTransform: 'uppercase' }}>Confirmar Contraseña</Label>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    required
+                    style={{ ...inputStyle, paddingRight: '48px' }}
+                    onFocus={handleInputFocus}
+                    onBlur={handleInputBlur}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    style={{
+                      position: 'absolute',
+                      right: '12px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      padding: '4px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#94a3b8',
+                      transition: 'color 0.2s',
+                    }}
+                    onMouseEnter={(e) => (e.currentTarget.style.color = '#64748b')}
+                    onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff style={{ width: 18, height: 18 }} />
+                    ) : (
+                      <Eye style={{ width: 18, height: 18 }} />
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
 

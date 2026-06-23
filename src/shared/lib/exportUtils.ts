@@ -1,5 +1,6 @@
 // Utility functions for exporting data to Excel and PDF
 import * as XLSX from 'xlsx';
+import { formatCOP } from '../../lib/format';
 
 export const exportToExcel = (data: any[], filename: string) => {
   // Convert data to CSV format
@@ -67,7 +68,7 @@ export const exportToExcelXLSX = (data: any[], filename: string, sheetName: stri
   XLSX.writeFile(workbook, `${filename}.xlsx`);
 };
 
-export const exportToPDF = (data: any[], filename: string, title: string) => {
+export const exportToPDF = (data: any[], _filename: string, title: string) => {
   // Simple PDF export using HTML canvas technique
   // For production, consider using a library like jsPDF
 
@@ -145,7 +146,7 @@ export const downloadMenu = (productos: any[]) => {
         menuWindow.document.write('<div class="product-desc">' + producto.descripcion + '</div>');
       }
       menuWindow.document.write('</div>');
-      menuWindow.document.write('<div class="product-price">$' + producto.precio.toFixed(2) + '</div>');
+      menuWindow.document.write('<div class="product-price">' + formatCOP(producto.precio) + '</div>');
       menuWindow.document.write('</div>');
     });
     menuWindow.document.write('</div>');

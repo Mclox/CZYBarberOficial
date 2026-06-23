@@ -248,15 +248,22 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { Package, DollarSign, Archive, TrendingDown } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { formatCOP } from '../../../lib/format';
+import { Pagination } from '../../../components/common/Pagination';
+import { Label } from '../../../components/ui/label';
+
 
 const COLORS = ['#D4AF37', '#3B82F6']; // Dorado (Vendidos), Azul (En Stock)
 
 export function ReporteProductosView() {
-  const [periodo, setPeriodo] = useState('mensual');
+  const [periodo] = useState('mensual');
   const [categoriaFilter, setCategoriaFilter] = useState('Todas');
   
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -270,8 +277,16 @@ export function ReporteProductosView() {
         setLoading(false);
       }
     };
+    setCurrentPage(1);
     loadData();
   }, [periodo, categoriaFilter]);
+
+  const totalPages = Math.ceil((data?.detalle?.length || 0) / itemsPerPage);
+  const paginatedDetalle = (data?.detalle || []).slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
 
   return (
     <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
@@ -305,7 +320,7 @@ export function ReporteProductosView() {
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <Card><CardContent className="pt-6"><div className="flex justify-between mb-2"><p className="text-sm font-medium text-gray-500">Unidades Vendidas</p><TrendingDown className="w-4 h-4 text-[#D4AF37]" /></div><p className="text-3xl font-black text-gray-900">{data.resumen.unidadesVendidas}</p><p className="text-xs text-[#D4AF37] font-medium mt-1">Salidas históricas</p></CardContent></Card>
-            <Card><CardContent className="pt-6"><div className="flex justify-between mb-2"><p className="text-sm font-medium text-gray-500">Valor Total Inventario</p><DollarSign className="w-4 h-4 text-green-600" /></div><p className="text-3xl font-black text-green-700">${data.resumen.valorInventario?.toFixed(2)}</p><p className="text-xs text-green-600 font-medium mt-1">Valorización actual del stock</p></CardContent></Card>
+            <Card><CardContent className="pt-6"><div className="flex justify-between mb-2"><p className="text-sm font-medium text-gray-500">Valor Total Inventario</p><DollarSign className="w-4 h-4 text-green-600" /></div><p className="text-3xl font-black text-green-700">{formatCOP(data.resumen.valorInventario)}</p><p className="text-xs text-green-600 font-medium mt-1">Valorización actual del stock</p></CardContent></Card>
             <Card><CardContent className="pt-6"><div className="flex justify-between mb-2"><p className="text-sm font-medium text-gray-500">Unidades en Stock</p><Archive className="w-4 h-4 text-blue-600" /></div><p className="text-3xl font-black text-blue-700">{data.resumen.unidadesEnStock}</p><p className="text-xs text-blue-600 font-medium mt-1">Disponibles en inventario</p></CardContent></Card>
           </div>
 
@@ -328,13 +343,13 @@ export function ReporteProductosView() {
 
             <Card className="shadow-sm border-gray-200 overflow-hidden">
               <CardHeader><CardTitle>Inventario Detallado</CardTitle><CardDescription>{data.detalle.length} producto(s) encontrados</CardDescription></CardHeader>
-              <CardContent className="p-0 overflow-y-auto max-h-[320px]">
+              <CardContent className="p-0 overflow-y-auto">
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs text-gray-500 uppercase bg-gray-50 sticky top-0">
                     <tr><th className="px-6 py-3 font-medium">Producto</th><th className="px-6 py-3 font-medium text-right">Vendidos</th><th className="px-6 py-3 font-medium text-right">Stock</th><th className="px-6 py-3 font-medium text-center">Estado</th></tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {data.detalle.map((prod: any) => (
+                    {paginatedDetalle.map((prod: any) => (
                       <tr key={prod.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 font-semibold text-gray-900">{prod.nombre} <br/><span className="text-xs font-normal text-gray-500">{prod.categoria}</span></td>
                         <td className="px-6 py-4 text-right font-bold text-[#D4AF37]">{prod.vendidos}</td>
@@ -344,6 +359,25 @@ export function ReporteProductosView() {
                     ))}
                   </tbody>
                 </table>
+                
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 pb-4 px-4 border-t">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                    <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(parseInt(v)); setCurrentPage(1); }}>
+                      <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {['5', '10', '20'].map(val => <SelectItem key={val} value={val}>{val}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                    itemsPerPage={itemsPerPage}
+                    totalItems={data.detalle.length}
+                  />
+                </div>
               </CardContent>
             </Card>
           </div>

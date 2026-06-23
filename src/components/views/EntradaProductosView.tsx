@@ -7,18 +7,20 @@ import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
-import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+// import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import {
-    PackagePlus, Search, Eye, Plus, XCircle, AlertCircle,
-    CheckCircle, Ban, Package, TrendingUp, ChevronLeft, ChevronRight,
-    ChevronsLeft, ChevronsRight, Calendar, User, FileDown,
+    PackagePlus, Search, Eye, Plus, XCircle,
+    CheckCircle, Ban, Package, TrendingUp,
+    User, FileDown,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../features/auth';
 import { exportToExcelXLSX } from '../../shared/lib/exportUtils';
 import { fetchApi } from '../../lib/api'; // <--- INYECCIÓN DE API
+import { Pagination } from '../common/Pagination';
+
 
 // Interfaces actualizadas a la Base de Datos Real
 interface ProductoReal {
@@ -104,16 +106,22 @@ export function EntradaProductosView() {
     }, []);
 
     // ── Helpers ────────────────────────────────────────────────
-    const getProductoName = (id: number, fallbackName: string) => {
-        const p = productos.find(p => p.id_producto === id);
-        return p ? p.nombre : fallbackName;
-    };
+    // const getProductoName = (id: number, fallbackName: string) => {
+    //     const p = productos.find(p => p.id_producto === id);
+    //     return p ? p.nombre : fallbackName;
+    // };
 
     const getEstadoBadge = (estado: string) =>
         estado === 'Activo' ? (
-            <Badge className="bg-green-600"><CheckCircle className="w-3 h-3 mr-1" /> Activo</Badge>
+            <Badge className="px-3 py-1 rounded-full border-2 bg-green-600 text-white border-transparent shadow-sm">
+                <span className="w-2 h-2 rounded-full mr-2 bg-green-200"></span>
+                Activo
+            </Badge>
         ) : (
-            <Badge className="bg-gray-500"><Ban className="w-3 h-3 mr-1" /> Anulado</Badge>
+            <Badge className="px-3 py-1 rounded-full border-2 bg-red-600 text-white border-transparent shadow-sm">
+                <span className="w-2 h-2 rounded-full mr-2 bg-red-200"></span>
+                Anulado
+            </Badge>
         );
 
     // ── Filtering ───────────────────────────────────────────────
@@ -187,23 +195,19 @@ export function EntradaProductosView() {
         if (!entradaToAnular) return;
         if (!motivoAnulacion.trim()) { toast.error('Debes indicar el motivo'); return; }
 
+        const toastId = toast.loading('Anulando entrada...');
         try {
             await fetchApi(`/product-entries/${entradaToAnular.id_entrada}/annul`, {
                 method: 'PUT',
                 body: JSON.stringify({ motivo_anulacion: motivoAnulacion.trim() })
             });
 
-            toast.success('Entrada anulada correctamente', {
-                description: `El inventario ha sido revertido.`,
-                style: { background: '#10b981', color: '#fff' },
-            });
-
+            toast.success('Entrada anulada correctamente', { id: toastId });
             setAnularDialogOpen(false);
             setEntradaToAnular(null);
             fetchData(); // Recargar datos
-
         } catch (error: any) {
-            toast.error(error.message || 'Error al anular la entrada');
+            toast.error(error.message || 'Error al anular la entrada', { id: toastId });
         }
     };
 
@@ -269,12 +273,7 @@ export function EntradaProductosView() {
                 </Card>
             </div>
 
-            {/* Info alert */}
-            <Alert className="bg-blue-50 border-blue-200">
-                <AlertCircle className="h-4 w-4 text-blue-600" />
-                <AlertTitle className="text-blue-800">Trazabilidad de Inventario</AlertTitle>
-                <AlertDescription className="text-blue-700">Las entradas <strong>no pueden editarse ni eliminarse</strong>. Solo se permite anular una entrada activa.</AlertDescription>
-            </Alert>
+
 
             {/* Table */}
             <Card>
@@ -319,13 +318,32 @@ export function EntradaProductosView() {
                                                     </span>
                                                 </TableCell>
                                                 <TableCell>{entrada.nombre_usuario}</TableCell>
-                                                <TableCell>{getEstadoBadge(entrada.estado)}</TableCell>
+                                                <TableCell>
+                                                    {entrada.estado === 'Activo' ? (
+                                                        <button
+                                                            onClick={() => handleOpenAnular(entrada)}
+                                                            className="focus:outline-none transition-transform active:scale-95"
+                                                            title="Anular entrada"
+                                                        >
+                                                            <Badge 
+                                                                className="cursor-pointer px-3 py-1 rounded-full border-2 bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm transition-all duration-200"
+                                                            >
+                                                                <span className="w-2 h-2 rounded-full mr-2 bg-green-200"></span>
+                                                                Activo
+                                                            </Badge>
+                                                        </button>
+                                                    ) : (
+                                                        <Badge 
+                                                            className="px-3 py-1 rounded-full border-2 bg-red-600 text-white border-transparent shadow-sm"
+                                                        >
+                                                            <span className="w-2 h-2 rounded-full mr-2 bg-red-200"></span>
+                                                            Anulado
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex justify-end gap-2">
                                                         <Button variant="outline" size="sm" onClick={() => handleView(entrada)}><Eye className="w-4 h-4" /></Button>
-                                                        <Button variant="outline" size="sm" onClick={() => handleOpenAnular(entrada)} disabled={entrada.estado === 'Anulado'} className={entrada.estado === 'Activo' ? 'hover:border-red-400 hover:text-red-600' : ''}>
-                                                            <XCircle className="w-4 h-4" />
-                                                        </Button>
                                                     </div>
                                                 </TableCell>
                                             </TableRow>
@@ -333,25 +351,7 @@ export function EntradaProductosView() {
                                     </TableBody>
                                 </Table>
                             </div>
-                            {/* Pagination UI se mantiene igual */}
-                             <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
-                                <div className="flex items-center gap-2">
-                                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="h-8 w-8 p-0">
-                                        <ChevronsLeft className="w-4 h-4" />
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="h-8 w-8 p-0">
-                                        <ChevronLeft className="w-4 h-4" />
-                                    </Button>
-                                    <span className="text-sm text-muted-foreground px-2">Página</span>
-                                    <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">{currentPage}</span>
-                                    <span className="text-sm text-muted-foreground px-2">de {totalPages || 1}</span>
-                                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0">
-                                        <ChevronRight className="w-4 h-4" />
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages || totalPages === 0} className="h-8 w-8 p-0">
-                                        <ChevronsRight className="w-4 h-4" />
-                                    </Button>
-                                </div>
+                            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                                 <div className="flex items-center gap-2">
                                     <Label className="text-sm text-muted-foreground">Mostrar:</Label>
                                     <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(parseInt(v)); setCurrentPage(1); }}>
@@ -361,6 +361,13 @@ export function EntradaProductosView() {
                                         </SelectContent>
                                     </Select>
                                 </div>
+                                <Pagination
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    onPageChange={setCurrentPage}
+                                    itemsPerPage={itemsPerPage}
+                                    totalItems={filteredEntradas.length}
+                                />
                             </div>
                         </>
                     )}
@@ -421,7 +428,7 @@ export function EntradaProductosView() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
-                        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><PackagePlus className="w-4 h-4 mr-2" /> Guardar en BD</Button>
+                        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><PackagePlus className="w-4 h-4 mr-2" /> Guardar</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

@@ -9,12 +9,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Plus, Pencil, Trash2, Scissors, Search, CheckCircle, XCircle, Eye, Clock, DollarSign, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, Scissors, Eye, Clock, DollarSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { Pagination } from '../common/Pagination';
 import { SearchBar } from '../common/SearchBar';
 import { useAuth } from '../../features/auth';
 import { fetchApi } from '../../lib/api'; // Conexión a la API real
+import { formatCOP } from '../../lib/format';
+
 
 export function ServiciosView() {
   const { user } = useAuth();
@@ -123,6 +125,50 @@ export function ServiciosView() {
     setServicioToDelete(null);
   };
 
+  const handleToggleEstado = async (servicio: any) => {
+    const nuevoEstado = (servicio.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo';
+    const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
+
+    try {
+      const payload = {
+        nombre: servicio.nombre,
+        descripcion: servicio.descripcion || '',
+        precio_neto: parseFloat(servicio.precio_neto),
+        duracion_minutos: parseInt(servicio.duracion_minutos),
+        iva_porcentaje: parseFloat(servicio.iva_porcentaje || 19.00),
+        estado: nuevoEstado
+      };
+
+      await fetchApi(`/services/${servicio.id_servicio}`, {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+      });
+
+      setServicios(servicios.map(s => s.id_servicio === servicio.id_servicio ? { ...s, estado: nuevoEstado } : s));
+      toast.success(nuevoEstado === 'Activo' ? 'Servicio activado' : 'Servicio desactivado', {
+        id: toastId,
+        style: { background: '#10b981', color: '#fff' }
+      });
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cambiar el estado del servicio', { id: toastId });
+    }
+  };
+
+  const getCalculatedBase = (precioTotal: string) => {
+    const val = parseFloat(precioTotal);
+    if (isNaN(val) || val <= 0) return '0';
+    const rounded = Math.round(val / 1.19);
+    return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
+  const getCalculatedIva = (precioTotal: string) => {
+    const val = parseFloat(precioTotal);
+    if (isNaN(val) || val <= 0) return '0';
+    const base = val / 1.19;
+    const rounded = Math.round(val - base);
+    return rounded.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  };
+
   // --- 3. CREAR Y ACTUALIZAR (POST / PUT) ---
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -149,7 +195,8 @@ export function ServiciosView() {
       descripcion: formData.descripcion,
       precio_neto: precio,
       duracion_minutos: duracion,
-      iva_porcentaje: 0.00 // Asumimos 0% por defecto para servicios según tu DB
+      iva_porcentaje: 19.00, // IVA del 19% para servicios
+      estado: formData.estado
     };
 
     try {
@@ -173,14 +220,6 @@ export function ServiciosView() {
     }
   };
 
-  // --- CAMBIO RÁPIDO DE ESTADO (Solo UI por ahora si DB no tiene la columna) ---
-  const handleToggleEstado = (servicio: any) => {
-    // Como tu tabla original de Servicios en BD no tiene campo estado, lo simularemos aquí
-    // o podrías agregar el UPDATE en el backend si en el futuro le agregas la columna estado.
-    toast.info('Para cambiar el estado necesitas agregar la columna "estado" a la tabla Servicios en la BD.', {
-      icon: <XCircle className="w-4 h-4 text-blue-500" />
-    });
-  };
 
   const totalPages = Math.ceil(filteredServicios.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -233,7 +272,7 @@ export function ServiciosView() {
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead>Descripción</TableHead>
-                    <TableHead>Precio</TableHead>
+                    <TableHead>Precio (Total / Base)</TableHead>
                     <TableHead>Duración (min)</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -246,15 +285,51 @@ export function ServiciosView() {
                       <TableCell className="text-muted-foreground max-w-xs truncate">
                         {servicio.descripcion || '-'}
                       </TableCell>
-                      <TableCell className="font-semibold text-green-700">
-                        ${servicio.precio_neto ? servicio.precio_neto.toFixed(2) : '0.00'}
+                      <TableCell>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-green-700">
+                            {formatCOP(servicio.precio_neto)} <span className="text-[10px] text-muted-foreground font-normal">(Total)</span>
+                          </span>
+                          {parseFloat(servicio.iva_porcentaje || 0) > 0 && (
+                            <span className="text-xs text-gray-500 font-semibold">
+                              {formatCOP(servicio.precio_neto / (1 + parseFloat(servicio.iva_porcentaje || 0) / 100))} <span className="text-[10px] text-muted-foreground font-normal">(Base)</span>
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>{servicio.duracion_minutos || '-'} min</TableCell>
                       <TableCell>
-                        <Badge className="bg-green-600">
-                          <CheckCircle className="w-3 h-3 mr-1" />
-                          Activo
-                        </Badge>
+                        {!isCliente && isAdmin ? (
+                          <button
+                            onClick={() => handleToggleEstado(servicio)}
+                            className="focus:outline-none transition-transform active:scale-95"
+                            title={`Cambiar a ${(servicio.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                          >
+                            <Badge 
+                              className={`
+                                cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                ${(servicio.estado || 'Activo') === 'Activo' 
+                                  ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                                  : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                              `}
+                            >
+                              <span className={`w-2 h-2 rounded-full mr-2 ${(servicio.estado || 'Activo') === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                              {servicio.estado || 'Activo'}
+                            </Badge>
+                          </button>
+                        ) : (
+                          <Badge 
+                            className={`
+                              px-3 py-1 rounded-full border-2
+                              ${(servicio.estado || 'Activo') === 'Activo' 
+                                ? 'bg-green-600 text-white border-transparent shadow-sm' 
+                                : 'bg-red-600 text-white border-transparent shadow-sm'}
+                            `}
+                          >
+                            <span className={`w-2 h-2 rounded-full mr-2 ${(servicio.estado || 'Activo') === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                            {servicio.estado || 'Activo'}
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -278,7 +353,7 @@ export function ServiciosView() {
                 </TableBody>
               </Table>
 
-              {filteredServicios.length > itemsPerPage && (
+              {filteredServicios.length > 0 && (
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
                   <Pagination
                     currentPage={currentPage}
@@ -307,7 +382,7 @@ export function ServiciosView() {
 
       {/* MODAL CREAR / EDITAR */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingServicio ? 'Editar Servicio' : 'Nuevo Servicio'}</DialogTitle>
             <DialogDescription>
@@ -315,36 +390,53 @@ export function ServiciosView() {
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="nombre">Nombre del Servicio <span className="text-red-500">*</span></Label>
                 <Input id="nombre" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} placeholder="Ej: Corte Clásico" required />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="precio">Precio Neto <span className="text-red-500">*</span></Label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input id="precio" type="number" step="0.01" min="0" value={formData.precio_neto} onChange={(e) => setFormData({ ...formData, precio_neto: e.target.value })} className="pl-8" required />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="duracion">Duración (min) <span className="text-red-500">*</span></Label>
-                  <div className="relative">
-                    <Clock className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input id="duracion" type="number" min="1" value={formData.duracion_minutos} onChange={(e) => setFormData({ ...formData, duracion_minutos: e.target.value })} className="pl-8" required />
-                  </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="precio">Precio de Venta (Total Final) <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="precio" type="number" step="0.01" min="0" value={formData.precio_neto} onChange={(e) => setFormData({ ...formData, precio_neto: e.target.value })} className="pl-8" required />
                 </div>
               </div>
+              
               <div className="space-y-2">
+                <Label htmlFor="duracion">Duración (min) <span className="text-red-500">*</span></Label>
+                <div className="relative">
+                  <Clock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input id="duracion" type="number" min="1" value={formData.duracion_minutos} onChange={(e) => setFormData({ ...formData, duracion_minutos: e.target.value })} className="pl-8" required />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Valor Base (Base Gravable)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                  <Input type="text" value={getCalculatedBase(formData.precio_neto)} className="pl-8 bg-muted text-muted-foreground font-semibold" disabled readOnly />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>IVA (19%)</Label>
+                <div className="relative">
+                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/60" />
+                  <Input type="text" value={getCalculatedIva(formData.precio_neto)} className="pl-8 bg-muted text-muted-foreground font-semibold" disabled readOnly />
+                </div>
+              </div>
+
+              <div className="space-y-2 md:col-span-2">
                 <Label htmlFor="descripcion">Descripción (Opcional)</Label>
-                <Textarea id="descripcion" value={formData.descripcion} onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} rows={3} placeholder="Detalles del servicio..." />
+                <Textarea id="descripcion" value={formData.descripcion} onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} placeholder="Detalles del servicio..." className="min-h-[100px] resize-none" />
               </div>
             </div>
-            <DialogFooter>
+            <DialogFooter className="mt-4 border-t pt-4">
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
               <Button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white">
-                {editingServicio ? 'Actualizar BD' : 'Guardar BD'}
+                Guardar
               </Button>
             </DialogFooter>
           </form>
@@ -386,18 +478,36 @@ export function ServiciosView() {
                   <p className="font-semibold">#{viewingServicio.id_servicio}</p>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Precio Neto</Label>
-                  <p className="font-bold text-green-600">${viewingServicio.precio_neto?.toFixed(2)}</p>
-                </div>
-                <div className="space-y-1">
                   <Label className="text-xs text-muted-foreground">Duración</Label>
                   <p className="font-medium flex items-center gap-1">
                     <Clock className="w-3 h-3" /> {viewingServicio.duracion_minutos} minutos
                   </p>
                 </div>
                 <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Valor Base (Base Gravable)</Label>
+                  <p className="font-semibold text-gray-700">
+                    {formatCOP(viewingServicio.precio_neto / (1 + parseFloat(viewingServicio.iva_porcentaje || 0) / 100))}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">IVA ({parseFloat(viewingServicio.iva_porcentaje || 0).toFixed(2)}%)</Label>
+                  <p className="font-semibold text-gray-600">
+                    {formatCOP(viewingServicio.precio_neto - (viewingServicio.precio_neto / (1 + parseFloat(viewingServicio.iva_porcentaje || 0) / 100)))}
+                  </p>
+                </div>
+                <div className="space-y-1 col-span-2 border-t pt-2 mt-1">
+                  <Label className="text-xs text-muted-foreground font-bold">Precio Total (Final)</Label>
+                  <p className="font-black text-lg text-green-700">
+                    {formatCOP(viewingServicio.precio_neto)}
+                  </p>
+                </div>
+                <div className="space-y-1 col-span-2">
                   <Label className="text-xs text-muted-foreground">Estado</Label>
-                  <p><Badge className="bg-green-600">Activo</Badge></p>
+                  <p>
+                    <Badge className={(viewingServicio.estado || 'Activo') === 'Activo' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}>
+                      {viewingServicio.estado || 'Activo'}
+                    </Badge>
+                  </p>
                 </div>
               </div>
             </div>

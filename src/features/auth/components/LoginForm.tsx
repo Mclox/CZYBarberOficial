@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { Label } from '../../../components/ui/label';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'sonner';
-import { ArrowLeft, Scissors } from 'lucide-react';
+import { ArrowLeft, Scissors, Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormProps {
   onRegisterClick: () => void;
@@ -13,6 +12,7 @@ interface LoginFormProps {
 export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick, onRecoverClick, onBackToLanding }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
 
@@ -241,36 +241,65 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onRegisterClick, onRecover
               >
                 Contraseña
               </label>
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                style={{
-                  width: '100%',
-                  background: '#f8fafc',
-                  border: '1.5px solid #e2e8f0',
-                  borderRadius: '8px',
-                  color: '#000000',
-                  fontSize: 15,
-                  padding: '12px 16px',
-                  outline: 'none',
-                  transition: 'all 0.2s',
-                  boxSizing: 'border-box',
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = '#0057FF';
-                  e.currentTarget.style.background = '#FFFFFF';
-                  e.currentTarget.style.boxShadow = '0 0 0 4px rgba(0,87,255,0.1)';
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = '#e2e8f0';
-                  e.currentTarget.style.background = '#f8fafc';
-                  e.currentTarget.style.boxShadow = 'none';
-                }}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  id="password"
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  style={{
+                    width: '100%',
+                    background: '#f8fafc',
+                    border: '1.5px solid #e2e8f0',
+                    borderRadius: '8px',
+                    color: '#000000',
+                    fontSize: 15,
+                    padding: '12px 48px 12px 16px',
+                    outline: 'none',
+                    transition: 'all 0.2s',
+                    boxSizing: 'border-box',
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = '#0057FF';
+                    e.currentTarget.style.background = '#FFFFFF';
+                    e.currentTarget.style.boxShadow = '0 0 0 4px rgba(0,87,255,0.1)';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = '#e2e8f0';
+                    e.currentTarget.style.background = '#f8fafc';
+                    e.currentTarget.style.boxShadow = 'none';
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    padding: '4px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#94a3b8',
+                    transition: 'color 0.2s',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = '#64748b')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = '#94a3b8')}
+                >
+                  {showPassword ? (
+                    <EyeOff style={{ width: 18, height: 18 }} />
+                  ) : (
+                    <Eye style={{ width: 18, height: 18 }} />
+                  )}
+                </button>
+              </div>
             </div>
 
             {/* ¿Olvidaste tu contraseña? */}

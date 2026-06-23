@@ -10,6 +10,7 @@ import {
   DollarSign
 } from 'lucide-react';
 import { mockProductos, mockVentas, mockClientes, mockCitas, mockCompras } from '../../lib/mockData';
+import { formatCOP } from '../../lib/format';
 
 export function Dashboard() {
   // Calculate stats
@@ -24,14 +25,14 @@ export function Dashboard() {
   const stats = [
     {
       title: 'Total Ventas',
-      value: `$${totalVentas.toFixed(2)}`,
+      value: formatCOP(totalVentas),
       icon: Receipt,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
     },
     {
       title: 'Total Compras',
-      value: `$${totalCompras.toFixed(2)}`,
+      value: formatCOP(totalCompras),
       icon: ShoppingCart,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50',
@@ -73,7 +74,7 @@ export function Dashboard() {
     },
     {
       title: 'Ganancia Estimada',
-      value: `$${(totalVentas - totalCompras).toFixed(2)}`,
+      value: formatCOP(totalVentas - totalCompras),
       icon: DollarSign,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-50',
@@ -192,7 +193,7 @@ export function Dashboard() {
                     <p className="text-sm text-muted-foreground">{venta.fecha}</p>
                   </div>
                   <div className="text-right">
-                    <p>${venta.total.toFixed(2)}</p>
+                    <p>{formatCOP(venta.total)}</p>
                     <p className={`text-xs ${
                       venta.estado === 'pagada' ? 'text-green-600' : 
                       venta.estado === 'pendiente' ? 'text-yellow-600' : 'text-red-600'

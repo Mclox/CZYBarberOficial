@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { Users, Trophy, Calendar } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { formatCOP } from '../../../lib/format';
+import { Pagination } from '../../../components/common/Pagination';
+import { Label } from '../../../components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+
 
 export function ReporteEmpleadosView() {
   const today = new Date().toISOString().split('T')[0];
@@ -15,6 +20,9 @@ export function ReporteEmpleadosView() {
   const [fechaFin, setFechaFin] = useState(today);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -28,8 +36,16 @@ export function ReporteEmpleadosView() {
         setLoading(false);
       }
     };
+    setCurrentPage(1);
     loadData();
   }, [fechaInicio, fechaFin]);
+
+  const totalPages = Math.ceil((data?.empleados?.length || 0) / itemsPerPage);
+  const paginatedEmpleados = (data?.empleados || []).slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
 
   return (
     <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
@@ -55,7 +71,7 @@ export function ReporteEmpleadosView() {
               <CardContent className="pt-6">
                 <div className="flex justify-between mb-2"><p className="text-sm font-medium text-gray-500">Barbero del Mes</p><Trophy className="w-4 h-4 text-[#D4AF37]" /></div>
                 <p className="text-2xl font-black text-[#D4AF37]">{data.empleados[0]?.nombre || 'N/A'}</p>
-                <p className="text-xs text-gray-600 font-medium mt-2">${data.empleados[0]?.ingresos?.toFixed(2)} en ingresos generados</p>
+                <p className="text-xs text-gray-600 font-medium mt-2">{formatCOP(data.empleados[0]?.ingresos)} en ingresos generados</p>
               </CardContent>
             </Card>
 
@@ -98,16 +114,35 @@ export function ReporteEmpleadosView() {
               <Table>
                 <TableHeader><TableRow><TableHead className="w-12 text-center">#</TableHead><TableHead>Barbero</TableHead><TableHead className="text-right">Citas Atendidas</TableHead><TableHead className="text-right">Ingresos (Ventas directas)</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {data.empleados.map((emp: any, idx: number) => (
+                  {paginatedEmpleados.map((emp: any, idx: number) => (
                     <TableRow key={emp.id_empleado}>
-                      <TableCell className="text-center font-bold">{idx + 1}</TableCell>
+                      <TableCell className="text-center font-bold">{(currentPage - 1) * itemsPerPage + idx + 1}</TableCell>
                       <TableCell className="font-bold text-gray-900">{emp.nombre}</TableCell>
                       <TableCell className="text-right font-bold text-blue-700">{emp.citasAtendidas}</TableCell>
-                      <TableCell className="text-right font-bold text-[#D4AF37]">${emp.ventasGeneradas?.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-bold text-[#D4AF37]">{formatCOP(emp.ventasGeneradas)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 pb-4 px-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={v => { setItemsPerPage(parseInt(v)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['5', '10', '20'].map(val => <SelectItem key={val} value={val}>{val}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={data.empleados.length}
+                />
+              </div>
             </CardContent>
           </Card>
         </>

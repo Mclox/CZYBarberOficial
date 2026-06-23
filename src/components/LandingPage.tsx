@@ -153,27 +153,33 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
             <p className="text-xl mb-8" style={{ color: '#E8EDF2', fontWeight: 400, opacity: 0.9 }}>
               {config.heroDescription}
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex justify-center">
               <Button
                 size="lg"
                 onClick={() => setBookingOpen(true)}
-                className="text-lg px-8 py-6 transition-all duration-300"
-                style={{ background: '#FF4B2B', color: '#FFFFFF', border: 'none', fontWeight: 800, borderRadius: '12px', boxShadow: '0 4px 15px rgba(255,75,43,0.3)' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.background = '#e03d21'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,75,43,0.4)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.background = '#FF4B2B'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 15px rgba(255,75,43,0.3)'; }}
+                className="text-xl px-12 py-7 transition-all duration-300 hover:scale-105"
+                style={{
+                  background: '#FF4B2B',
+                  color: '#FFFFFF',
+                  border: 'none',
+                  fontWeight: 800,
+                  borderRadius: '14px',
+                  boxShadow: '0 6px 20px rgba(255,75,43,0.4)',
+                  cursor: 'pointer'
+                }}
+                onMouseEnter={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = '#e03d21';
+                  e.currentTarget.style.transform = 'translateY(-3px)';
+                  e.currentTarget.style.boxShadow = '0 8px 25px rgba(255,75,43,0.5)';
+                }}
+                onMouseLeave={e => {
+                  (e.currentTarget as HTMLButtonElement).style.background = '#FF4B2B';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = '0 6px 20px rgba(255,75,43,0.4)';
+                }}
               >
-                <Calendar className="w-5 h-5 mr-2" />
+                <Calendar className="w-6 h-6 mr-3 text-white" />
                 Agendar Cita
-              </Button>
-              <Button
-                size="lg"
-                variant="outline"
-                className="text-lg px-8 py-6 transition-all duration-300"
-                style={{ border: '2px solid #FFFFFF', color: '#FFFFFF', background: 'transparent', fontWeight: 700, borderRadius: '12px' }}
-                onMouseEnter={e => { const btn = e.currentTarget as HTMLButtonElement; btn.style.background = '#FFFFFF'; btn.style.color = '#0057FF'; btn.style.transform = 'translateY(-2px)'; }}
-                onMouseLeave={e => { const btn = e.currentTarget as HTMLButtonElement; btn.style.background = 'transparent'; btn.style.color = '#FFFFFF'; btn.style.transform = 'translateY(0)'; }}
-              >
-                Ver Servicios
               </Button>
             </div>
           </div>
@@ -348,26 +354,107 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
       </section>
 
       {/* Footer */}
-      <footer className="py-12 relative z-20" style={{ background: '#0057FF', borderTop: 'none' }}>
-        <div className="container mx-auto px-4 text-center">
-          <div className="flex items-center justify-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center backdrop-blur-sm border border-white/20">
-              {config.logo ? (
-                <ImageWithFallback
-                  src={config.logo}
-                  alt="Logo"
-                  className="w-6 h-6 object-contain"
-                />
-              ) : (
-                <Scissors className="w-6 h-6" style={{ color: '#FFFFFF' }} />
-              )}
+      <footer className="py-20 relative z-20 text-white" style={{ background: '#0057FF', borderTop: 'none' }}>
+        <div className="container mx-auto px-6 max-w-6xl">
+          <div 
+            style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', 
+              gap: '48px', 
+              marginBottom: '48px' 
+            }}
+          >
+            {/* Columna 1: Info Barbería */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-sm">
+                  {config.logo ? (
+                    <ImageWithFallback
+                      src={config.logo}
+                      alt="Logo"
+                      className="w-6 h-6 object-contain"
+                    />
+                  ) : (
+                    <Scissors className="w-5 h-5 text-white" />
+                  )}
+                </div>
+                <span className="text-2xl font-extrabold tracking-tight text-white">{config.businessName}</span>
+              </div>
+              <p className="text-sm text-blue-100/85 leading-relaxed" style={{ maxWidth: '280px' }}>
+                {config.businessName} es tu espacio de confianza para el cuidado personal. Combinamos estilo, tradición y la mejor atención en cada corte.
+              </p>
             </div>
-            <span className="text-2xl font-extrabold tracking-tight" style={{ color: '#FFFFFF' }}>CzBarber</span>
+
+            {/* Columna 2: Enlaces Rápidos */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Enlaces</h3>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px' }} className="text-sm text-blue-100/80">
+                <li><a href="#servicios" className="hover:text-white transition-colors duration-200">Servicios</a></li>
+                <li><a href="#productos" className="hover:text-white transition-colors duration-200">Catálogo</a></li>
+                <li><a href="#nosotros" className="hover:text-white transition-colors duration-200">Sobre Nosotros</a></li>
+                <li><a href="#contacto" className="hover:text-white transition-colors duration-200">Contacto</a></li>
+              </ul>
+            </div>
+
+            {/* Columna 3: Horario de Atención */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Horario</h3>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px' }} className="text-sm text-blue-100/80">
+                <li style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                  <span>Lunes - Viernes:</span> 
+                  <span className="font-semibold text-white">9:00 AM - 7:00 PM</span>
+                </li>
+                <li style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                  <span>Sábados:</span> 
+                  <span className="font-semibold text-white">9:00 AM - 6:00 PM</span>
+                </li>
+                <li style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
+                  <span>Domingos:</span> 
+                  <span className="text-red-200 font-semibold">Cerrado</span>
+                </li>
+              </ul>
+            </div>
+
+            {/* Columna 4: Contacto */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <h3 className="text-sm font-bold text-white uppercase tracking-wider">Contacto</h3>
+              <ul style={{ display: 'flex', flexDirection: 'column', gap: '14px' }} className="text-sm text-blue-100/80">
+                <li style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                  <MapPin className="w-4 h-4 text-white mt-0.5 flex-shrink-0" />
+                  <span style={{ lineHeight: '1.4' }}>{config.contactAddress}</span>
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Phone className="w-4 h-4 text-white flex-shrink-0" />
+                  <span>{config.contactPhone}</span>
+                </li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Mail className="w-4 h-4 text-white flex-shrink-0" />
+                  <span style={{ wordBreak: 'break-all' }}>{config.contactEmail}</span>
+                </li>
+              </ul>
+            </div>
           </div>
-          <p className="text-lg font-medium opacity-90" style={{ color: '#FFFFFF', letterSpacing: '0.02em' }}>
-            &copy; 2026 CzBarber. Todos los derechos reservados.
-          </p>
-          <div className="mt-6 w-24 h-1 bg-white/20 mx-auto rounded-full"></div>
+
+          <div 
+            style={{ 
+              borderTop: '1px solid rgba(255, 255, 255, 0.2)', 
+              paddingTop: '32px', 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              gap: '20px' 
+            }} 
+            className="text-sm text-blue-100/60"
+          >
+            <p>
+              &copy; 2026 {config.businessName}. Todos los derechos reservados.
+            </p>
+            <div style={{ display: 'flex', gap: '24px' }}>
+              <a href="#" className="hover:text-white transition-colors duration-200">Términos de Servicio</a>
+              <a href="#" className="hover:text-white transition-colors duration-200">Política de Privacidad</a>
+            </div>
+          </div>
         </div>
       </footer>
 

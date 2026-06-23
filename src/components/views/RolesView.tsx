@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Textarea } from '../ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { Plus, Pencil, Trash2, Shield, Eye, Power, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, Eye, Power } from 'lucide-react';
 import { mockRoles, Role } from '../../lib/mockData';
 import { ITEMS_PER_PAGE } from '../../lib/constants';
 import { toast } from 'sonner';
@@ -26,7 +26,7 @@ export function RolesView() {
   const [roleToDelete, setRoleToDelete] = useState<number | null>(null);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(ITEMS_PER_PAGE);
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -70,7 +70,6 @@ export function RolesView() {
     e.preventDefault();
 
     // Validar que el nombre no comience con caracteres especiales
-    const primerCaracter = formData.nombre.trim().charAt(0);
     const nombreStartsWithSpecialChar = /^[^a-zA-ZáéíóúÁÉÍÓÚñÑ]/.test(formData.nombre.trim());
     
     if (nombreStartsWithSpecialChar) {
@@ -169,6 +168,13 @@ export function RolesView() {
           <CardTitle>Lista de Roles</CardTitle>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <SearchBar
+              value={searchTerm}
+              onChange={setSearchTerm}
+              placeholder="Buscar por ID, nombre, descripción o estado..."
+            />
+          </div>
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
@@ -272,90 +278,16 @@ export function RolesView() {
             </Table>
           </div>
           
-          {/* Paginador Personalizado */}
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronsLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground px-2">
-                  Página
-                </span>
-                <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">
-                  {currentPage}
-                </span>
-                <span className="text-sm text-muted-foreground px-2">
-                  de {totalPages || 1}
-                </span>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronsRight className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Mostrando {filteredRoles.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredRoles.length)} de {filteredRoles.length} registros
-              </span>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">
-                Mostrar:
-              </Label>
-              <Select
-                value={itemsPerPage.toString()}
-                onValueChange={(value) => {
-                  setItemsPerPage(parseInt(value));
-                  setCurrentPage(1);
-                }}
-              >
-                <SelectTrigger className="w-[80px] h-8">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="5">5</SelectItem>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="20">20</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {/* Paginación */}
+          {filteredRoles.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredRoles.length}
+            />
+          )}
         </CardContent>
       </Card>
 

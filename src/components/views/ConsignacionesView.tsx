@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
@@ -11,6 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Package2, Plus, Pencil, Trash2, Search, Eye, FileDown } from 'lucide-react';
 import { mockConsignaciones, mockProductos, mockProveedores, ConsignacionProveedor } from '../../shared/lib/mockData';
 import { toast } from 'sonner';
+import { Pagination } from '../common/Pagination';
+import { formatCOP } from '../../lib/format';
 
 export function ConsignacionesView() {
   const [consignaciones, setConsignaciones] = useState<ConsignacionProveedor[]>(mockConsignaciones);
@@ -22,6 +24,8 @@ export function ConsignacionesView() {
   const [viewingConsignacion, setViewingConsignacion] = useState<ConsignacionProveedor | null>(null);
   const [consignacionToDelete, setConsignacionToDelete] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [formData, setFormData] = useState({
     id_proveedor: '',
     id_producto: '',
@@ -38,6 +42,7 @@ export function ConsignacionesView() {
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const term = e.target.value.toLowerCase();
     setSearchTerm(term);
+    setCurrentPage(1);
 
     const filtered = consignaciones.filter(consignacion => {
       const productoName = getProductoName(consignacion.id_producto).toLowerCase();
@@ -58,6 +63,14 @@ export function ConsignacionesView() {
     });
     setFilteredConsignaciones(filtered);
   };
+
+  const totalPages = Math.ceil(filteredConsignaciones.length / itemsPerPage);
+  const paginatedConsignaciones = useMemo(() => {
+    return filteredConsignaciones.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredConsignaciones, currentPage, itemsPerPage]);
 
   const handleExport = () => {
     toast.success('Exportando a Excel...');
@@ -235,7 +248,7 @@ export function ConsignacionesView() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredConsignaciones.map((consignacion) => (
+                {paginatedConsignaciones.map((consignacion) => (
                   <TableRow key={consignacion.id_consignacion}>
                     <TableCell>#{consignacion.id_consignacion}</TableCell>
                     <TableCell>{getProductoName(consignacion.id_producto)}</TableCell>
@@ -261,6 +274,29 @@ export function ConsignacionesView() {
               </TableBody>
             </Table>
           </div>
+
+          {filteredConsignaciones.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={itemsPerPage}
+                totalItems={filteredConsignaciones.length}
+              />
+              <div className="flex items-center gap-2">
+                <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -438,13 +474,13 @@ export function ConsignacionesView() {
               <div className="space-y-2">
                 <Label>Precio Proveedor</Label>
                 <div className="p-3 bg-muted rounded-md">
-                  <p className="font-medium">${viewingConsignacion.precio_proveedor.toFixed(2)}</p>
+                  <p className="font-medium">{formatCOP(viewingConsignacion.precio_proveedor)}</p>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Precio Venta</Label>
                 <div className="p-3 bg-muted rounded-md">
-                  <p className="font-medium">${viewingConsignacion.precio_venta.toFixed(2)}</p>
+                  <p className="font-medium">{formatCOP(viewingConsignacion.precio_venta)}</p>
                 </div>
               </div>
               <div className="space-y-2">

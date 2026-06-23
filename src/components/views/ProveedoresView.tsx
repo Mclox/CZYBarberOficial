@@ -7,12 +7,12 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Badge } from '../ui/badge';
-import { Plus, Pencil, Trash2, Truck, Search, Eye, FileDown, Mail, Phone, MapPin, CheckCircle, XCircle, ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, Truck, Search, Eye, FileDown, CheckCircle, XCircle } from 'lucide-react';
 import { mockProveedores, Proveedor } from '../../shared/lib/mockData';
 import { toast } from 'sonner';
-import { Pagination } from '../common/Pagination';
 import { exportProveedores } from '../../lib/moduleExports';
+import { Pagination } from '../common/Pagination';
+
 
 export function ProveedoresView() {
   const [proveedores, setProveedores] = useState<Proveedor[]>(mockProveedores);
@@ -255,66 +255,7 @@ export function ProveedoresView() {
             </Table>
           </div>
           
-          {/* Paginador Personalizado */}
           <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(1)}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronsLeft className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                disabled={currentPage === 1}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              
-              <div className="flex items-center gap-1">
-                <span className="text-sm text-muted-foreground px-2">
-                  Página
-                </span>
-                <span className="text-sm font-medium px-2 py-1 bg-blue-600 text-white rounded">
-                  {currentPage}
-                </span>
-                <span className="text-sm text-muted-foreground px-2">
-                  de {totalPages || 1}
-                </span>
-              </div>
-              
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage(totalPages)}
-                disabled={currentPage === totalPages || totalPages === 0}
-                className="h-8 w-8 p-0"
-              >
-                <ChevronsRight className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                Mostrando {filteredProveedores.length === 0 ? 0 : ((currentPage - 1) * itemsPerPage) + 1} - {Math.min(currentPage * itemsPerPage, filteredProveedores.length)} de {filteredProveedores.length} registros
-              </span>
-            </div>
-
             <div className="flex items-center gap-2">
               <Label htmlFor="itemsPerPage" className="text-sm text-muted-foreground">
                 Mostrar:
@@ -338,6 +279,13 @@ export function ProveedoresView() {
                 </SelectContent>
               </Select>
             </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={itemsPerPage}
+              totalItems={filteredProveedores.length}
+            />
           </div>
         </CardContent>
       </Card>
@@ -391,7 +339,7 @@ export function ProveedoresView() {
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-              <Button type="submit">{editingProveedor ? 'Actualizar' : 'Crear'}</Button>
+              <Button type="submit">Guardar</Button>
             </DialogFooter>
           </form>
         </DialogContent>

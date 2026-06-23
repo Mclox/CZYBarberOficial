@@ -1,1 +1,1 @@
-export { DevolucionesProveedorView } from '../../components/views/DevolucionesProveedorView';
+// export { DevolucionesProveedorView } from '../../components/views/DevolucionesProveedorView';

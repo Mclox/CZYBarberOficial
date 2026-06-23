@@ -54,7 +54,7 @@ export function Pagination({
     return pages;
   };
 
-  if (totalPages <= 1) return null;
+  if (totalItems === 0) return null;
 
   return (
     <div className="flex items-center justify-between px-2 py-4">

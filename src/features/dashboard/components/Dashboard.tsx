@@ -8,6 +8,7 @@ import {
 import { useAuth } from '../../auth';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { formatCOP } from '../../../lib/format';
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -90,7 +91,7 @@ export function Dashboard() {
                   <div key={servicio.id_servicio} className="flex items-center justify-between p-4 bg-muted/50 rounded-xl border">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center"><Scissors className="w-5 h-5 text-blue-600" /></div>
-                      <div><p className="font-bold">{servicio.nombre}</p><p className="text-xs text-muted-foreground">{servicio.duracion_minutos} min • ${servicio.precio_neto?.toFixed(2)}</p></div>
+                      <div><p className="font-bold">{servicio.nombre}</p><p className="text-xs text-muted-foreground">{servicio.duracion_minutos} min • {formatCOP(servicio.precio_neto)}</p></div>
                     </div>
                   </div>
                 ))}
@@ -104,14 +105,14 @@ export function Dashboard() {
 
   // --- VISTA PARA ADMIN Y BARBEROS ---
   const statsBoxes = [
-    { title: 'Total Ventas', value: `$${data.stats?.totalVentas?.toFixed(2)}`, icon: Receipt, color: 'text-green-600', bgColor: 'bg-green-50' },
-    { title: 'Inversión Inventario', value: `$${data.stats?.totalCompras?.toFixed(2)}`, icon: ShoppingCart, color: 'text-blue-600', bgColor: 'bg-blue-50' },
+    { title: 'Total Ventas', value: formatCOP(data.stats?.totalVentas), icon: Receipt, color: 'text-green-600', bgColor: 'bg-green-50' },
+    { title: 'Inversión Inventario', value: formatCOP(data.stats?.totalCompras), icon: ShoppingCart, color: 'text-blue-600', bgColor: 'bg-blue-50' },
     { title: 'Productos Diferentes', value: data.stats?.totalProductos, icon: Package, color: 'text-purple-600', bgColor: 'bg-purple-50' },
     { title: 'Stock Total', value: data.stats?.stockTotal, icon: TrendingUp, color: 'text-orange-600', bgColor: 'bg-orange-50' },
     { title: 'Clientes Registrados', value: data.stats?.totalClientes, icon: Users, color: 'text-indigo-600', bgColor: 'bg-indigo-50' },
     { title: 'Citas Pendientes', value: data.stats?.citasPendientes, icon: Calendar, color: 'text-cyan-600', bgColor: 'bg-cyan-50' },
     { title: 'Stock Crítico', value: data.stats?.stockBajo, icon: AlertCircle, color: 'text-red-600', bgColor: 'bg-red-50' },
-    { title: 'Ganancia Estimada', value: `$${data.stats?.gananciaEstimada?.toFixed(2)}`, icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
+    { title: 'Ganancia Estimada', value: formatCOP(data.stats?.gananciaEstimada), icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   ];
 
   return (
@@ -186,7 +187,7 @@ export function Dashboard() {
                     <p className="text-xs text-muted-foreground">{new Date(venta.fecha).toLocaleDateString('es-ES')} - {venta.metodo_pago}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-black text-lg text-[#D4AF37]">${venta.total?.toFixed(2)}</p>
+                    <p className="font-black text-lg text-[#D4AF37]">{formatCOP(venta.total)}</p>
                   </div>
                 </div>
               ))}

@@ -273,14 +273,18 @@
 // }
 
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Input } from '../../../components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../../components/ui/table';
 import { Badge } from '../../../components/ui/badge';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { DollarSign, Briefcase, Package } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../../components/ui/select';
+import { DollarSign } from 'lucide-react';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
+import { formatCOP } from '../../../lib/format';
+import { Pagination } from '../../../components/common/Pagination';
+import { Label } from '../../../components/ui/label';
+
 
 export function ReporteIngresosView() {
   const today = new Date().toISOString().split('T')[0];
@@ -290,6 +294,9 @@ export function ReporteIngresosView() {
   const [fechaFin, setFechaFin] = useState(today);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
 
   useEffect(() => {
     const loadData = async () => {
@@ -303,8 +310,16 @@ export function ReporteIngresosView() {
         setLoading(false);
       }
     };
+    setCurrentPage(1);
     loadData();
   }, [fechaInicio, fechaFin]);
+
+  const totalPages = Math.ceil((data?.detalle?.length || 0) / itemsPerPage);
+  const paginatedDetalle = (data?.detalle || []).slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
 
   return (
     <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
@@ -329,19 +344,19 @@ export function ReporteIngresosView() {
             <Card className="border-t-4 border-t-[#D4AF37]">
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-gray-500">Ingresos Totales</p>
-                <p className="text-3xl font-black text-[#D4AF37] mt-2">${data.resumen.ingresosTotales?.toFixed(2)}</p>
+                <p className="text-3xl font-black text-[#D4AF37] mt-2">{formatCOP(data.resumen.ingresosTotales)}</p>
               </CardContent>
             </Card>
             <Card className="border-t-4 border-t-blue-500">
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-gray-500">Por Servicios</p>
-                <p className="text-3xl font-black text-blue-700 mt-2">${data.resumen.ingresosPorServicios?.toFixed(2)}</p>
+                <p className="text-3xl font-black text-blue-700 mt-2">{formatCOP(data.resumen.ingresosPorServicios)}</p>
               </CardContent>
             </Card>
             <Card className="border-t-4 border-t-emerald-500">
               <CardContent className="pt-6">
                 <p className="text-sm font-medium text-gray-500">Por Productos</p>
-                <p className="text-3xl font-black text-emerald-700 mt-2">${data.resumen.ingresosPorProductos?.toFixed(2)}</p>
+                <p className="text-3xl font-black text-emerald-700 mt-2">{formatCOP(data.resumen.ingresosPorProductos)}</p>
               </CardContent>
             </Card>
           </div>
@@ -352,17 +367,36 @@ export function ReporteIngresosView() {
               <Table>
                 <TableHeader><TableRow><TableHead>Fecha</TableHead><TableHead>Concepto</TableHead><TableHead>Tipo</TableHead><TableHead>Vendedor</TableHead><TableHead className="text-right">Monto</TableHead></TableRow></TableHeader>
                 <TableBody>
-                  {data.detalle.map((d: any) => (
+                  {paginatedDetalle.map((d: any) => (
                     <TableRow key={`${d.id}-${d.concepto}`}>
                       <TableCell>{new Date(d.fecha).toLocaleDateString('es-ES')}</TableCell>
                       <TableCell className="font-bold">{d.concepto}</TableCell>
                       <TableCell><Badge variant="outline">{d.tipo}</Badge></TableCell>
                       <TableCell>{d.barbero}</TableCell>
-                      <TableCell className="text-right font-black text-[#D4AF37]">${d.monto?.toFixed(2)}</TableCell>
+                      <TableCell className="text-right font-black text-[#D4AF37]">{formatCOP(d.monto)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
+              
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={(v: string) => { setItemsPerPage(parseInt(v)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {['5', '10', '20', '50'].map(val => <SelectItem key={val} value={val}>{val}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={data.detalle.length}
+                />
+              </div>
             </CardContent>
           </Card>
         </>

@@ -218,6 +218,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const updateUser = useCallback((updatedData: Partial<Usuario>) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      const newUser = { ...prevUser, ...updatedData };
+      localStorage.setItem('user', JSON.stringify(newUser));
+      return newUser;
+    });
+  }, []);
+
   return (
     <AuthContext.Provider
       value={{
@@ -231,7 +240,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         confirmResetPassword,
         hasPermission,
         isAuthenticated: !!user,
-        refetchProfile
+        refetchProfile,
+        updateUser
       }}
     >
       {children}

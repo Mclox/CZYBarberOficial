@@ -3,11 +3,13 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Pagination } from '../common/Pagination';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Badge } from '../ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Users, Search, Eye, UserCheck, Trash2, Mail, Phone, Calendar } from 'lucide-react';
+import { Users, Search, Eye, UserCheck, Trash2, Mail, Phone } from 'lucide-react';
 import { toast } from 'sonner';
 import { fetchApi } from '../../lib/api'; // API Connection
 
@@ -32,6 +34,12 @@ export function ClientesTemporalesView() {
   const [convertingCliente, setConvertingCliente] = useState<any | null>(null);
   const [clienteToDelete, setClienteToDelete] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
 
   const [convertFormData, setConvertFormData] = useState({
     password: '',
@@ -84,6 +92,14 @@ export function ClientesTemporalesView() {
         tel.includes(lowerSearch);
     });
   }, [clientesTemporales, searchTerm]);
+
+  const totalPages = Math.ceil(filteredClientesTemporales.length / itemsPerPage);
+  const paginatedClientes = useMemo(() => {
+    return filteredClientesTemporales.slice(
+      (currentPage - 1) * itemsPerPage,
+      currentPage * itemsPerPage
+    );
+  }, [filteredClientesTemporales, currentPage, itemsPerPage]);
 
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     setSearchTerm(e.target.value);
@@ -252,7 +268,8 @@ export function ClientesTemporalesView() {
           ) : filteredClientesTemporales.length === 0 ? (
             <div className="text-center py-8 text-gray-500">No hay clientes temporales registrados</div>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
+            <>
+              <div className="rounded-md border overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -266,7 +283,7 @@ export function ClientesTemporalesView() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredClientesTemporales.map((cliente) => (
+                  {paginatedClientes.map((cliente) => (
                     <TableRow key={cliente.id_cliente}>
                       <TableCell className="font-medium">#{cliente.id_cliente}</TableCell>
                       <TableCell className="font-medium">{cliente.nombre_final}</TableCell>
@@ -325,7 +342,30 @@ export function ClientesTemporalesView() {
                 </TableBody>
               </Table>
             </div>
-          )}
+            
+            {filteredClientesTemporales.length > 0 && (
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-6 pt-4 border-t">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={setCurrentPage}
+                  itemsPerPage={itemsPerPage}
+                  totalItems={filteredClientesTemporales.length}
+                />
+                <div className="flex items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Mostrar:</Label>
+                  <Select value={itemsPerPage.toString()} onValueChange={(val) => { setItemsPerPage(parseInt(val)); setCurrentPage(1); }}>
+                    <SelectTrigger className="w-[80px] h-8"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            )}
+          </>)}
         </CardContent>
       </Card>
 
@@ -469,6 +509,24 @@ export function ClientesTemporalesView() {
           </form>
         </DialogContent>
       </Dialog>
+      
+      {/* Dialog para confirmar eliminación */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar Cliente Temporal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta acción eliminará de forma permanente al cliente temporal. Esta acción no se puede deshacer.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-red-600 hover:bg-red-700 text-white">
+              Eliminar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
