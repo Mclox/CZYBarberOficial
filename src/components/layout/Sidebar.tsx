@@ -10,7 +10,6 @@ import {
   Calendar,
   UserCog,
   UserCheck,
-  CreditCard,
   ShoppingBag,
   Shield,
   LogOut,
@@ -41,12 +40,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onNavigate }) => 
     { id: 'citas', label: 'Agendamiento', icon: Calendar, roles: ['Administrador', 'Barbero'] },
     { id: 'ventas', label: 'Ventas', icon: ShoppingBag, roles: ['Administrador', 'Barbero'] },
     { id: 'devoluciones', label: 'Devolución Stock', icon: RotateCcw, roles: ['Administrador'] },
-    // --- NUEVOS REPORTES DE MEDICIÓN DE DESEMPEÑO ---
-    { id: 'reporte-citas', label: 'Reporte Citas', icon: Calendar, roles: ['Administrador', 'Barbero'] },
-    { id: 'reporte-productos', label: 'Reporte Productos', icon: Package, roles: ['Administrador'] },
-    { id: 'reporte-servicios', label: 'Reporte Servicios', icon: Wrench, roles: ['Administrador', 'Barbero'] },
-    { id: 'reporte-empleados', label: 'Reporte Empleados', icon: Users, roles: ['Administrador', 'Barbero'] },
-    { id: 'reporte-ingresos', label: 'Reporte Ingresos', icon: CreditCard, roles: ['Administrador'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item => 

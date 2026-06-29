@@ -23,6 +23,7 @@ import { LandingPage } from './components/LandingPage';
 import { MiPerfilView } from './features/mi-perfil';
 import { ConfiguracionLandingView } from './features/configuracion-landing';
 import { ReporteCitasView, ReporteProductosView, ReporteServiciosView, ReporteEmpleadosView, ReporteIngresosView } from './features/medicion-desempeno';
+import { NotificacionesView } from './features/notificaciones';
 
 type AuthView = 'login' | 'register' | 'recover' | 'landing';
 
@@ -151,6 +152,8 @@ function AppContent() {
         return <MiPerfilView />;
       case 'configuracion-landing':
         return <ConfiguracionLandingView />;
+      case 'notificaciones':
+        return <NotificacionesView />;
       case 'reporte-citas':
         return <ReporteCitasView />;
       case 'reporte-productos':

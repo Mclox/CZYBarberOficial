@@ -1,14 +1,23 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../../components/ui/card';
 import { Badge } from '../../../components/ui/badge';
+import { Button } from '../../../components/ui/button';
+import { cn } from '../../../components/ui/utils';
 import {
   Package, ShoppingCart, Receipt, Users, TrendingUp, AlertCircle,
-  Calendar, DollarSign, Clock, Scissors
+  Calendar, DollarSign, Clock, Scissors, Home
 } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { fetchApi } from '../../../lib/api';
 import { toast } from 'sonner';
 import { formatCOP } from '../../../lib/format';
+import { 
+  ReporteCitasView, 
+  ReporteProductosView, 
+  ReporteServiciosView, 
+  ReporteEmpleadosView, 
+  ReporteIngresosView 
+} from '../../medicion-desempeno';
 
 export function Dashboard() {
   const { user } = useAuth();
@@ -16,6 +25,10 @@ export function Dashboard() {
   
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Tab selection state for Admin/Barberos
+  type DashboardTab = 'general' | 'citas' | 'productos' | 'servicios' | 'empleados' | 'ingresos';
+  const [activeTab, setActiveTab] = useState<DashboardTab>('general');
 
   useEffect(() => {
     const loadDashboard = async () => {
@@ -102,7 +115,6 @@ export function Dashboard() {
       </div>
     );
   }
-
   // --- VISTA PARA ADMIN Y BARBEROS ---
   const statsBoxes = [
     { title: 'Total Ventas', value: formatCOP(data.stats?.totalVentas), icon: Receipt, color: 'text-green-600', bgColor: 'bg-green-50' },
@@ -115,86 +127,133 @@ export function Dashboard() {
     { title: 'Ganancia Estimada', value: formatCOP(data.stats?.gananciaEstimada), icon: DollarSign, color: 'text-emerald-600', bgColor: 'bg-emerald-50' },
   ];
 
+  const isAdmin = user?.id_rol === 1 || user?.rol?.toLowerCase() === 'administrador' || user?.rol?.toLowerCase() === 'admin';
+
+  const tabs = [
+    { id: 'general', label: 'Resumen General', icon: Home, allowed: true },
+    { id: 'citas', label: 'Citas', icon: Calendar, allowed: true },
+    { id: 'productos', label: 'Productos', icon: Package, allowed: isAdmin },
+    { id: 'servicios', label: 'Servicios', icon: Scissors, allowed: true },
+    { id: 'empleados', label: 'Empleados', icon: Users, allowed: true },
+    { id: 'ingresos', label: 'Ingresos', icon: DollarSign, allowed: isAdmin },
+  ].filter(tab => tab.allowed);
+
   return (
     <div className="p-4 md:p-8 space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-2xl font-bold">Dashboard General</h1>
-        <p className="text-muted-foreground">Métricas y resumen en tiempo real</p>
+        <h1 className="text-2xl font-bold">Medición de Desempeño</h1>
+        <p className="text-muted-foreground">Resumen de rendimiento e indicadores en tiempo real</p>
       </div>
 
-      {/* METRICAS SUPERIORES */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statsBoxes.map((stat, index) => {
-          const Icon = stat.icon;
+      {/* TABS DE INDICADORES */}
+      <div className="flex flex-wrap gap-2 pb-4 border-b border-muted">
+        {tabs.map((tab) => {
+          const TabIcon = tab.icon;
+          const isActive = activeTab === tab.id;
           return (
-            <Card key={index} className="hover:shadow-md transition-shadow border-muted/50">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-xs font-bold uppercase text-muted-foreground">{stat.title}</CardTitle>
-                <div className={`p-2 rounded-lg ${stat.bgColor}`}><Icon className={`w-4 h-4 ${stat.color}`} /></div>
-              </CardHeader>
-              <CardContent><div className="text-2xl font-black">{stat.value}</div></CardContent>
-            </Card>
+            <Button
+              key={tab.id}
+              variant={isActive ? "default" : "outline"}
+              onClick={() => setActiveTab(tab.id as DashboardTab)}
+              className={cn(
+                "flex items-center gap-2 h-10 px-4 rounded-xl transition-all font-bold text-xs uppercase tracking-wider",
+                isActive 
+                  ? "bg-blue-600 hover:bg-blue-700 text-white shadow-md" 
+                  : "bg-white border-muted hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <TabIcon className="w-4 h-4" />
+              {tab.label}
+            </Button>
           );
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* STOCK BAJO */}
-        <Card className="shadow-sm">
-          <CardHeader><CardTitle className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-500"/> Productos con Stock Bajo</CardTitle></CardHeader>
-          <CardContent>
-            {data.lowStock?.length > 0 ? (
-              <div className="space-y-3">
-                {data.lowStock.map((prod: any) => (
-                  <div key={prod.id_producto} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
-                    <div><p className="font-bold text-sm">{prod.nombre}</p><p className="text-xs text-muted-foreground">Cód: {prod.codigo || 'S/N'}</p></div>
-                    <div className="text-right"><Badge variant="destructive" className="font-mono">Stock: {prod.stock}</Badge></div>
-                  </div>
-                ))}
-              </div>
-            ) : <p className="text-muted-foreground text-center py-4 text-sm">Inventario en niveles óptimos</p>}
-          </CardContent>
-        </Card>
+      {activeTab === 'general' ? (
+        <>
+          {/* METRICAS SUPERIORES */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statsBoxes.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <Card key={index} className="hover:shadow-md transition-shadow border-muted/50">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-xs font-bold uppercase text-muted-foreground">{stat.title}</CardTitle>
+                    <div className={`p-2 rounded-lg ${stat.bgColor}`}><Icon className={`w-4 h-4 ${stat.color}`} /></div>
+                  </CardHeader>
+                  <CardContent><div className="text-2xl font-black">{stat.value}</div></CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-        {/* PRÓXIMAS CITAS */}
-        <Card className="shadow-sm">
-          <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-500"/> Próximas Citas</CardTitle></CardHeader>
-          <CardContent>
-            {data.nextCitas?.length > 0 ? (
-              <div className="space-y-3">
-                {data.nextCitas.map((cita: any) => (
-                  <div key={cita.id_cita} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
-                    <div><p className="font-bold text-sm">{cita.cliente_nombre}</p><p className="text-xs text-muted-foreground">{new Date(cita.fecha).toLocaleDateString('es-ES')} - {cita.hora_inicio?.substring(0,5)}</p></div>
-                    <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200">{cita.estado}</Badge>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* STOCK BAJO */}
+            <Card className="shadow-sm">
+              <CardHeader><CardTitle className="flex items-center gap-2"><AlertCircle className="w-5 h-5 text-red-500"/> Productos con Stock Bajo</CardTitle></CardHeader>
+              <CardContent>
+                {data.lowStock?.length > 0 ? (
+                  <div className="space-y-3">
+                    {data.lowStock.map((prod: any) => (
+                      <div key={prod.id_producto} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+                        <div><p className="font-bold text-sm">{prod.nombre}</p><p className="text-xs text-muted-foreground">Cód: {prod.codigo || 'S/N'}</p></div>
+                        <div className="text-right"><Badge variant="destructive" className="font-mono">Stock: {prod.stock}</Badge></div>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : <p className="text-muted-foreground text-center py-4 text-sm">No hay citas pendientes</p>}
-          </CardContent>
-        </Card>
-      </div>
+                ) : <p className="text-muted-foreground text-center py-4 text-sm">Inventario en niveles óptimos</p>}
+              </CardContent>
+            </Card>
 
-      {/* VENTAS RECIENTES */}
-      <Card className="shadow-sm">
-        <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="w-5 h-5 text-green-500"/> Ventas Recientes</CardTitle></CardHeader>
-        <CardContent>
-          {data.recentSales?.length > 0 ? (
-            <div className="space-y-3">
-              {data.recentSales.map((venta: any) => (
-                <div key={venta.id_venta} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
-                  <div>
-                    <p className="font-bold text-sm">{venta.cliente_nombre}</p>
-                    <p className="text-xs text-muted-foreground">{new Date(venta.fecha).toLocaleDateString('es-ES')} - {venta.metodo_pago}</p>
+            {/* PRÓXIMAS CITAS */}
+            <Card className="shadow-sm">
+              <CardHeader><CardTitle className="flex items-center gap-2"><Calendar className="w-5 h-5 text-blue-500"/> Próximas Citas</CardTitle></CardHeader>
+              <CardContent>
+                {data.nextCitas?.length > 0 ? (
+                  <div className="space-y-3">
+                    {data.nextCitas.map((cita: any) => (
+                      <div key={cita.id_cita} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border">
+                        <div><p className="font-bold text-sm">{cita.cliente_nombre}</p><p className="text-xs text-muted-foreground">{new Date(cita.fecha).toLocaleDateString('es-ES')} - {cita.hora_inicio?.substring(0,5)}</p></div>
+                        <Badge className="bg-yellow-100 text-yellow-700 hover:bg-yellow-200">{cita.estado}</Badge>
+                      </div>
+                    ))}
                   </div>
-                  <div className="text-right">
-                    <p className="font-black text-lg text-[#D4AF37]">{formatCOP(venta.total)}</p>
-                  </div>
+                ) : <p className="text-muted-foreground text-center py-4 text-sm">No hay citas pendientes</p>}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* VENTAS RECIENTES */}
+          <Card className="shadow-sm">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Receipt className="w-5 h-5 text-green-500"/> Ventas Recientes</CardTitle></CardHeader>
+            <CardContent>
+              {data.recentSales?.length > 0 ? (
+                <div className="space-y-3">
+                  {data.recentSales.map((venta: any) => (
+                    <div key={venta.id_venta} className="flex items-center justify-between p-4 bg-muted/30 rounded-lg border">
+                      <div>
+                        <p className="font-bold text-sm">{venta.cliente_nombre}</p>
+                        <p className="text-xs text-muted-foreground">{new Date(venta.fecha).toLocaleDateString('es-ES')} - {venta.metodo_pago}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-black text-lg text-[#D4AF37]">{formatCOP(venta.total)}</p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          ) : <p className="text-muted-foreground text-center py-4 text-sm">Aún no hay ventas registradas</p>}
-        </CardContent>
-      </Card>
+              ) : <p className="text-muted-foreground text-center py-4 text-sm">Aún no hay ventas registradas</p>}
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <div className="w-full">
+          {activeTab === 'citas' && <ReporteCitasView />}
+          {activeTab === 'productos' && <ReporteProductosView />}
+          {activeTab === 'servicios' && <ReporteServiciosView />}
+          {activeTab === 'empleados' && <ReporteEmpleadosView />}
+          {activeTab === 'ingresos' && <ReporteIngresosView />}
+        </div>
+      )}
     </div>
   );
 }

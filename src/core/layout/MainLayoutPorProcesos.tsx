@@ -11,7 +11,6 @@ import {
   Plus,
   AlertCircle,
   Clock,
-  CheckCircle2,
   Menu,
   Home,
   Users,
@@ -33,8 +32,6 @@ import {
   CalendarClock,
   DollarSign,
   PackagePlus,
-  Scissors,
-  CalendarCheck
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import {
@@ -48,6 +45,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { cn } from '../../components/ui/utils';
+import { fetchApi, API_BASE_URL } from '../../lib/api';
+import { toast } from 'sonner';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -147,11 +146,6 @@ const processMenuItems: ProcessItem[] = [
     clienteAccess: false,
     subItems: [
       { id: 'dashboard', label: 'Dashboard General', icon: Home },
-      { id: 'reporte-citas', label: 'Reporte de Citas', icon: CalendarCheck },
-      { id: 'reporte-productos', label: 'Reporte de Productos', icon: Package },
-      { id: 'reporte-servicios', label: 'Reporte de Servicios', icon: Scissors },
-      { id: 'reporte-empleados', label: 'Reporte de Empleados', icon: Users },
-      { id: 'reporte-ingresos', label: 'Reporte de Ingresos', icon: DollarSign },
     ]
   },
 ];
@@ -171,11 +165,6 @@ const moduloMapping: Record<string, string> = {
   'clientes': 'Clientes',
   'ventas': 'Ventas',
   'devoluciones': 'Devoluciones',
-  'reporte-citas': 'Citas',
-  'reporte-productos': 'Productos',
-  'reporte-servicios': 'Servicios',
-  'reporte-empleados': 'Empleados',
-  'reporte-ingresos': 'Ventas',
 };
 
 // Helper local para verificar rol admin (consistente con AuthContext)
@@ -426,67 +415,90 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
   const isAdmin = isAdminRole(roleName);
   const isCliente = roleName?.toLowerCase() === 'cliente';
 
-  // Notificaciones dinámicas por rol
-  const getNotifications = () => {
-    if (isCliente) {
-      return [
-        {
-          title: 'Cita Confirmada',
-          description: 'Tu cita para Corte + Barba ha sido confirmada',
-          time: 'Hace 10 min',
-          icon: CheckCircle2,
-          color: 'text-green-600',
-          bgColor: 'bg-green-100'
-        },
-        {
-          title: 'Recordatorio',
-          description: 'Mañana tienes una cita a las 10:00 AM',
-          time: 'Hace 1 hora',
-          icon: Clock,
-          color: 'text-blue-600',
-          bgColor: 'bg-blue-100'
-        },
-        {
-          title: 'Promoción',
-          description: '20% de descuento en productos capilares',
-          time: 'Hace 3 horas',
-          icon: Store,
-          color: 'text-amber-600',
-          bgColor: 'bg-amber-100'
-        }
-      ];
-    }
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
 
-    // Admin y Barbero comparten notificaciones operativas
-    return [
-      {
-        title: 'Stock Crítico',
-        description: 'Pomada strong - Solo 2 unidades',
-        time: 'Hace 5 min',
-        icon: AlertCircle,
-        color: 'text-red-600',
-        bgColor: 'bg-red-100'
-      },
-      {
-        title: 'Nueva Cita',
-        description: 'Roberto S. para hoy 16:00',
-        time: 'Hace 15 min',
-        icon: Calendar,
-        color: 'text-blue-600',
-        bgColor: 'bg-blue-100'
-      },
-      {
-        title: 'Venta Completada',
-        description: 'Pago aprobado: $45.00',
-        time: 'Hace 1 hora',
-        icon: CheckCircle2,
-        color: 'text-green-600',
-        bgColor: 'bg-green-100'
+  const fetchRecentNotifications = async () => {
+    try {
+      const response = await fetchApi('/notifications');
+      if (response.success) {
+        setNotifications(response.data);
+        setUnreadCount(response.unreadCount);
       }
-    ];
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    }
   };
 
-  const notifications = getNotifications();
+  useEffect(() => {
+    fetchRecentNotifications();
+
+    const eventSource = new EventSource(`${API_BASE_URL}/api/notifications/stream`);
+    
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type === 'notification') {
+          const newNotif = payload.data;
+          
+          setNotifications(prev => [newNotif, ...prev].slice(0, 10));
+          setUnreadCount(prev => prev + 1);
+          
+          toast.info(`[${newNotif.modulo}] ${newNotif.accion.toUpperCase()}`, {
+            description: newNotif.descripcion,
+            action: {
+              label: 'Ver todas',
+              onClick: () => onNavigate('notificaciones')
+            }
+          });
+
+          // Dispatch global event for NotificacionesView to refresh
+          window.dispatchEvent(new CustomEvent('notifications:new', { detail: newNotif }));
+        }
+      } catch (err) {
+        console.error('Error parsing SSE event:', err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error('SSE Error:', err);
+    };
+
+    const handleRefresh = () => {
+      fetchRecentNotifications();
+    };
+    window.addEventListener('notifications:updated', handleRefresh);
+
+    return () => {
+      eventSource.close();
+      window.removeEventListener('notifications:updated', handleRefresh);
+    };
+  }, []);
+
+  const getNotifConfig = (modulo: string) => {
+    const mod = (modulo || '').toLowerCase();
+    switch (mod) {
+      case 'ventas':
+        return { icon: DollarSign, color: 'text-green-600', bgColor: 'bg-green-100' };
+      case 'citas':
+        return { icon: Calendar, color: 'text-blue-600', bgColor: 'bg-blue-100' };
+      case 'productos':
+      case 'entradas de productos':
+        return { icon: Package, color: 'text-amber-600', bgColor: 'bg-amber-100' };
+      case 'clientes':
+        return { icon: Users, color: 'text-indigo-600', bgColor: 'bg-indigo-100' };
+      case 'empleados':
+        return { icon: Users, color: 'text-purple-600', bgColor: 'bg-purple-100' };
+      case 'usuarios':
+        return { icon: Users, color: 'text-cyan-600', bgColor: 'bg-cyan-100' };
+      case 'roles':
+        return { icon: Shield, color: 'text-rose-600', bgColor: 'bg-rose-100' };
+      case 'devoluciones':
+        return { icon: AlertCircle, color: 'text-red-600', bgColor: 'bg-red-100' };
+      default:
+        return { icon: Bell, color: 'text-gray-600', bgColor: 'bg-gray-100' };
+    }
+  };
 
   return (
     <div className="flex h-screen bg-gray-50">
@@ -562,38 +574,64 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" size="icon" className="relative text-gray-600 hover:bg-gray-100">
                     <Bell className="w-5 h-5" />
-                    <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 bg-red-500 border-2 border-white">
-                      3
-                    </Badge>
+                    {unreadCount > 0 && (
+                      <Badge className="absolute -top-1 -right-1 w-5 h-5 flex items-center justify-center p-0 bg-red-500 border-2 border-white text-[10px] font-bold text-white">
+                        {unreadCount}
+                      </Badge>
+                    )}
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
                   <DropdownMenuLabel className="flex items-center justify-between">
                     <span>Notificaciones</span>
-                    <Badge variant="outline" className="text-[10px] py-0">{notifications.length} Nuevas</Badge>
+                    <Badge variant="outline" className="text-[10px] py-0">{unreadCount} Nuevas</Badge>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((notif, idx) => {
-                      const NotifIcon = notif.icon;
-                      return (
-                        <DropdownMenuItem key={idx} className="p-3 focus:bg-blue-50 cursor-pointer">
-                          <div className="flex gap-3">
-                            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", notif.bgColor)}>
-                              <NotifIcon className={cn("w-4 h-4", notif.color)} />
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-xs text-gray-500">
+                        No hay notificaciones recientes
+                      </div>
+                    ) : (
+                      notifications.map((notif) => {
+                        const config = getNotifConfig(notif.modulo);
+                        const NotifIcon = config.icon;
+                        const formattedTime = notif.fecha_creacion
+                          ? new Date(notif.fecha_creacion).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
+                          : 'Hace un momento';
+
+                        return (
+                          <DropdownMenuItem 
+                            key={notif.id} 
+                            onClick={() => onNavigate('notificaciones')}
+                            className={`p-3 focus:bg-blue-50 cursor-pointer ${!notif.leido ? 'bg-blue-50/25 font-medium' : ''}`}
+                          >
+                            <div className="flex gap-3">
+                              <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", config.bgColor)}>
+                                <NotifIcon className={cn("w-4 h-4", config.color)} />
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-semibold text-gray-900 flex items-center gap-1.5 justify-between">
+                                  <span>{notif.modulo}</span>
+                                  {!notif.leido && <span className="w-1.5 h-1.5 bg-blue-600 rounded-full shrink-0"></span>}
+                                </p>
+                                <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{notif.descripcion}</p>
+                                <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                                  <Clock className="w-3.5 h-3.5" />
+                                  {formattedTime}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="text-sm font-medium text-gray-900">{notif.title}</p>
-                              <p className="text-xs text-gray-500">{notif.description}</p>
-                              <p className="text-[10px] text-gray-400 mt-1">{notif.time}</p>
-                            </div>
-                          </div>
-                        </DropdownMenuItem>
-                      );
-                    })}
+                          </DropdownMenuItem>
+                        );
+                      })
+                    )}
                   </div>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="justify-center text-blue-600 font-medium text-xs cursor-pointer hover:text-blue-700">
+                  <DropdownMenuItem 
+                    onClick={() => onNavigate('notificaciones')}
+                    className="justify-center text-blue-600 font-medium text-xs cursor-pointer hover:text-blue-700 focus:bg-blue-50"
+                  >
                     Ver todas las notificaciones
                   </DropdownMenuItem>
                 </DropdownMenuContent>

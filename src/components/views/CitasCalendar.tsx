@@ -9,8 +9,11 @@ import type { DateClickArg } from '@fullcalendar/interaction';
 const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
     pendiente: { bg: '#eab308', border: '#ca8a04', text: '#000000' },
     confirmada: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
+    confirmado: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
     'en-ejecucion': { bg: '#f97316', border: '#ea580c', text: '#ffffff' },
+    'en ejecucion': { bg: '#f97316', border: '#ea580c', text: '#ffffff' },
     completada: { bg: '#22c55e', border: '#16a34a', text: '#000000' },
+    completado: { bg: '#22c55e', border: '#16a34a', text: '#000000' },
     cancelado: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
     cancelada: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
 };

@@ -1,0 +1,1 @@
+export { NotificacionesView } from './NotificacionesView';

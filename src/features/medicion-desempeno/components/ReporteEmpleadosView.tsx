@@ -48,11 +48,11 @@ export function ReporteEmpleadosView() {
 
 
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-xl"><Users className="w-7 h-7 text-blue-600" /></div>
-          Reporte de Empleados
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <div className="p-2 bg-blue-50 rounded-xl"><Users className="w-6 h-6 text-blue-600" /></div>
+          Empleados
         </h1>
         <p className="text-gray-500 mt-1">Barberos más solicitados y comparación de carga de trabajo</p>
       </div>

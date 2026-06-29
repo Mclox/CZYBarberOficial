@@ -289,12 +289,12 @@ export function ReporteProductosView() {
 
 
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-amber-50 rounded-xl"><Package className="w-7 h-7 text-[#D4AF37]" /></div>
-            Reporte de Productos
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+            <div className="p-2 bg-amber-50 rounded-xl"><Package className="w-6 h-6 text-[#D4AF37]" /></div>
+            Productos
           </h1>
           <p className="text-gray-500 mt-1">Porcentaje de productos vendidos vs inventario disponible</p>
         </div>

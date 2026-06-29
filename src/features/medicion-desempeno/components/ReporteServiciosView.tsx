@@ -304,11 +304,11 @@ export function ReporteServiciosView() {
 
 
   return (
-    <div className="p-4 md:p-8 space-y-6 bg-gray-50 min-h-screen animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-          <div className="p-2 bg-purple-50 rounded-xl"><Scissors className="w-7 h-7 text-purple-600" /></div>
-          Reporte de Servicios
+        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-3">
+          <div className="p-2 bg-purple-50 rounded-xl"><Scissors className="w-6 h-6 text-purple-600" /></div>
+          Servicios
         </h1>
         <p className="text-gray-500 mt-1">Servicios más solicitados para priorizar recursos de la barbería</p>
       </div>

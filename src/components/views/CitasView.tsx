@@ -33,11 +33,21 @@ const formatDuration = (minutes: number) => {
 
 const getStatusConfig = (status: string) => {
   switch (status?.toLowerCase()) {
-    case 'completada': return { label: 'Completada', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle };
-    case 'cancelada': return { label: 'Cancelada', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle };
-    case 'en-ejecucion': return { label: 'En Ejecución', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: Clock };
-    case 'confirmada': return { label: 'Confirmada', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle };
-    default: return { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock };
+    case 'completada':
+    case 'completado': 
+      return { label: 'Completada', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle };
+    case 'cancelada':
+    case 'cancelado': 
+      return { label: 'Cancelada', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle };
+    case 'en-ejecucion':
+    case 'en ejecucion':
+    case 'en_ejecucion':
+      return { label: 'En Ejecución', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: Clock };
+    case 'confirmada':
+    case 'confirmado':
+      return { label: 'Confirmada', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle };
+    default: 
+      return { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock };
   }
 };
 
@@ -237,10 +247,10 @@ export function CitasView() {
 
     const statsObj = {
       pendiente: list.filter(c => c.estado?.toLowerCase() === 'pendiente').length,
-      confirmada: list.filter(c => c.estado?.toLowerCase() === 'confirmada').length,
-      'en-ejecucion': list.filter(c => c.estado?.toLowerCase() === 'en-ejecucion').length,
-      completada: list.filter(c => c.estado?.toLowerCase() === 'completada').length,
-      cancelada: list.filter(c => c.estado?.toLowerCase() === 'cancelada').length,
+      confirmada: list.filter(c => ['confirmada', 'confirmado'].includes(c.estado?.toLowerCase())).length,
+      'en-ejecucion': list.filter(c => ['en-ejecucion', 'en ejecucion', 'en_ejecucion'].includes(c.estado?.toLowerCase())).length,
+      completada: list.filter(c => ['completada', 'completado'].includes(c.estado?.toLowerCase())).length,
+      cancelada: list.filter(c => ['cancelada', 'cancelado'].includes(c.estado?.toLowerCase())).length,
     };
 
     const byDate: Record<string, any[]> = {};
@@ -520,7 +530,8 @@ export function CitasView() {
       detalles_json: {
         servicios: selectedServicios,
         productos: selectedProductos
-      }
+      },
+      estado: formData.estado
     };
 
     try {
@@ -695,7 +706,12 @@ export function CitasView() {
                           return dayCitas.sort((a, b) => parseTimeToMinutes(a.hora_inicio_corta) - parseTimeToMinutes(b.hora_inicio_corta)).map(c => (
                             <div key={c.id_cita} className="p-4 border-b hover:bg-muted/30 transition-colors group cursor-pointer" onClick={() => { setViewingCita(c); setDetailsDialogOpen(true); }}>
                               <div className="flex justify-between items-start mb-2">
-                                <Badge variant="outline" className="font-bold text-[10px]">{c.hora_inicio_corta}</Badge>
+                                <div className="flex gap-2 items-center">
+                                  <Badge variant="outline" className="font-bold text-[10px]">{c.hora_inicio_corta}</Badge>
+                                  <Badge variant="outline" className={cn("text-[9px] font-semibold px-1.5 py-0.5 border shrink-0", getStatusConfig(c.estado).color)}>
+                                    {getStatusConfig(c.estado).label}
+                                  </Badge>
+                                </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(c); }}><Pencil className="h-3.5 w-3.5" /></Button>
                                   <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={(e) => { e.stopPropagation(); setCitaToDelete(c.id_cita); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -794,6 +810,25 @@ export function CitasView() {
                               </Select>
                             </div>
                           </div>
+
+                          {/* ESTADO DE LA CITA (Solo cuando se edita) */}
+                          {editingCita && (
+                            <div className="space-y-2">
+                              <Label className="text-sm font-semibold">Estado de la Cita *</Label>
+                              <Select value={formData.estado} onValueChange={v => setFormData({ ...formData, estado: v })}>
+                                <SelectTrigger className="h-11 border-muted-foreground/25 focus:ring-2 focus:ring-blue-500/20">
+                                  <SelectValue placeholder="Seleccionar estado" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pendiente">Pendiente</SelectItem>
+                                  <SelectItem value="confirmada">Confirmada</SelectItem>
+                                  <SelectItem value="en-ejecucion">En Ejecución</SelectItem>
+                                  <SelectItem value="completada">Completada</SelectItem>
+                                  <SelectItem value="cancelada">Cancelada</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
 
                         </div>
                       </div>
@@ -1070,6 +1105,14 @@ export function CitasView() {
                         </div>
                       )}
                     </div>
+
+                    {/* Indicador de Atención en curso */}
+                    {['en-ejecucion', 'en ejecucion', 'en_ejecucion'].includes(viewingCita.estado?.toLowerCase()) && (
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-2 text-orange-800 text-xs font-bold animate-pulse">
+                        <Clock className="w-4 h-4 text-orange-600 shrink-0" />
+                        <span>Atención en curso: este servicio se está realizando en este momento.</span>
+                      </div>
+                    )}
                     
                     {(() => {
                       let totalVal = viewingCita.precio_neto || 0;
@@ -1110,14 +1153,74 @@ export function CitasView() {
                 )}
                 <DialogFooter className="flex-col sm:flex-row gap-2 flex-wrap sm:justify-between items-center w-full">
                   <div className="flex gap-2 w-full sm:w-auto">
-                    {(isAdmin || isBarbero) && viewingCita?.estado?.toLowerCase() === 'pendiente' && (
+                    {/* Botones para Administrador y Barbero */}
+                    {(isAdmin || isBarbero) && (
                       <>
-                        <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completado')}>
-                          <CheckCircle className="w-4 h-4 mr-2" /> Completada
-                        </Button>
-                        <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelado')}>
-                          <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
-                        </Button>
+                        {/* Si está Pendiente */}
+                        {viewingCita?.estado?.toLowerCase() === 'pendiente' && (
+                          <>
+                            <Button className="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'confirmada')}>
+                              <CheckCircle className="w-4 h-4 mr-2" /> Confirmar
+                            </Button>
+                            <Button className="bg-orange-600 hover:bg-orange-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'en-ejecucion')}>
+                              <Clock className="w-4 h-4 mr-2" /> Iniciar
+                            </Button>
+                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completada')}>
+                              <CheckCircle className="w-4 h-4 mr-2" /> Completar
+                            </Button>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
+                              <XCircle className="w-4 h-4 mr-2" /> Cancelar
+                            </Button>
+                          </>
+                        )}
+                        {/* Si está Confirmada */}
+                        {['confirmada', 'confirmado'].includes(viewingCita?.estado?.toLowerCase()) && (
+                          <>
+                            <Button className="bg-orange-600 hover:bg-orange-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'en-ejecucion')}>
+                              <Clock className="w-4 h-4 mr-2" /> Iniciar
+                            </Button>
+                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completada')}>
+                              <CheckCircle className="w-4 h-4 mr-2" /> Completar
+                            </Button>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
+                              <XCircle className="w-4 h-4 mr-2" /> Cancelar
+                            </Button>
+                          </>
+                        )}
+                        {/* Si está En Ejecución */}
+                        {['en-ejecucion', 'en ejecucion', 'en_ejecucion'].includes(viewingCita?.estado?.toLowerCase()) && (
+                          <>
+                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completada')}>
+                              <CheckCircle className="w-4 h-4 mr-2" /> Completar
+                            </Button>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
+                              <XCircle className="w-4 h-4 mr-2" /> Cancelar
+                            </Button>
+                          </>
+                        )}
+                      </>
+                    )}
+
+                    {/* Botones para Cliente */}
+                    {isCliente && (
+                      <>
+                        {/* Si está Pendiente */}
+                        {viewingCita?.estado?.toLowerCase() === 'pendiente' && (
+                          <>
+                            <Button className="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'confirmada')}>
+                              <CheckCircle className="w-4 h-4 mr-2" /> Confirmar Cita
+                            </Button>
+                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
+                              <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
+                            </Button>
+                          </>
+                        )}
+                        {/* Si está Confirmada */}
+                        {['confirmada', 'confirmado'].includes(viewingCita?.estado?.toLowerCase()) && (
+                          <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
+                            <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
