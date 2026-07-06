@@ -71,7 +71,7 @@ function AuthPages() {
 }
 
 function AppContent() {
-  const { isAuthenticated, user, isLoading } = useAuth(); // <-- Agrega isLoading
+  const { isAuthenticated, user, isLoading, hasPermission } = useAuth(); // <-- Agrega isLoading
   const [currentView, setCurrentView] = useState<string>(() => {
     try {
       return localStorage.getItem('currentView') || 'dashboard';
@@ -117,36 +117,53 @@ function AppContent() {
 
     switch (currentView) {
       case 'dashboard':
+        if (hasPermission && !hasPermission('Dashboard General', 'leer')) {
+          return (
+            <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">
+              Acceso Denegado. No tienes permisos para este módulo.
+            </div>
+          );
+        }
         return <Dashboard />;
       case 'roles':
+        if (hasPermission && !hasPermission('Roles', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <RolesView />;
       case 'usuarios':
+        if (hasPermission && !hasPermission('Usuarios', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <UsuariosView />;
       case 'productos':
+        if (hasPermission && !hasPermission('Productos', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <ProductosView />;
       case 'entrada-productos':
+        if (hasPermission && !hasPermission('Entradas de Productos', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <EntradaProductosView />;
       case 'proveedores':
         return <ProveedoresView />;
       case 'compras':
         return <ComprasView />;
       case 'devoluciones':
+        if (hasPermission && !hasPermission('Devoluciones', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <DevolucionesStockView preSelectedSale={navigationData?.sale} />;
       // case 'devoluciones-proveedor':
       //   return <DevolucionesProveedorView />;
       case 'consignaciones':
         return <ConsignacionesView />;
       case 'servicios':
+        if (hasPermission && !hasPermission('Servicios', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <ServiciosView />;
       case 'citas':
+        if (hasPermission && !hasPermission('Citas', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <CitasView />;
       case 'empleados':
+        if (hasPermission && !hasPermission('Empleados', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <EmpleadosView />;
       case 'clientes':
+        if (hasPermission && !hasPermission('Clientes', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <ClientesView />;
       case 'clientes-temporales':
         return <ClientesTemporalesView />;
       case 'ventas':
+        if (hasPermission && !hasPermission('Ventas', 'leer')) return <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">Acceso Denegado</div>;
         return <VentasView onNavigate={handleNavigate} />;
       case 'mi-perfil':
         return <MiPerfilView />;

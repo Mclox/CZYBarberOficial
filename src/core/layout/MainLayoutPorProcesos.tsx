@@ -158,13 +158,14 @@ const moduloMapping: Record<string, string> = {
   'configuracion-landing': 'Roles', // Solo admin, pero mapeado para consistencia
   'usuarios': 'Usuarios',
   'productos': 'Productos',
-  'entrada-productos': 'Productos',
+  'entrada-productos': 'Entradas de Productos',
   'servicios': 'Servicios',
   'citas': 'Citas',
   'empleados': 'Empleados',
   'clientes': 'Clientes',
   'ventas': 'Ventas',
   'devoluciones': 'Devoluciones',
+  'dashboard': 'Dashboard General',
 };
 
 // Helper local para verificar rol admin (consistente con AuthContext)

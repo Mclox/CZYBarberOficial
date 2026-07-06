@@ -57,7 +57,10 @@ const searchInDate = (dateStr: string, searchTerm: string): boolean => {
 };
 
 export function EntradaProductosView() {
-    const { user } = useAuth();
+    const { user, hasPermission } = useAuth();
+    const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+    const canCreate = hasPermission ? hasPermission('Entradas de Productos', 'crear') : isAdmin;
+    const canUpdate = hasPermission ? hasPermission('Entradas de Productos', 'actualizar') : isAdmin;
 
     // Estados Reales
     const [entradas, setEntradas] = useState<EntradaReal[]>([]);
@@ -240,7 +243,9 @@ export function EntradaProductosView() {
                     <p className="text-muted-foreground text-sm mt-1">Registro de ingresos de inventario — único mecanismo para aumentar el stock</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nueva Entrada</Button>
+                    {canCreate && (
+                        <Button onClick={handleOpenCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nueva Entrada</Button>
+                    )}
                     <Button onClick={handleExport} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Exportar</Button>
                 </div>
             </div>
@@ -320,18 +325,27 @@ export function EntradaProductosView() {
                                                 <TableCell>{entrada.nombre_usuario}</TableCell>
                                                 <TableCell>
                                                     {entrada.estado === 'Activo' ? (
-                                                        <button
-                                                            onClick={() => handleOpenAnular(entrada)}
-                                                            className="focus:outline-none transition-transform active:scale-95"
-                                                            title="Anular entrada"
-                                                        >
+                                                        canUpdate ? (
+                                                            <button
+                                                                onClick={() => handleOpenAnular(entrada)}
+                                                                className="focus:outline-none transition-transform active:scale-95"
+                                                                title="Anular entrada"
+                                                            >
+                                                                <Badge 
+                                                                    className="cursor-pointer px-3 py-1 rounded-full border-2 bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm transition-all duration-200"
+                                                                >
+                                                                    <span className="w-2 h-2 rounded-full mr-2 bg-green-200"></span>
+                                                                    Activo
+                                                                </Badge>
+                                                            </button>
+                                                        ) : (
                                                             <Badge 
-                                                                className="cursor-pointer px-3 py-1 rounded-full border-2 bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm transition-all duration-200"
+                                                                className="px-3 py-1 rounded-full border-2 bg-green-600 text-white border-transparent shadow-sm"
                                                             >
                                                                 <span className="w-2 h-2 rounded-full mr-2 bg-green-200"></span>
                                                                 Activo
                                                             </Badge>
-                                                        </button>
+                                                        )
                                                     ) : (
                                                         <Badge 
                                                             className="px-3 py-1 rounded-full border-2 bg-red-600 text-white border-transparent shadow-sm"

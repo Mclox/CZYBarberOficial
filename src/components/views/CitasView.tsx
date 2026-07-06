@@ -59,7 +59,7 @@ const timeSlots = [
 ];
 
 export function CitasView() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   // --- Estados (Datos reales de BD) ---
   const [citas, setCitas] = useState<any[]>([]);
@@ -106,6 +106,10 @@ export function CitasView() {
   const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
   const isBarbero = user?.id_rol === 2 || user?.rol === 'Barbero';
   const isCliente = user?.id_rol === 3 || user?.rol === 'Cliente';
+
+  const canCreate = isCliente || (hasPermission ? hasPermission('Citas', 'crear') : (isAdmin || isBarbero));
+  const canUpdate = isCliente || (hasPermission ? hasPermission('Citas', 'actualizar') : (isAdmin || isBarbero));
+  const canDelete = hasPermission ? hasPermission('Citas', 'eliminar') : (isAdmin || isBarbero);
 
   const todayStr = new Date().toISOString().split('T')[0];
 
@@ -550,6 +554,10 @@ export function CitasView() {
   };
 
   const handleStatusChange = async (id: number, status: string) => {
+    const statusLabel = getStatusConfig(status).label;
+    if (!window.confirm(`¿Desea cambiar el estado de la cita a ${statusLabel}?`)) {
+      return;
+    }
     try {
       await fetchApi(`/appointments/${id}/status`, { method: 'PUT', body: JSON.stringify({ estado: status }) });
       toast.success(`Cita marcada como ${status}`);
@@ -620,7 +628,7 @@ export function CitasView() {
         {/* PESTAÑA: AGENDA */}
         <TabsContent value="agenda">
           <div className="space-y-12">
-            {!showForm && (
+            {!showForm && canCreate && (
               <div className="flex justify-end mb-4">
                 <Button onClick={() => handleCreate()} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all">
                   <Plus className="w-4 h-4 mr-2" /> Nueva Cita
@@ -713,8 +721,8 @@ export function CitasView() {
                                   </Badge>
                                 </div>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(c); }}><Pencil className="h-3.5 w-3.5" /></Button>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={(e) => { e.stopPropagation(); setCitaToDelete(c.id_cita); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                  {canUpdate && <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(c); }}><Pencil className="h-3.5 w-3.5" /></Button>}
+                                  {canDelete && <Button size="icon" variant="ghost" className="h-7 w-7 text-red-500" onClick={(e) => { e.stopPropagation(); setCitaToDelete(c.id_cita); setDeleteDialogOpen(true); }}><Trash2 className="h-3.5 w-3.5" /></Button>}
                                 </div>
                               </div>
                               <p className="text-sm font-bold text-foreground truncate">{getCitaServiciosLabel(c)}</p>
@@ -724,9 +732,11 @@ export function CitasView() {
                         })()}
                       </CardContent>
                       <CardFooter className="p-4 bg-muted/30 border-t">
-                        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={() => handleCreate(selectedDate || todayStr)}>
-                          <Plus className="w-4 h-4 mr-2" /> Agendar ahora
-                        </Button>
+                        {canCreate && (
+                          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold" onClick={() => handleCreate(selectedDate || todayStr)}>
+                            <Plus className="w-4 h-4 mr-2" /> Agendar ahora
+                          </Button>
+                        )}
                       </CardFooter>
                     </Card>
                   </div>
@@ -1154,7 +1164,7 @@ export function CitasView() {
                 <DialogFooter className="flex-col sm:flex-row gap-2 flex-wrap sm:justify-between items-center w-full">
                   <div className="flex gap-2 w-full sm:w-auto">
                     {/* Botones para Administrador y Barbero */}
-                    {(isAdmin || isBarbero) && (
+                    {canUpdate && !isCliente && (
                       <>
                         {/* Si está Pendiente */}
                         {viewingCita?.estado?.toLowerCase() === 'pendiente' && (

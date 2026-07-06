@@ -14,6 +14,7 @@ import { SearchBar } from '../common/SearchBar';
 import { Pagination } from '../common/Pagination';
 import { ITEMS_PER_PAGE } from '../../lib/constants';
 import { formatCOP } from '../../lib/format';
+import { useAuth } from '../../features/auth';
 
 const parseFullName = (fullName: string) => {
   const parts = (fullName || '').trim().split(/\s+/);
@@ -42,9 +43,14 @@ const parseFullName = (fullName: string) => {
 };
 
 export function EmpleadosView() {
+  const { user, hasPermission } = useAuth();
   const [empleados, setEmpleados] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
+
+  const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+  const canCreate = hasPermission ? hasPermission('Empleados', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Empleados', 'actualizar') : isAdmin;
 
   // --- Employee Management State ---
   const [employeeFormData, setEmployeeFormData] = useState({
@@ -252,6 +258,9 @@ export function EmpleadosView() {
 
   const toggleEmployeeStatus = async (emp: any) => {
     const newStatus = emp.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    if (!window.confirm(`¿Desea cambiar el estado del empleado "${emp.nombre}" a ${newStatus}?`)) {
+      return;
+    }
     const toastId = toast.loading(`Cambiando estado a ${newStatus}...`);
     try {
         await fetchApi(`/employees/${emp.id_empleado}/status`, {
@@ -278,9 +287,11 @@ export function EmpleadosView() {
           </h1>
           <p className="text-muted-foreground">Configura los barberos y esquemas de pago.</p>
         </div>
-        <Button onClick={handleEmployeeCreate} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-blue-200/50 transition-all">
-          <Plus className="w-4 h-4 mr-2" /> Nuevo barbero
-        </Button>
+        {canCreate && (
+          <Button onClick={handleEmployeeCreate} className="bg-blue-600 hover:bg-blue-700 text-white shadow-md hover:shadow-blue-200/50 transition-all">
+            <Plus className="w-4 h-4 mr-2" /> Nuevo barbero
+          </Button>
+        )}
       </div>
 
       <div className="space-y-8 animate-in fade-in duration-500">
@@ -340,32 +351,48 @@ export function EmpleadosView() {
                           {emp.tipo_esquema === 'porcentaje' ? `${emp.porcentaje_comision || 0}%` : 'Fijo'}
                         </TableCell>
                         <TableCell>
-                          <button
-                            onClick={() => toggleEmployeeStatus(emp)}
-                            className="focus:outline-none transition-transform active:scale-95"
-                            title={`Cambiar a ${emp.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
-                          >
+                          {canUpdate ? (
+                            <button
+                              onClick={() => toggleEmployeeStatus(emp)}
+                              className="focus:outline-none transition-transform active:scale-95"
+                              title={`Cambiar a ${emp.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                            >
+                              <Badge 
+                                className={`
+                                  cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                  ${emp.estado === 'Activo' 
+                                    ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                                    : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                                `}
+                              >
+                                <span className={`w-2 h-2 rounded-full mr-2 ${emp.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                                {emp.estado || 'Activo'}
+                              </Badge>
+                            </button>
+                          ) : (
                             <Badge 
                               className={`
-                                cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                px-3 py-1 rounded-full border-2
                                 ${emp.estado === 'Activo' 
-                                  ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
-                                  : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                                  ? 'bg-green-600 text-white border-transparent shadow-sm' 
+                                  : 'bg-red-600 text-white border-transparent shadow-sm'}
                               `}
                             >
                               <span className={`w-2 h-2 rounded-full mr-2 ${emp.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
                               {emp.estado || 'Activo'}
                             </Badge>
-                          </button>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
                             <Button variant="outline" size="sm" onClick={() => handleView(emp)} title="Ver detalles">
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => handleEmployeeEdit(emp)} title="Configurar / Editar">
-                              <Pencil className="w-4 h-4" />
-                            </Button>
+                            {canUpdate && (
+                              <Button variant="outline" size="sm" onClick={() => handleEmployeeEdit(emp)} title="Configurar / Editar">
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                       </TableRow>

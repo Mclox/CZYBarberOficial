@@ -15,6 +15,7 @@ import { cn } from '../ui/utils';
 import { exportToExcelXLSX } from '../../shared/lib/exportUtils';
 import { fetchApi } from '../../lib/api'; // Conexión a la API real
 import { Pagination } from '../common/Pagination';
+import { useAuth } from '../../features/auth';
 
 
 // Función para buscar en fechas con múltiples formatos
@@ -102,9 +103,14 @@ const parseFullName = (fullName: string) => {
 };
 
 export function ClientesView() {
+  const { user, hasPermission } = useAuth();
   // Estados para BD real
   const [clientes, setClientes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+  const canCreate = hasPermission ? hasPermission('Clientes', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Clientes', 'actualizar') : isAdmin;
 
   // Estados UI
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -345,6 +351,10 @@ export function ClientesView() {
     const cliente = clientes.find(c => c.id_cliente === id);
     if (!cliente) return;
 
+    if (!window.confirm(`¿Desea cambiar el estado del cliente "${cliente.nombre_final}" a ${newStatus}?`)) {
+      return;
+    }
+
     const toastId = toast.loading(`Cambiando estado a ${newStatus === 'Activo' ? 'Activo' : 'Inactivo'}...`);
 
     try {
@@ -479,10 +489,12 @@ export function ClientesView() {
           <p className="text-muted-foreground">Gestiona la base de clientes formales de la barbería</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-blue-200/50 transition-all">
-            <Plus className="w-4 h-4 mr-2" />
-            Nuevo Cliente
-          </Button>
+          {canCreate && (
+            <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium shadow-md hover:shadow-blue-200/50 transition-all">
+              <Plus className="w-4 h-4 mr-2" />
+              Nuevo Cliente
+            </Button>
+          )}
           <Button onClick={handleExport} variant="outline" className="border-blue-200 text-blue-700 hover:bg-blue-50">
             <FileDown className="w-4 h-4 mr-2" />
             Exportar
@@ -585,32 +597,48 @@ export function ClientesView() {
                       <TableCell>{cliente.telefono_final || '-'}</TableCell>
                       <TableCell className="max-w-xs truncate">{cliente.direccion || '-'}</TableCell>
                       <TableCell>
-                        <button
-                          onClick={() => handleStatusChange(cliente.id_cliente, (cliente.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo')}
-                          className="focus:outline-none transition-transform active:scale-95"
-                          title={`Cambiar a ${(cliente.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo'}`}
-                        >
+                        {canUpdate ? (
+                          <button
+                            onClick={() => handleStatusChange(cliente.id_cliente, (cliente.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo')}
+                            className="focus:outline-none transition-transform active:scale-95"
+                            title={`Cambiar a ${(cliente.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                          >
+                            <Badge 
+                              className={`
+                                cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                ${(cliente.estado || 'Activo') === 'Activo' 
+                                  ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                                  : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                              `}
+                            >
+                              <span className={`w-2 h-2 rounded-full mr-2 ${(cliente.estado || 'Activo') === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                              {(cliente.estado || 'Activo') === 'Activo' ? 'Activo' : 'Inactivo'}
+                            </Badge>
+                          </button>
+                        ) : (
                           <Badge 
                             className={`
-                              cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                              px-3 py-1 rounded-full border-2
                               ${(cliente.estado || 'Activo') === 'Activo' 
-                                ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
-                                : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                                ? 'bg-green-600 text-white border-transparent shadow-sm' 
+                                : 'bg-red-600 text-white border-transparent shadow-sm'}
                             `}
                           >
                             <span className={`w-2 h-2 rounded-full mr-2 ${(cliente.estado || 'Activo') === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
                             {(cliente.estado || 'Activo') === 'Activo' ? 'Activo' : 'Inactivo'}
                           </Badge>
-                        </button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => { setViewingCliente(cliente); setDetailsDialogOpen(true); }}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
+                          {canUpdate && (
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(cliente)}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
                           {/* Funcionalidad "Eliminar Cliente" deshabilitada temporalmente
                           <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(cliente.id_cliente)}>
                             <Trash2 className="w-4 h-4" />

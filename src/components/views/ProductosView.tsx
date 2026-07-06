@@ -21,7 +21,7 @@ import { Pagination } from '../common/Pagination';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 
 export function ProductosView() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const [productos, setProductos] = useState<any[]>([]); 
   const [loading, setLoading] = useState(true); 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -94,6 +94,10 @@ export function ProductosView() {
 
   const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
   // const isBarbero = user?.id_rol === 2 || user?.rol === 'Barbero';
+
+  const canCreate = hasPermission ? hasPermission('Productos', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Productos', 'actualizar') : isAdmin;
+  const canDelete = hasPermission ? hasPermission('Productos', 'eliminar') : isAdmin;
 
   // 1. Filtrar solo por búsqueda de texto (Para que los contadores de las Tabs funcionen bien)
   const searchFilteredProductos = useMemo(() => {
@@ -252,6 +256,9 @@ export function ProductosView() {
 
   const handleToggleEstado = async (producto: any) => {
     const nuevoEstado = producto.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    if (!window.confirm(`¿Desea cambiar el estado del producto "${producto.nombre}" a ${nuevoEstado}?`)) {
+      return;
+    }
     const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
     try {
       await fetchApi(`/products/${producto.id_producto}`, {
@@ -303,7 +310,7 @@ export function ProductosView() {
               <TableCell>{formatCOP(producto.precio)}</TableCell>
               <TableCell><Badge variant={producto.stock < 10 ? 'destructive' : 'default'} className={producto.stock >= 10 ? 'bg-blue-600' : ''}>{producto.stock}</Badge></TableCell>
               <TableCell>
-                {isAdmin ? (
+                {canUpdate ? (
                   <button
                     onClick={() => handleToggleEstado(producto)}
                     className="focus:outline-none transition-transform active:scale-95"
@@ -337,8 +344,8 @@ export function ProductosView() {
               </TableCell>
               <TableCell className="text-right">
                 <div className="flex justify-end gap-2">
-                  {isAdmin && <Button variant="outline" size="sm" onClick={() => handleEdit(producto)}><Pencil className="w-4 h-4" /></Button>}
-                  {isAdmin && <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(producto.id_producto)}><Trash2 className="w-4 h-4" /></Button>}
+                  {canUpdate && <Button variant="outline" size="sm" onClick={() => handleEdit(producto)}><Pencil className="w-4 h-4" /></Button>}
+                  {canDelete && <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(producto.id_producto)}><Trash2 className="w-4 h-4" /></Button>}
                   <Button variant="outline" size="sm" onClick={() => handleView(producto)}><Eye className="w-4 h-4" /></Button>
                   {/* Funcionalidad "Dar de Baja" deshabilitada temporalmente
                   {(isAdmin || isBarbero) && <Button variant="outline" size="sm" onClick={() => handleBaja(producto)} title="Dar de baja"><MinusCircle className="w-4 h-4" /></Button>}
@@ -362,7 +369,7 @@ export function ProductosView() {
           <p className="text-muted-foreground">Gestiona el inventario de productos</p>
         </div>
         <div className="flex gap-2">
-          {isAdmin && <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nuevo Producto</Button>}
+          {canCreate && <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nuevo Producto</Button>}
           <Button onClick={() => exportToExcel(productos, 'productos')} variant="outline"><FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar</Button>
           <Button onClick={() => downloadMenu(productos)} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Catálogo</Button>
         </div>
@@ -519,15 +526,67 @@ export function ProductosView() {
 
       <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>Detalles</DialogTitle></DialogHeader>
+          <DialogHeader>
+            <DialogTitle>Detalle del Producto</DialogTitle>
+          </DialogHeader>
           {viewingProducto && (
-            <div className="grid grid-cols-2 gap-4 py-4">
-              <div className="space-y-1"><Label className="text-xs text-muted-foreground">Nombre</Label><p className="font-bold">{viewingProducto.nombre}</p></div>
-              <div className="space-y-1"><Label className="text-xs text-muted-foreground">Precio Neto</Label><p className="font-bold">{formatCOP(viewingProducto.precio)}</p></div>
-              <div className="space-y-1"><Label className="text-xs text-muted-foreground">Tipo Adquisición</Label><p className="font-bold capitalize">{viewingProducto.tipo_adquisicion?.replace('_', ' ')}</p></div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4">
+              {/* Imagen a la izquierda */}
+              <div className="flex flex-col items-center justify-center border rounded-lg p-2 bg-muted/20 min-h-[200px]">
+                {viewingProducto.imagen ? (
+                  <img 
+                    src={viewingProducto.imagen} 
+                    alt={viewingProducto.nombre} 
+                    className="max-h-48 max-w-full object-contain rounded-md shadow-sm" 
+                  />
+                ) : (
+                  <div className="w-full h-full min-h-[180px] bg-gray-100 rounded-md flex flex-col items-center justify-center text-muted-foreground gap-2">
+                    <Package className="w-12 h-12 text-gray-400" />
+                    <span className="text-xs">Sin Imagen</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Detalles a la derecha */}
+              <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Nombre</Label>
+                  <p className="font-bold text-lg text-slate-800">{viewingProducto.nombre}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Categoría</Label>
+                  <p className="font-semibold text-slate-700">{viewingProducto.categoria}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Stock Disponible</Label>
+                  <div>
+                    <Badge variant={viewingProducto.stock < 10 ? 'destructive' : 'default'} className={viewingProducto.stock >= 10 ? 'bg-blue-600' : ''}>
+                      {viewingProducto.stock} unidades
+                    </Badge>
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Precio Neto (Sin IVA)</Label>
+                  <p className="font-bold text-green-700 text-lg">{formatCOP(viewingProducto.precio)}</p>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Tipo Adquisición</Label>
+                  <p className="font-semibold capitalize text-slate-700">
+                    {viewingProducto.tipo_adquisicion === 'consignacion' ? 'Consignación' : 'Compra Directa'}
+                  </p>
+                </div>
+                {viewingProducto.descripcion && (
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs text-muted-foreground">Descripción</Label>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{viewingProducto.descripcion}</p>
+                  </div>
+                )}
+              </div>
             </div>
           )}
-          <DialogFooter><Button type="button" onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button></DialogFooter>
+          <DialogFooter>
+            <Button type="button" onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

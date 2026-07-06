@@ -20,7 +20,7 @@ import {
 } from '../../medicion-desempeno';
 
 export function Dashboard() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const isCliente = user?.id_rol === 3 || user?.rol === 'Cliente';
   
   const [data, setData] = useState<any>(null);
@@ -129,14 +129,28 @@ export function Dashboard() {
 
   const isAdmin = user?.id_rol === 1 || user?.rol?.toLowerCase() === 'administrador' || user?.rol?.toLowerCase() === 'admin';
 
+  const hasDashboardPerm = hasPermission ? hasPermission('Dashboard General', 'leer') : false;
+  const hasMedicionPerm = hasDashboardPerm && isAdmin; // Only available to the Administrador by policy
+
   const tabs = [
-    { id: 'general', label: 'Resumen General', icon: Home, allowed: true },
-    { id: 'citas', label: 'Citas', icon: Calendar, allowed: true },
-    { id: 'productos', label: 'Productos', icon: Package, allowed: isAdmin },
-    { id: 'servicios', label: 'Servicios', icon: Scissors, allowed: true },
-    { id: 'empleados', label: 'Empleados', icon: Users, allowed: true },
-    { id: 'ingresos', label: 'Ingresos', icon: DollarSign, allowed: isAdmin },
+    { id: 'general', label: 'Resumen General', icon: Home, allowed: hasDashboardPerm },
+    { id: 'citas', label: 'Citas', icon: Calendar, allowed: hasMedicionPerm },
+    { id: 'productos', label: 'Productos', icon: Package, allowed: hasMedicionPerm },
+    { id: 'servicios', label: 'Servicios', icon: Scissors, allowed: hasMedicionPerm },
+    { id: 'empleados', label: 'Empleados', icon: Users, allowed: hasMedicionPerm },
+    { id: 'ingresos', label: 'Ingresos', icon: DollarSign, allowed: hasMedicionPerm },
   ].filter(tab => tab.allowed);
+
+  const allowedTabIds = tabs.map(t => t.id);
+  const currentActiveTab = allowedTabIds.includes(activeTab) ? activeTab : (allowedTabIds[0] as DashboardTab);
+
+  if (tabs.length === 0) {
+    return (
+      <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">
+        No tienes permisos para visualizar este módulo.
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 space-y-6 animate-in fade-in duration-500">
@@ -149,7 +163,7 @@ export function Dashboard() {
       <div className="flex flex-wrap gap-2 pb-4 border-b border-muted">
         {tabs.map((tab) => {
           const TabIcon = tab.icon;
-          const isActive = activeTab === tab.id;
+          const isActive = currentActiveTab === tab.id;
           return (
             <Button
               key={tab.id}
@@ -169,7 +183,7 @@ export function Dashboard() {
         })}
       </div>
 
-      {activeTab === 'general' ? (
+      {currentActiveTab === 'general' ? (
         <>
           {/* METRICAS SUPERIORES */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -247,11 +261,11 @@ export function Dashboard() {
         </>
       ) : (
         <div className="w-full">
-          {activeTab === 'citas' && <ReporteCitasView />}
-          {activeTab === 'productos' && <ReporteProductosView />}
-          {activeTab === 'servicios' && <ReporteServiciosView />}
-          {activeTab === 'empleados' && <ReporteEmpleadosView />}
-          {activeTab === 'ingresos' && <ReporteIngresosView />}
+          {currentActiveTab === 'citas' && <ReporteCitasView />}
+          {currentActiveTab === 'productos' && <ReporteProductosView />}
+          {currentActiveTab === 'servicios' && <ReporteServiciosView />}
+          {currentActiveTab === 'empleados' && <ReporteEmpleadosView />}
+          {currentActiveTab === 'ingresos' && <ReporteIngresosView />}
         </div>
       )}
     </div>

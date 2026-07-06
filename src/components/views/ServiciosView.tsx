@@ -19,9 +19,13 @@ import { formatCOP } from '../../lib/format';
 
 
 export function ServiciosView() {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const isCliente = user?.id_rol === 3 || user?.rol === 'Cliente';
   const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+
+  const canCreate = hasPermission ? hasPermission('Servicios', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Servicios', 'actualizar') : isAdmin;
+  const canDelete = hasPermission ? hasPermission('Servicios', 'eliminar') : isAdmin;
 
   const [servicios, setServicios] = useState<any[]>([]); // Array vacío para la BD
   const [loading, setLoading] = useState(true);
@@ -127,6 +131,9 @@ export function ServiciosView() {
 
   const handleToggleEstado = async (servicio: any) => {
     const nuevoEstado = (servicio.estado || 'Activo') === 'Activo' ? 'Inactivo' : 'Activo';
+    if (!window.confirm(`¿Desea cambiar el estado del servicio "${servicio.nombre}" a ${nuevoEstado}?`)) {
+      return;
+    }
     const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
 
     try {
@@ -238,7 +245,7 @@ export function ServiciosView() {
             {isCliente ? 'Consulta nuestro catálogo de servicios' : 'Gestiona los servicios ofrecidos'}
           </p>
         </div>
-        {!isCliente && isAdmin && (
+        {!isCliente && canCreate && (
           <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white">
             <Plus className="w-4 h-4 mr-2" />
             Nuevo Servicio
@@ -299,7 +306,7 @@ export function ServiciosView() {
                       </TableCell>
                       <TableCell>{servicio.duracion_minutos || '-'} min</TableCell>
                       <TableCell>
-                        {!isCliente && isAdmin ? (
+                        {!isCliente && canUpdate ? (
                           <button
                             onClick={() => handleToggleEstado(servicio)}
                             className="focus:outline-none transition-transform active:scale-95"
@@ -336,14 +343,18 @@ export function ServiciosView() {
                           <Button variant="outline" size="sm" onClick={() => handleView(servicio)}>
                             <Eye className="w-4 h-4" />
                           </Button>
-                          {!isCliente && isAdmin && (
+                          {!isCliente && (
                             <>
-                              <Button variant="outline" size="sm" onClick={() => handleEdit(servicio)}>
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(servicio.id_servicio)}>
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
+                              {canUpdate && (
+                                <Button variant="outline" size="sm" onClick={() => handleEdit(servicio)}>
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                              )}
+                              {canDelete && (
+                                <Button variant="outline" size="sm" className="text-red-500 hover:bg-red-50" onClick={() => handleDelete(servicio.id_servicio)}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>

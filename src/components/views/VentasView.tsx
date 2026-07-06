@@ -47,7 +47,10 @@ interface VentasViewProps {
 }
 
 export function VentasView({ onNavigate }: VentasViewProps) {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
+  const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+  const canCreate = hasPermission ? hasPermission('Ventas', 'crear') : isAdmin;
+  const canReturn = hasPermission ? hasPermission('Devoluciones', 'crear') : isAdmin;
 
   // Estados de datos reales desde BD
   const [ventas, setVentas] = useState<any[]>([]);
@@ -277,7 +280,9 @@ export function VentasView({ onNavigate }: VentasViewProps) {
           <p className="text-muted-foreground">Gestiona las ventas realizadas</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-2" /> Nueva Venta</Button>
+          {canCreate && (
+            <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700"><Plus className="w-4 h-4 mr-2" /> Nueva Venta</Button>
+          )}
           <Button onClick={handleExport} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Exportar</Button>
         </div>
       </div>
@@ -344,15 +349,17 @@ export function VentasView({ onNavigate }: VentasViewProps) {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           <Button variant="outline" size="sm" onClick={() => handleView(venta)}><Eye className="w-4 h-4" /></Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onNavigate && onNavigate('devoluciones', { sale: venta })}
-                            title="Generar Devolución"
-                            className="text-orange-600 border-orange-200 hover:bg-orange-50"
-                          >
-                            <RotateCcw className="w-4 h-4" />
-                          </Button>
+                          {canReturn && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => onNavigate && onNavigate('devoluciones', { sale: venta })}
+                              title="Generar Devolución"
+                              className="text-orange-600 border-orange-200 hover:bg-orange-50"
+                            >
+                              <RotateCcw className="w-4 h-4" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>

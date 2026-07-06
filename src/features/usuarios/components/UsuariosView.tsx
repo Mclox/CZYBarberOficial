@@ -14,11 +14,17 @@ import { toast } from 'sonner';
 import { SearchBar } from '../../../components/common/SearchBar';
 import { Pagination } from '../../../components/common/Pagination';
 import { fetchApi } from '../../../lib/api'; // Importamos nuestro conector a la API
+import { useAuth } from '../../auth';
 
 export function UsuariosView() {
+  const { user, hasPermission } = useAuth();
   const [usuarios, setUsuarios] = useState<any[]>([]); // Inicializamos vacío, ya no usamos mockUsuarios
   const [roles, setRoles] = useState<any[]>([]); // Roles cargados en tiempo real de la base de datos
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+  const canCreate = hasPermission ? hasPermission('Usuarios', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Usuarios', 'actualizar') : isAdmin;
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
@@ -222,6 +228,9 @@ export function UsuariosView() {
 
   const handleToggleStatus = async (usuario: any) => {
     const nuevoEstado = usuario.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    if (!window.confirm(`¿Desea cambiar el estado del usuario "${usuario.nombre}" a ${nuevoEstado}?`)) {
+      return;
+    }
 
     // Mostramos un toast de carga
     const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
@@ -265,10 +274,12 @@ export function UsuariosView() {
           </h1>
           <p className="text-muted-foreground">Gestiona los usuarios del sistema</p>
         </div>
-        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Usuario
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Usuario
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -319,29 +330,45 @@ export function UsuariosView() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <button
-                          onClick={() => handleToggleStatus(usuario)}
-                          className="focus:outline-none transition-transform active:scale-95"
-                          title={`Cambiar a ${usuario.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
-                        >
+                        {canUpdate ? (
+                          <button
+                            onClick={() => handleToggleStatus(usuario)}
+                            className="focus:outline-none transition-transform active:scale-95"
+                            title={`Cambiar a ${usuario.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                          >
+                            <Badge
+                              className={`
+                                cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                ${usuario.estado === 'Activo'
+                                  ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm'
+                                  : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                              `}
+                            >
+                              <span className={`w-2 h-2 rounded-full mr-2 ${usuario.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                              {usuario.estado || 'Activo'}
+                            </Badge>
+                          </button>
+                        ) : (
                           <Badge
                             className={`
-                              cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                              px-3 py-1 rounded-full border-2
                               ${usuario.estado === 'Activo'
-                                ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm'
-                                : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                                ? 'bg-green-600 text-white border-transparent shadow-sm'
+                                : 'bg-red-600 text-white border-transparent shadow-sm'}
                             `}
                           >
                             <span className={`w-2 h-2 rounded-full mr-2 ${usuario.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
                             {usuario.estado || 'Activo'}
                           </Badge>
-                        </button>
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
-                            <Pencil className="w-4 h-4" />
-                          </Button>
+                          {canUpdate && (
+                            <Button variant="outline" size="sm" onClick={() => handleEdit(usuario)}>
+                              <Pencil className="w-4 h-4" />
+                            </Button>
+                          )}
                           <Button variant="outline" size="sm" onClick={() => handleView(usuario)}>
                             <Eye className="w-4 h-4" />
                           </Button>

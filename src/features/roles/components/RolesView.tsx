@@ -39,22 +39,59 @@ import { toast } from 'sonner';
 import { SearchBar } from '../../../components/common/SearchBar';
 import { Pagination } from '../../../components/common/Pagination';
 import { fetchApi } from '../../../lib/api'; // Conexión a la API real
+import { useAuth } from '../../auth';
 
 const MODULOS = [
   'Roles',
   'Usuarios',
   'Productos',
+  'Entradas de Productos',
   'Devoluciones',
   'Servicios',
   'Citas',
   'Empleados',
   'Clientes',
   'Ventas',
+  'Dashboard General',
 ];
 
+export const isPermissionDisabled = (modulo: string, action: 'crear' | 'leer' | 'actualizar' | 'eliminar'): boolean => {
+  if (action === 'eliminar') {
+    if (['Usuarios', 'Entradas de Productos', 'Empleados', 'Clientes', 'Ventas', 'Devoluciones', 'Dashboard General'].includes(modulo)) {
+      return true;
+    }
+  }
+  if (action === 'actualizar') {
+    if (['Entradas de Productos', 'Ventas', 'Devoluciones', 'Dashboard General'].includes(modulo)) {
+      return true;
+    }
+  }
+  if (action === 'crear') {
+    if (['Dashboard General'].includes(modulo)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export const shouldShowCheckbox = (modulo: string, action: 'crear' | 'leer' | 'actualizar' | 'eliminar'): boolean => {
+  if (['Dashboard General'].includes(modulo)) {
+    return action === 'leer';
+  }
+  if (modulo === 'Roles' && action === 'eliminar') {
+    return false;
+  }
+  return true;
+};
+
 export function RolesView() {
+  const { user, hasPermission } = useAuth();
   const [roles, setRoles] = useState<any[]>([]); // Array vacío, conectaremos a la BD
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+  const canCreate = hasPermission ? hasPermission('Roles', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Roles', 'actualizar') : isAdmin;
   const [dialogOpen, setDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
@@ -113,12 +150,19 @@ export function RolesView() {
     const rolePermissions = role.permisos || [];
     const fullPermissions = MODULOS.map(modulo => {
       const existing = rolePermissions.find((p: any) => p.modulo === modulo);
-      return existing || {
+      const perm = existing || {
         modulo,
         crear: false,
         leer: false,
         actualizar: false,
         eliminar: false,
+      };
+      return {
+        modulo,
+        crear: isPermissionDisabled(modulo, 'crear') ? false : perm.crear,
+        leer: isPermissionDisabled(modulo, 'leer') ? false : perm.leer,
+        actualizar: isPermissionDisabled(modulo, 'actualizar') ? false : perm.actualizar,
+        eliminar: isPermissionDisabled(modulo, 'eliminar') ? false : perm.eliminar,
       };
     });
     setPermissions(fullPermissions);
@@ -156,6 +200,9 @@ export function RolesView() {
     }
 
     const newEstado = role.estado === 'Activo' ? 'Inactivo' : 'Activo';
+    if (!window.confirm(`¿Desea cambiar el estado del rol "${role.nombre}" a ${newEstado}?`)) {
+      return;
+    }
     const toastId = toast.loading(`Cambiando estado a ${newEstado}...`);
     try {
       await fetchApi(`/roles/${role.id_rol}`, {
@@ -188,11 +235,19 @@ export function RolesView() {
     }
 
     // Preparamos el payload incluyendo los permisos
+    const cleanedPermissions = permissions.map(p => ({
+      modulo: p.modulo,
+      crear: isPermissionDisabled(p.modulo, 'crear') ? false : p.crear,
+      leer: isPermissionDisabled(p.modulo, 'leer') ? false : p.leer,
+      actualizar: isPermissionDisabled(p.modulo, 'actualizar') ? false : p.actualizar,
+      eliminar: isPermissionDisabled(p.modulo, 'eliminar') ? false : p.eliminar,
+    }));
+
     const payload = {
       nombre: formData.nombre,
       descripcion: formData.descripcion,
       estado: formData.estado,
-      permisos: permissions
+      permisos: cleanedPermissions
     };
 
     try {
@@ -254,12 +309,19 @@ export function RolesView() {
     const rolePermissions = role.permisos || [];
     const fullPermissions = MODULOS.map(modulo => {
       const existing = rolePermissions.find((p: any) => p.modulo === modulo);
-      return existing || {
+      const perm = existing || {
         modulo,
         crear: false,
         leer: false,
         actualizar: false,
         eliminar: false,
+      };
+      return {
+        modulo,
+        crear: isPermissionDisabled(modulo, 'crear') ? false : perm.crear,
+        leer: isPermissionDisabled(modulo, 'leer') ? false : perm.leer,
+        actualizar: isPermissionDisabled(modulo, 'actualizar') ? false : perm.actualizar,
+        eliminar: isPermissionDisabled(modulo, 'eliminar') ? false : perm.eliminar,
       };
     });
     setViewingRole({ ...role, permisos: fullPermissions });
@@ -282,10 +344,12 @@ export function RolesView() {
             Gestiona los roles y permisos del sistema
           </p>
         </div>
-        <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
-          <Plus className="w-4 h-4 mr-2" />
-          Nuevo Rol
-        </Button>
+        {canCreate && (
+          <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white font-medium">
+            <Plus className="w-4 h-4 mr-2" />
+            Nuevo Rol
+          </Button>
+        )}
       </div>
 
       <Card>
@@ -329,23 +393,37 @@ export function RolesView() {
                         <TableCell className="font-medium">{role.nombre}</TableCell>
                         <TableCell>{role.descripcion || '-'}</TableCell>
                         <TableCell>
-                          <button
-                            onClick={() => handleToggleEstado(role)}
-                            className="focus:outline-none transition-transform active:scale-95"
-                            title={`Cambiar a ${role.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
-                          >
+                          {canUpdate ? (
+                            <button
+                              onClick={() => handleToggleEstado(role)}
+                              className="focus:outline-none transition-transform active:scale-95"
+                              title={`Cambiar a ${role.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
+                            >
+                              <Badge 
+                                className={`
+                                  cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                  ${role.estado === 'Activo' 
+                                    ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
+                                    : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                                `}
+                              >
+                                <span className={`w-2 h-2 rounded-full mr-2 ${role.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
+                                {role.estado || 'Activo'}
+                              </Badge>
+                            </button>
+                          ) : (
                             <Badge 
                               className={`
-                                cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
+                                px-3 py-1 rounded-full border-2
                                 ${role.estado === 'Activo' 
-                                  ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm' 
-                                  : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
+                                  ? 'bg-green-600 text-white border-transparent shadow-sm' 
+                                  : 'bg-red-600 text-white border-transparent shadow-sm'}
                               `}
                             >
                               <span className={`w-2 h-2 rounded-full mr-2 ${role.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
                               {role.estado || 'Activo'}
                             </Badge>
-                          </button>
+                          )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
@@ -357,14 +435,16 @@ export function RolesView() {
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(role)}
-                              title="Editar rol"
-                            >
-                              <Pencil className="w-4 h-4" />
-                            </Button>
+                            {canUpdate && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(role)}
+                                title="Editar rol"
+                              >
+                                <Pencil className="w-4 h-4" />
+                              </Button>
+                            )}
                             {/* El botón de eliminar se ha ocultado por reglas de negocio */}
                           </div>
                         </TableCell>
@@ -450,14 +530,14 @@ export function RolesView() {
               </div>
               <div className="space-y-2">
                 <Label>Permisos por Módulo</Label>
-                <div className="rounded-md border overflow-x-auto max-h-96">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[200px]">Módulo</TableHead>
-                        <TableHead className="text-center w-[100px]">Crear</TableHead>
-                        <TableHead className="text-center w-[100px]">Leer</TableHead>
-                        <TableHead className="text-center w-[100px]">Actualizar</TableHead>
+                        <TableHead className="text-center w-[100px]">Registrar</TableHead>
+                        <TableHead className="text-center w-[100px]">Ver</TableHead>
+                        <TableHead className="text-center w-[100px]">Editar</TableHead>
                         <TableHead className="text-center w-[100px]">Eliminar</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -465,41 +545,59 @@ export function RolesView() {
                       {permissions.map((permiso) => (
                         <TableRow key={permiso.modulo}>
                           <TableCell>{permiso.modulo}</TableCell>
+                          
+                          {/* Registrar (Crear) */}
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.crear}
-                                onCheckedChange={(checked) =>
-                                  updatePermission(permiso.modulo, 'crear', checked as boolean)
-                                }
-                              />
+                              {shouldShowCheckbox(permiso.modulo, 'crear') && (
+                                <Checkbox
+                                  checked={permiso.crear}
+                                  disabled={isPermissionDisabled(permiso.modulo, 'crear')}
+                                  onCheckedChange={(checked) =>
+                                    updatePermission(permiso.modulo, 'crear', checked as boolean)
+                                  }
+                                />
+                              )}
                             </div>
                           </TableCell>
+                          
+                          {/* Ver (Leer) */}
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.leer}
-                                onCheckedChange={(checked) =>
-                                  updatePermission(permiso.modulo, 'leer', checked as boolean)
-                                }
-                              />
+                              {shouldShowCheckbox(permiso.modulo, 'leer') && (
+                                <Checkbox
+                                  checked={permiso.leer}
+                                  disabled={isPermissionDisabled(permiso.modulo, 'leer')}
+                                  onCheckedChange={(checked) =>
+                                    updatePermission(permiso.modulo, 'leer', checked as boolean)
+                                  }
+                                />
+                              )}
                             </div>
                           </TableCell>
+                          
+                          {/* Editar (Actualizar) */}
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox
-                                checked={permiso.actualizar}
-                                onCheckedChange={(checked) =>
-                                  updatePermission(permiso.modulo, 'actualizar', checked as boolean)
-                                }
-                              />
+                              {shouldShowCheckbox(permiso.modulo, 'actualizar') && (
+                                <Checkbox
+                                  checked={permiso.actualizar}
+                                  disabled={isPermissionDisabled(permiso.modulo, 'actualizar')}
+                                  onCheckedChange={(checked) =>
+                                    updatePermission(permiso.modulo, 'actualizar', checked as boolean)
+                                  }
+                                />
+                              )}
                             </div>
                           </TableCell>
+                          
+                          {/* Eliminar (Eliminar) */}
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              {permiso.modulo !== 'Roles' && (
+                              {shouldShowCheckbox(permiso.modulo, 'eliminar') && (
                                 <Checkbox
                                   checked={permiso.eliminar}
+                                  disabled={isPermissionDisabled(permiso.modulo, 'eliminar')}
                                   onCheckedChange={(checked) =>
                                     updatePermission(permiso.modulo, 'eliminar', checked as boolean)
                                   }
@@ -579,14 +677,14 @@ export function RolesView() {
               </div>
               <div className="space-y-2">
                 <Label>Permisos por Módulo</Label>
-                <div className="rounded-md border overflow-x-auto max-h-96">
+                <div className="rounded-md border overflow-x-auto">
                   <Table>
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-[200px]">Módulo</TableHead>
-                        <TableHead className="text-center w-[100px]">Crear</TableHead>
-                        <TableHead className="text-center w-[100px]">Leer</TableHead>
-                        <TableHead className="text-center w-[100px]">Actualizar</TableHead>
+                        <TableHead className="text-center w-[100px]">Registrar</TableHead>
+                        <TableHead className="text-center w-[100px]">Ver</TableHead>
+                        <TableHead className="text-center w-[100px]">Editar</TableHead>
                         <TableHead className="text-center w-[100px]">Eliminar</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -596,22 +694,28 @@ export function RolesView() {
                           <TableCell>{permiso.modulo}</TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox checked={permiso.crear} disabled />
+                              {shouldShowCheckbox(permiso.modulo, 'crear') && (
+                                <Checkbox checked={permiso.crear} disabled />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox checked={permiso.leer} disabled />
+                              {shouldShowCheckbox(permiso.modulo, 'leer') && (
+                                <Checkbox checked={permiso.leer} disabled />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              <Checkbox checked={permiso.actualizar} disabled />
+                              {shouldShowCheckbox(permiso.modulo, 'actualizar') && (
+                                <Checkbox checked={permiso.actualizar} disabled />
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">
                             <div className="flex justify-center">
-                              {permiso.modulo !== 'Roles' && (
+                              {shouldShowCheckbox(permiso.modulo, 'eliminar') && (
                                 <Checkbox checked={permiso.eliminar} disabled />
                               )}
                             </div>

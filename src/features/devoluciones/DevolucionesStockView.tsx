@@ -15,6 +15,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { formatCOP } from '../../lib/format';
 import { Pagination } from '../../components/common/Pagination';
+import { useAuth } from '../auth';
 
 
 interface DevolucionesStockViewProps {
@@ -22,10 +23,15 @@ interface DevolucionesStockViewProps {
 }
 
 export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockViewProps) {
+  const { user, hasPermission } = useAuth();
   // Datos Reales
   const [devoluciones, setDevoluciones] = useState<any[]>([]);
   const [ventas, setVentas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const isAdmin = user?.id_rol === 1 || user?.rol === 'Administrador';
+  const canCreate = hasPermission ? hasPermission('Devoluciones', 'crear') : isAdmin;
+  const canUpdate = hasPermission ? hasPermission('Devoluciones', 'actualizar') : isAdmin;
   const [searchTerm, setSearchTerm] = useState('');
 
   // UI
@@ -34,6 +40,13 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // UI Confirmación de Estados
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false);
+  const [selectedDevolucionForStatus, setSelectedDevolucionForStatus] = useState<any | null>(null);
+  const [targetStatus, setTargetStatus] = useState<string>('');
+  const [motivoCambio, setMotivoCambio] = useState<string>('');
+  const [statusSubmitting, setStatusSubmitting] = useState(false);
 
 
   // Formulario
@@ -136,18 +149,42 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
     }
   };
 
-  const handleToggleEstado = async (dev: any) => {
-    const nuevoEstado = dev.estado === 'Activo' ? 'Inactivo' : 'Activo';
-    const toastId = toast.loading(`Cambiando estado a ${nuevoEstado}...`);
+  const handleOpenStatusConfirm = (dev: any, status: string) => {
+    setSelectedDevolucionForStatus(dev);
+    setTargetStatus(status);
+    setMotivoCambio('');
+    setStatusDialogOpen(true);
+  };
+
+  const handleConfirmStatusChange = async () => {
+    if (!selectedDevolucionForStatus || !targetStatus) return;
+
+    if ((targetStatus === 'Rechazada' || targetStatus === 'Anulada') && !motivoCambio.trim()) {
+      toast.error('El motivo es obligatorio');
+      return;
+    }
+
+    setStatusSubmitting(true);
+    const toastId = toast.loading(`Cambiando estado a ${targetStatus}...`);
+
     try {
-      await fetchApi(`/stock-returns/${dev.id_devolucion}`, {
+      await fetchApi(`/stock-returns/${selectedDevolucionForStatus.id_devolucion}`, {
         method: 'PUT',
-        body: JSON.stringify({ estado: nuevoEstado })
+        body: JSON.stringify({ 
+          estado: targetStatus,
+          motivo: motivoCambio 
+        })
       });
-      toast.success(`Estado de devolución actualizado a ${nuevoEstado}`, { id: toastId });
+      toast.success(`Estado de devolución actualizado a ${targetStatus}`, { id: toastId });
+      setStatusDialogOpen(false);
+      setSelectedDevolucionForStatus(null);
+      setTargetStatus('');
+      setMotivoCambio('');
       fetchData();
     } catch (error: any) {
       toast.error(error.message || 'Error al cambiar el estado', { id: toastId });
+    } finally {
+      setStatusSubmitting(false);
     }
   };
 
@@ -305,9 +342,11 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
           <p className="text-muted-foreground">Retornos de inventario por ventas canceladas o ajustadas</p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={() => {setIdVentaSeleccionada(''); setMotivo(''); setProductosVenta([]); setNewDevolucionDialogOpen(true);}} className="bg-blue-600 hover:bg-blue-700">
-            <Plus className="w-4 h-4 mr-2" /> Nueva Devolución
-          </Button>
+          {canCreate && (
+            <Button onClick={() => {setIdVentaSeleccionada(''); setMotivo(''); setProductosVenta([]); setNewDevolucionDialogOpen(true);}} className="bg-blue-600 hover:bg-blue-700">
+              <Plus className="w-4 h-4 mr-2" /> Nueva Devolución
+            </Button>
+          )}
         </div>
       </div>
 
@@ -373,23 +412,55 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                       <TableCell>{new Date(dev.fecha).toLocaleDateString('es-ES')}</TableCell>
                       <TableCell>{dev.usuario_nombre}</TableCell>
                       <TableCell>
-                        <button
-                          onClick={() => handleToggleEstado(dev)}
-                          className="focus:outline-none transition-transform active:scale-95"
-                          title={`Cambiar a ${dev.estado === 'Activo' ? 'Inactivo' : 'Activo'}`}
-                        >
-                          <Badge
-                            className={`
-                              cursor-pointer px-3 py-1 rounded-full border-2 transition-all duration-200
-                              ${dev.estado === 'Activo'
-                                ? 'bg-green-600 text-white hover:bg-green-700 border-transparent shadow-sm'
-                                : 'bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm'}
-                            `}
+                        {canUpdate && (dev.estado || 'Pendiente').toLowerCase() === 'pendiente' ? (
+                          <Select
+                            value={dev.estado || 'Pendiente'}
+                            onValueChange={(val) => handleOpenStatusConfirm(dev, val)}
                           >
-                            <span className={`w-2 h-2 rounded-full mr-2 ${dev.estado === 'Activo' ? 'bg-green-200' : 'bg-red-200'}`}></span>
-                            {dev.estado || 'Activo'}
-                          </Badge>
-                        </button>
+                            <SelectTrigger className="w-[130px] h-8 font-bold border-yellow-200 bg-yellow-50 text-yellow-800">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Pendiente">Pendiente</SelectItem>
+                              <SelectItem value="Aprobada">Aprobada</SelectItem>
+                              <SelectItem value="Rechazada">Rechazada</SelectItem>
+                              <SelectItem value="Anulada">Anulada</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          (() => {
+                            switch (dev.estado?.toLowerCase()) {
+                              case 'aprobada':
+                                return (
+                                  <Badge className="px-3 py-1 rounded-full border-2 bg-green-600 text-white border-transparent shadow-sm">
+                                    <span className="w-2 h-2 rounded-full mr-2 bg-green-200"></span>
+                                    Aprobada
+                                  </Badge>
+                                );
+                              case 'rechazada':
+                                return (
+                                  <Badge className="px-3 py-1 rounded-full border-2 bg-red-600 text-white border-transparent shadow-sm">
+                                    <span className="w-2 h-2 rounded-full mr-2 bg-red-200"></span>
+                                    Rechazada
+                                  </Badge>
+                                );
+                              case 'anulada':
+                                return (
+                                  <Badge className="px-3 py-1 rounded-full border-2 bg-slate-600 text-white border-transparent shadow-sm">
+                                    <span className="w-2 h-2 rounded-full mr-2 bg-slate-200"></span>
+                                    Anulada
+                                  </Badge>
+                                );
+                              default:
+                                return (
+                                  <Badge className="px-3 py-1 rounded-full border-2 bg-yellow-600 text-white border-transparent shadow-sm">
+                                    <span className="w-2 h-2 rounded-full mr-2 bg-yellow-200"></span>
+                                    Pendiente
+                                  </Badge>
+                                );
+                            }
+                          })()
+                        )}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
@@ -559,9 +630,18 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                 <div className="space-y-1">
                   <span className="text-xs font-semibold text-muted-foreground uppercase block">Estado Actual</span>
                   <div>
-                    <Badge className={selectedDevolucion.estado === 'Activo' ? 'bg-green-600 text-white hover:bg-green-700' : 'bg-red-600 text-white hover:bg-red-700'}>
-                      {selectedDevolucion.estado || 'Activo'}
-                    </Badge>
+                    {(() => {
+                      switch (selectedDevolucion.estado?.toLowerCase()) {
+                        case 'aprobada':
+                          return <Badge className="bg-green-600 text-white">Aprobada</Badge>;
+                        case 'rechazada':
+                          return <Badge className="bg-red-600 text-white">Rechazada</Badge>;
+                        case 'anulada':
+                          return <Badge className="bg-slate-600 text-white">Anulada</Badge>;
+                        default:
+                          return <Badge className="bg-yellow-600 text-white">Pendiente</Badge>;
+                      }
+                    })()}
                   </div>
                 </div>
               </div>
@@ -587,6 +667,24 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
                   "{selectedDevolucion.motivo || 'Sin motivo especificado'}"
                 </p>
               </div>
+
+              {selectedDevolucion.estado?.toLowerCase() === 'rechazada' && selectedDevolucion.motivo_rechazo && (
+                <div className="border-t pt-4">
+                  <span className="text-xs font-semibold text-red-600 uppercase block mb-1">Motivo de Rechazo</span>
+                  <p className="text-red-700 whitespace-pre-wrap bg-red-50 border border-red-200 rounded-lg p-3 italic font-medium">
+                    "{selectedDevolucion.motivo_rechazo}"
+                  </p>
+                </div>
+              )}
+
+              {selectedDevolucion.estado?.toLowerCase() === 'anulada' && selectedDevolucion.motivo_anulacion && (
+                <div className="border-t pt-4">
+                  <span className="text-xs font-semibold text-slate-600 uppercase block mb-1">Motivo de Anulación</span>
+                  <p className="text-slate-700 whitespace-pre-wrap bg-slate-50 border border-slate-200 rounded-lg p-3 italic font-medium">
+                    "{selectedDevolucion.motivo_anulacion}"
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -601,6 +699,100 @@ export function DevolucionesStockView({ preSelectedSale }: DevolucionesStockView
             </Button>
             <Button type="button" variant="outline" onClick={() => setDetailsDialogOpen(false)}>
               Cerrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* MODAL DE CONFIRMACIÓN DE CAMBIO DE ESTADO */}
+      <Dialog open={statusDialogOpen} onOpenChange={(open) => { if (!open) setStatusDialogOpen(false); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-blue-800">
+              Confirmar Cambio de Estado
+            </DialogTitle>
+            <DialogDescription>
+              Estás a punto de actualizar el estado de esta devolución.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedDevolucionForStatus && (
+            <div className="space-y-6 py-4">
+              <div className="space-y-2 bg-slate-50 border p-4 rounded-lg text-sm">
+                <div className="flex justify-between items-center">
+                  <span className="text-muted-foreground font-medium">Estado Actual:</span>
+                  <Badge className="bg-yellow-600 text-white">{selectedDevolucionForStatus.estado || 'Pendiente'}</Badge>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-muted-foreground font-medium">Nuevo Estado a aplicar:</span>
+                  <Badge className={
+                    targetStatus === 'Aprobada' ? 'bg-green-600 text-white' :
+                    targetStatus === 'Rechazada' ? 'bg-red-600 text-white' :
+                    targetStatus === 'Anulada' ? 'bg-slate-600 text-white' : 'bg-yellow-600 text-white'
+                  }>
+                    {targetStatus}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Consecuencia */}
+              <div className="p-4 rounded-lg border text-sm font-medium bg-blue-50 border-blue-200 text-blue-800">
+                {targetStatus === 'Aprobada' && (
+                  <p>✓ La cantidad será reintegrada automáticamente al inventario.</p>
+                )}
+                {targetStatus === 'Rechazada' && (
+                  <p>✗ La devolución será rechazada y no afectará el inventario.</p>
+                )}
+                {targetStatus === 'Anulada' && (
+                  <p>✗ La devolución será anulada y no afectará el inventario.</p>
+                )}
+                {targetStatus === 'Pendiente' && (
+                  <p>⚠ La devolución permanecerá pendiente de aprobación.</p>
+                )}
+              </div>
+
+              {/* Campo para motivo de rechazo o anulación */}
+              {(targetStatus === 'Rechazada' || targetStatus === 'Anulada') && (
+                <div className="space-y-2">
+                  <Label htmlFor="motivoCambio">
+                    Motivo de {targetStatus === 'Rechazada' ? 'Rechazo' : 'Anulación'} <span className="text-red-500">*</span>
+                  </Label>
+                  <Textarea
+                    id="motivoCambio"
+                    placeholder={`Indica el motivo por el cual estás marcando la devolución como ${targetStatus}...`}
+                    value={motivoCambio}
+                    onChange={(e) => setMotivoCambio(e.target.value)}
+                    rows={3}
+                    required
+                  />
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setStatusDialogOpen(false);
+                setSelectedDevolucionForStatus(null);
+                setTargetStatus('');
+                setMotivoCambio('');
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button 
+              type="button" 
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={handleConfirmStatusChange}
+              disabled={
+                statusSubmitting || 
+                ((targetStatus === 'Rechazada' || targetStatus === 'Anulada') && !motivoCambio.trim())
+              }
+            >
+              {statusSubmitting ? 'Guardando...' : 'Confirmar'}
             </Button>
           </DialogFooter>
         </DialogContent>
