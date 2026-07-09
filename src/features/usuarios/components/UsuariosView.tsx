@@ -35,6 +35,7 @@ export function UsuariosView() {
   const [viewingUsuario, setViewingUsuario] = useState<any | null>(null);
   const [usuarioToDelete, setUsuarioToDelete] = useState<number | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const [formData, setFormData] = useState({
     nombre: '',
@@ -108,6 +109,7 @@ export function UsuariosView() {
   const handleCreate = () => {
     setEditingUsuario(null);
     setShowPassword(false);
+    setShowConfirmPassword(false);
     setFormData({
       nombre: '', tipo_documento: 'CC', documento: '', email: '', confirmEmail: '',
       password: '', confirmPassword: '', telefono: '', id_rol: '', estado: 'Activo'
@@ -118,6 +120,7 @@ export function UsuariosView() {
   const handleEdit = (usuario: any) => {
     setEditingUsuario(usuario);
     setShowPassword(false);
+    setShowConfirmPassword(false);
     setFormData({
       nombre: usuario.nombre,
       tipo_documento: usuario.tipo_documento || 'CC',
@@ -477,6 +480,7 @@ export function UsuariosView() {
                     required={!editingUsuario}
                     className="pr-10"
                     placeholder={editingUsuario ? "Dejar vacío para no cambiar" : "Mínimo 6 caracteres"}
+                    autoComplete="new-password"
                   />
                   <Button type="button" variant="ghost" size="sm" onClick={() => setShowPassword(!showPassword)} className="absolute right-1 top-1/2 transform -translate-y-1/2">
                     {showPassword ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
@@ -489,13 +493,17 @@ export function UsuariosView() {
                 <div className="relative">
                   <Input
                     id="confirmPassword"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showConfirmPassword ? 'text' : 'password'}
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                     required={!editingUsuario && formData.password.length > 0}
                     className="pr-10"
                     placeholder="Confirmar contraseña"
+                    autoComplete="new-password"
                   />
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-1 top-1/2 transform -translate-y-1/2">
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
+                  </Button>
                 </div>
               </div>
 

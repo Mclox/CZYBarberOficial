@@ -80,6 +80,7 @@ export function EmpleadosView() {
   const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // --- FETCH DATA ---
   const fetchEmpleados = async () => {
@@ -116,6 +117,7 @@ export function EmpleadosView() {
   const handleEmployeeCreate = () => {
     setEditingEmployee(null);
     setShowPassword(false);
+    setShowConfirmPassword(false);
     setEmployeeFormData({
       primer_nombre: '',
       segundo_nombre: '',
@@ -142,6 +144,7 @@ export function EmpleadosView() {
   const handleEmployeeEdit = (emp: any) => {
     setEditingEmployee(emp);
     setShowPassword(false);
+    setShowConfirmPassword(false);
 
     const parsedNames = parseFullName(emp.nombre);
 
@@ -502,7 +505,7 @@ export function EmpleadosView() {
                   </div>
                 </div>
 
-                {/* Contraseña y Confirmar Contraseña */}
+                                {/* Contraseña y Confirmar Contraseña */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="contrasena">Contraseña {editingEmployee ? '(opcional)' : <span className="text-red-500">*</span>}</Label>
@@ -515,6 +518,7 @@ export function EmpleadosView() {
                         required={!editingEmployee}
                         className="pr-10"
                         placeholder={editingEmployee ? "Dejar vacío para no cambiar" : "Mínimo 6 caracteres"}
+                        autoComplete="new-password"
                       />
                       <Button
                         type="button"
@@ -532,13 +536,23 @@ export function EmpleadosView() {
                     <div className="relative">
                       <Input
                         id="confirmPassword"
-                        type={showPassword ? 'text' : 'password'}
+                        type={showConfirmPassword ? 'text' : 'password'}
                         value={employeeFormData.confirmPassword}
                         onChange={(e) => setEmployeeFormData({ ...employeeFormData, confirmPassword: e.target.value })}
                         required={!editingEmployee && employeeFormData.contrasena.length > 0}
                         className="pr-10"
                         placeholder="Confirmar contraseña"
+                        autoComplete="new-password"
                       />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0 hover:bg-blue-50"
+                      >
+                        {showConfirmPassword ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
+                      </Button>
                     </div>
                   </div>
                 </div>
