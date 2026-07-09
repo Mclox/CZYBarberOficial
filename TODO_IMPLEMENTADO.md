@@ -148,65 +148,25 @@
 
 ---
 
-## 5️⃣ DOCUMENTACIÓN CREADA ✅
+## 5️⃣ DOCUMENTACIÓN ESENCIAL CONSERVADA ✅
 
-### Archivos de Documentación:
+### Archivos de Documentación en la Raíz:
 
-1. **`NUEVA_ARQUITECTURA_PROCESOS.md`** (~400 líneas)
-   - Definición completa de procesos y subprocesos
-   - Estructura de carpetas propuesta
-   - Mapeo de permisos por rol
-   - Navegación por rol
+1. **`README.md`**
+   - Descripción general del sistema y puesta en marcha rápida.
+2. **`TODO_IMPLEMENTADO.md`** (este archivo)
+   - Resumen absoluto de las funcionalidades implementadas y el estado actual del proyecto.
+3. **`INSTALACION.md`**
+   - Guía completa de instalación y configuración de prerrequisitos.
+4. **`Attributions.md`**
+   - Atribuciones de recursos y licencias de terceros.
+5. **`GUIA_CONFIGURACION_LANDING.md`**
+   - Instrucciones detalladas para personalizar y configurar el Landing Page público.
+6. **`CzBarber_BlackBox_InputLogic.md`**
+   - Especificaciones detalladas de la lógica de entrada para pruebas de caja negra del sistema.
 
-2. **`PLAN_MIGRACION_PROCESOS.md`** (~600 líneas)
-   - Plan de implementación paso a paso
-   - Código de ejemplo para nuevas funcionalidades
-   - Checklist de tareas
-   - Tiempo estimado
+*Nota: Se realizó una depuración y limpieza del proyecto eliminando 16 archivos `.md` de progreso histórico de desarrollo y borradores de automatizaciones anteriores, manteniendo la raíz libre de ruido visual.*
 
-3. **`RESUMEN_REORGANIZACION_PROCESOS.md`** (~400 líneas)
-   - Resumen ejecutivo
-   - Vista previa de menús
-   - Comparación antes/después
-   - Ventajas de la nueva arquitectura
-
-4. **`IMPLEMENTACION_RAPIDA.md`** (~300 líneas)
-   - Guía paso a paso
-   - Instrucciones de prueba
-   - Solución de problemas
-   - Screenshots textuales
-
-5. **`ACTUALIZACION_BUSQUEDA.md`** (~300 líneas)
-   - Patrón de búsqueda
-   - Ejemplos por módulo
-   - Código completo
-
-6. **`RESUMEN_BUSQUEDA_AGREGADA.md`** (~200 líneas)
-   - Estado de búsquedas implementadas
-   - Módulos pendientes
-   - Checklist
-
-7. **`IMPLEMENTACION_COMPLETADA.md`** (~250 líneas)
-   - Estado actual del proyecto
-   - Progreso por fase
-   - Próximos pasos
-
-8. **`RESUMEN_FINAL_IMPLEMENTACION.md`** (~350 líneas)
-   - Resumen completo
-   - Código de ejemplo pendiente
-   - Recomendaciones finales
-
-9. **`ERRORES_CORREGIDOS.md`** (~200 líneas)
-   - Errores detectados
-   - Soluciones aplicadas
-   - Buenas prácticas
-
-10. **`TODO_IMPLEMENTADO.md`** (este archivo)
-    - Resumen absoluto de todo
-    - Checklist final
-    - Estado del proyecto
-
-**Total:** ~3,000 líneas de documentación profesional
 
 ---
 
@@ -278,23 +238,28 @@ npm run dev
 
 ---
 
-## 📁 ARCHIVOS MODIFICADOS/CREADOS
+## 📁 ARCHIVOS MODIFICADOS, CREADOS Y LIMPIEZA
 
 ### Creados:
-1. `/core/layout/MainLayoutPorProcesos.tsx` ✅
-2. `/components/common/SearchBar.tsx` ✅
-3. 10 archivos .md de documentación ✅
+1. `/src/core/layout/MainLayoutPorProcesos.tsx` ✅
+2. `/src/components/common/SearchBar.tsx` ✅
+3. `/cleanup.js` (Script de limpieza automatizado) ✅
 
 ### Modificados:
-1. `/core/index.tsx` ✅
-2. `/components/views/ClientesView.tsx` ✅
-3. `/features/usuarios/components/UsuariosView.tsx` ✅
-4. `/components/views/EmpleadosView.tsx` ✅
-5. `/components/views/ProductosView.tsx` ✅
-6. `/components/ui/sheet.tsx` ✅
-7. `/components/ui/command.tsx` ✅
+1. `/src/core/index.tsx` ✅
+2. `/src/components/views/ClientesView.tsx` ✅
+3. `/src/features/usuarios/components/UsuariosView.tsx` ✅
+4. `/src/components/views/EmpleadosView.tsx` ✅
+5. `/src/components/views/ProductosView.tsx` ✅
+6. `/src/components/ui/sheet.tsx` ✅
+7. `/src/components/ui/command.tsx` ✅
+8. `/src/main.tsx` (CSS imports apuntando al interior de `/src`) ✅
 
-**Total:** 3 archivos nuevos + 7 modificados + 10 documentos
+### Estructura Simplificada y Eliminada (Limpieza):
+- 🗑️ Eliminados 25+ archivos de documentación duplicados y de configuración redundante en `/src` (ej. `.gitignore`, `index.html`, `fix_imports.py` e históricos `.md`).
+- 🗑️ Eliminado el directorio `/styles` y `/index.css` de la raíz, unificándose en `/src/styles/globals.css` y `/src/index.css`.
+- 🗑️ Eliminadas las carpetas vacías `/src/guidelines` y `/src/assets`.
+- 🗑️ Eliminado el archivo temporal `/build_output.txt`.
 
 ---
 
@@ -393,7 +358,8 @@ const isCliente = user?.id_rol === 3;
 - [x] Búsqueda en Productos
 - [x] Dar de Baja productos
 - [x] Corrección de errores
-- [x] Documentación completa
+- [x] Limpieza de proyecto (eliminación de duplicados y temporales obsoletos)
+- [x] Unificación de estilos globales de CSS bajo `/src`
 
 ### Testing:
 - [x] Login como Admin
