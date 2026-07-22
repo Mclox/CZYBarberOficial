@@ -75,7 +75,9 @@ export function ProductosView() {
           ...p,
           precio: p.precio_neto, 
           categoria: p.categoria_nombre || 'Sin categoría',
-          imagen: p.img ? (p.img.startsWith('http') ? p.img : `${API_BASE_URL.replace('/api', '')}${p.img}`) : null,
+          imagen: p.nombre?.toLowerCase().includes('minoxidil') || p.codigo === 'PRD-MIN-01'
+            ? '/assets/images/minoxidil.png'
+            : p.img ? (p.img.startsWith('http') ? p.img : `${API_BASE_URL.replace('/api', '')}${p.img}`) : null,
           // Normalizamos el string por si viene null de la BD antigua
           tipo_adquisicion: p.tipo_adquisicion || 'compra_directa' 
         }));

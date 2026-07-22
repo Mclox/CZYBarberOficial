@@ -415,8 +415,12 @@ export function CatalogProducts() {
                     }}
                   >
                     <div className="carrusel-img-container">
-                      {producto.img ? (
-                         <img src={getImageUrl(producto.img)} alt={producto.nombre} className="carrusel-img" />
+                      {producto.img || producto.nombre?.toLowerCase().includes('minoxidil') || producto.codigo === 'PRD-MIN-01' ? (
+                         <img src={
+                           producto.nombre?.toLowerCase().includes('minoxidil') || producto.codigo === 'PRD-MIN-01'
+                             ? '/assets/images/minoxidil.png'
+                             : getImageUrl(producto.img)
+                         } alt={producto.nombre} className="carrusel-img" />
                       ) : (
                          <div className="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center">
                            <Package className="w-10 h-10 text-gray-400" />

@@ -5,7 +5,7 @@ import { Input } from '../ui/input';
 import { Button } from '../ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
 import { Package, Users, Search, Scissors, Mail, Phone, Calendar, Clock } from 'lucide-react';
-import { fetchApi } from '../../lib/api'; // Conexión a la API
+import { fetchApi, API_BASE_URL } from '../../lib/api'; // Conexión a la API
 import { toast } from 'sonner';
 import { formatCOP } from '../../lib/format';
 
@@ -130,10 +130,16 @@ export function ClienteDashboard({ onReservarCita }: ClienteDashboardProps) {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredProductos.map((producto) => (
               <Card key={producto.id_producto} className="hover:shadow-lg transition-all duration-300 overflow-hidden border-2 border-transparent hover:border-[#D4AF37]/30">
-                {producto.img ? (
+                {producto.img || producto.nombre?.toLowerCase().includes('minoxidil') || producto.codigo === 'PRD-MIN-01' ? (
                   <div className="w-full h-48 overflow-hidden bg-white flex items-center justify-center p-4">
                     <img
-                      src={producto.img}
+                      src={
+                        producto.nombre?.toLowerCase().includes('minoxidil') || producto.codigo === 'PRD-MIN-01'
+                          ? '/assets/images/minoxidil.png'
+                          : producto.img.startsWith('http')
+                          ? producto.img
+                          : `${API_BASE_URL.replace('/api', '')}${producto.img}`
+                      }
                       alt={producto.nombre}
                       className="max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-300"
                     />
