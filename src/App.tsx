@@ -117,6 +117,9 @@ function AppContent() {
 
     switch (currentView) {
       case 'dashboard':
+        if (isCliente) {
+          return <ClienteDashboard onReservarCita={handleReservarCita} />;
+        }
         if (hasPermission && !hasPermission('Dashboard General', 'leer')) {
           return (
             <div className="p-8 text-center text-red-500 font-bold bg-white rounded-xl border shadow-sm m-4 md:m-8">

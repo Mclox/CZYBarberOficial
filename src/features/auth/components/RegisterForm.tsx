@@ -221,6 +221,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin, onBac
                   style={inputStyle}
                   onFocus={handleInputFocus}
                   onBlur={handleInputBlur}
+                  autoComplete="new-password"
                 />
               </div>
             </div>
@@ -253,6 +254,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin, onBac
                     style={{ ...inputStyle, paddingRight: '48px' }}
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
@@ -296,6 +298,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin, onBac
                     style={{ ...inputStyle, paddingRight: '48px' }}
                     onFocus={handleInputFocus}
                     onBlur={handleInputBlur}
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"

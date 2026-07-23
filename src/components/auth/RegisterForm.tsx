@@ -105,6 +105,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => 
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
+                autoComplete="new-password"
               />
             </div>
             <div className="space-y-2">
@@ -116,6 +117,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => 
                 value={formData.confirmEmail}
                 onChange={(e) => setFormData({ ...formData, confirmEmail: e.target.value })}
                 required
+                autoComplete="new-password"
               />
             </div>
             <div className="space-y-2">
@@ -154,6 +156,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => 
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
                   className="pr-10"
+                  autoComplete="new-password"
                 />
                 <Button
                   type="button"
@@ -177,6 +180,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({ onBackToLogin }) => 
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   required
                   className="pr-10"
+                  autoComplete="new-password"
                 />
                 <Button
                   type="button"
