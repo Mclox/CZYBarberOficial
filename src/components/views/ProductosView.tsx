@@ -4,12 +4,12 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Badge } from '../ui/badge';
-import { Plus, Pencil, Trash2, Package, Eye, FileDown, /* MinusCircle, */ FileSpreadsheet, ShoppingCart, Handshake, Upload, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, Package, Eye, FileDown, /* MinusCircle, */ FileSpreadsheet, ShoppingCart, Handshake, Upload, X, RefreshCw } from 'lucide-react';
 import { fetchApi, API_BASE_URL } from '../../lib/api'; 
 import { toast } from 'sonner';
 import { exportToExcel, downloadMenu } from '../../shared/lib/exportUtils';
@@ -51,6 +51,10 @@ export function ProductosView() {
   // Estado para saber qué pestaña está activa
   const [activeTab, setActiveTab] = useState<'todos' | 'consignacion' | 'compra_directa'>('todos');
 
+  // Estados para reposición mensual de consignaciones
+  const [replenishDialogOpen, setReplenishDialogOpen] = useState(false);
+  const [replenishing, setReplenishing] = useState(false);
+
   const [formData, setFormData] = useState({
     nombre: '',
     descripcion: '',
@@ -63,8 +67,32 @@ export function ProductosView() {
     imagen: '',
     estado: 'Activo',
     tipo_adquisicion: 'compra_directa',
-    iva_porcentaje: '19.00'
+    iva_porcentaje: '19.00',
+    costo_real: '',
+    stock_base: '0'
   });
+
+  const generateUniqueCode = (existingProducts: any[]) => {
+    const codes = existingProducts.map(p => p.codigo).filter(Boolean);
+    let maxNum = 0;
+    codes.forEach(code => {
+      const match = code.match(/^PRD-(\d+)$/i);
+      if (match) {
+        const num = parseInt(match[1], 10);
+        if (num > maxNum) maxNum = num;
+      }
+    });
+    const nextNum = maxNum + 1;
+    const padded = nextNum.toString().padStart(2, '0');
+    let newCode = `PRD-${padded}`;
+    // Verificar colisión por si acaso
+    let count = 1;
+    while (codes.includes(newCode)) {
+      newCode = `PRD-${(nextNum + count).toString().padStart(2, '0')}`;
+      count++;
+    }
+    return newCode;
+  };
 
   const fetchProductos = async () => {
     setLoading(true);
@@ -105,12 +133,16 @@ export function ProductosView() {
   const searchFilteredProductos = useMemo(() => {
     if (!searchTerm.trim()) return productos;
     const lowerSearch = searchTerm.toLowerCase();
+    const cleanSearch = lowerSearch.replace(/[$. ,]/g, '');
     return productos.filter((producto) => {
       const nombre = (producto.nombre || '').toLowerCase();
       const codigo = (producto.codigo || '').toLowerCase();
       const categoria = (producto.categoria || '').toLowerCase();
       const descripcion = (producto.descripcion || '').toLowerCase();
-      return nombre.includes(lowerSearch) || codigo.includes(lowerSearch) || categoria.includes(lowerSearch) || descripcion.includes(lowerSearch);
+      const precio = (producto.precio || 0).toString();
+      const precioFormatted = formatCOP(producto.precio).toLowerCase();
+      const matchesPrice = cleanSearch && (precio.includes(cleanSearch) || precioFormatted.includes(lowerSearch));
+      return nombre.includes(lowerSearch) || codigo.includes(lowerSearch) || categoria.includes(lowerSearch) || descripcion.includes(lowerSearch) || matchesPrice;
     });
   }, [productos, searchTerm]);
 
@@ -131,10 +163,12 @@ export function ProductosView() {
 
   const handleCreate = () => {
     setEditingProducto(null);
+    const autoCode = generateUniqueCode(productos);
     setFormData({
       nombre: '', descripcion: '', precio: '', stock: '0',
-      categoria: '', id_categoria: '1', id_marca: '1', codigo: '',
-      imagen: '', estado: 'Activo', tipo_adquisicion: 'compra_directa', iva_porcentaje: '19.00'
+      categoria: '', id_categoria: '1', id_marca: '1', codigo: autoCode,
+      imagen: '', estado: 'Activo', tipo_adquisicion: 'compra_directa', iva_porcentaje: '19.00',
+      costo_real: '', stock_base: '0'
     });
     setImageFile(null);
     setImagePreview(null);
@@ -155,7 +189,9 @@ export function ProductosView() {
       imagen: producto.img || '',
       estado: producto.estado || 'Activo',
       tipo_adquisicion: producto.tipo_adquisicion || 'compra_directa',
-      iva_porcentaje: producto.iva_porcentaje?.toString() || '19.00'
+      iva_porcentaje: producto.iva_porcentaje?.toString() || '19.00',
+      costo_real: producto.costo_real !== undefined && producto.costo_real !== null ? producto.costo_real.toString() : '',
+      stock_base: producto.stock_base !== undefined && producto.stock_base !== null ? producto.stock_base.toString() : '0'
     });
     setImageFile(null);
     setImagePreview(producto.imagen || null);
@@ -207,13 +243,24 @@ export function ProductosView() {
     formDataObj.append('nombre', formData.nombre);
     formDataObj.append('descripcion', formData.descripcion);
     formDataObj.append('precio_neto', formData.precio);
-    formDataObj.append('stock', formData.stock);
+    
+    // Si es producto nuevo de consignación, el stock inicial es el stock base
+    const finalStock = formData.tipo_adquisicion === 'consignacion' && !editingProducto
+      ? formData.stock_base
+      : formData.stock;
+    formDataObj.append('stock', finalStock);
+    
     formDataObj.append('codigo', formData.codigo);
     formDataObj.append('estado', formData.estado);
     formDataObj.append('tipo_adquisicion', formData.tipo_adquisicion);
     formDataObj.append('iva_porcentaje', formData.iva_porcentaje);
     formDataObj.append('id_categoria', formData.id_categoria);
     formDataObj.append('id_marca', formData.id_marca);
+    
+    if (formData.tipo_adquisicion === 'consignacion') {
+      formDataObj.append('costo_real', formData.costo_real || '0');
+      formDataObj.append('stock_base', formData.stock_base || '0');
+    }
     
     if (imageFile) {
       formDataObj.append('imagen', imageFile);
@@ -235,6 +282,58 @@ export function ProductosView() {
       }
       setDialogOpen(false); fetchProductos();
     } catch (error: any) { toast.error(error.message || 'Error al guardar el producto'); }
+  };
+
+  // Función para reabastecer productos de consignación
+  const productsToReplenish = useMemo(() => {
+    return productos.filter(p => p.tipo_adquisicion === 'consignacion' && (p.stock_base || 0) > (p.stock || 0));
+  }, [productos]);
+
+  const handleReplenishConsignments = async () => {
+    setReplenishing(true);
+    const toastId = toast.loading('Reponiendo productos de consignación...');
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const p of productsToReplenish) {
+      try {
+        const formDataObj = new FormData();
+        formDataObj.append('nombre', p.nombre);
+        formDataObj.append('descripcion', p.descripcion || '');
+        formDataObj.append('precio_neto', (p.precio_neto || p.precio).toString());
+        formDataObj.append('stock', (p.stock_base || p.stock).toString());
+        formDataObj.append('codigo', p.codigo);
+        formDataObj.append('estado', p.estado || 'Activo');
+        formDataObj.append('tipo_adquisicion', p.tipo_adquisicion);
+        formDataObj.append('iva_porcentaje', (p.iva_porcentaje || 19.00).toString());
+        formDataObj.append('id_categoria', (p.id_categoria || 1).toString());
+        formDataObj.append('id_marca', (p.id_marca || 1).toString());
+        formDataObj.append('costo_real', (p.costo_real || 0).toString());
+        formDataObj.append('stock_base', (p.stock_base || 0).toString());
+        
+        await fetchApi(`/products/${p.id_producto}`, { 
+          method: 'PUT', 
+          body: formDataObj 
+        });
+        successCount++;
+      } catch (error) {
+        console.error(`Error al reponer producto ${p.nombre}:`, error);
+        failCount++;
+      }
+    }
+    
+    setReplenishing(false);
+    setReplenishDialogOpen(false);
+    
+    if (failCount === 0) {
+      toast.success(`Se reabastecieron con éxito ${successCount} productos de consignación.`, { id: toastId });
+    } else if (successCount > 0) {
+      toast.warning(`Se reabastecieron ${successCount} productos, pero fallaron ${failCount}.`, { id: toastId });
+    } else {
+      toast.error('Error al realizar el reabastecimiento de consignación.', { id: toastId });
+    }
+    
+    fetchProductos();
   };
 
   // Funcionalidad "Dar de Baja" deshabilitada temporalmente
@@ -371,6 +470,11 @@ export function ProductosView() {
           <p className="text-muted-foreground">Gestiona el inventario de productos</p>
         </div>
         <div className="flex gap-2">
+          {activeTab === 'consignacion' && isAdmin && (
+            <Button onClick={() => setReplenishDialogOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> Cierre Mensual
+            </Button>
+          )}
           {canCreate && <Button onClick={handleCreate} className="bg-blue-600 hover:bg-blue-700 text-white"><Plus className="w-4 h-4 mr-2" /> Nuevo Producto</Button>}
           <Button onClick={() => exportToExcel(productos, 'productos')} variant="outline"><FileSpreadsheet className="w-4 h-4 mr-2" /> Exportar</Button>
           <Button onClick={() => downloadMenu(productos)} variant="outline"><FileDown className="w-4 h-4 mr-2" /> Catálogo</Button>
@@ -437,11 +541,29 @@ export function ProductosView() {
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-4">
               <div className="space-y-2"><Label>Nombre <span className="text-red-500">*</span></Label><Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required /></div>
-              <div className="space-y-2"><Label>Código</Label><Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} placeholder="Ej: PRD-01" /></div>
+              <div className="space-y-2">
+                <Label>Código <span className="text-xs text-muted-foreground">(Autogenerado)</span></Label>
+                <Input value={formData.codigo} readOnly className="bg-slate-50 cursor-not-allowed font-mono" placeholder="Generando..." />
+              </div>
               <div className="space-y-2 md:col-span-2"><Label>Descripción</Label><Textarea value={formData.descripcion} onChange={(e) => setFormData({ ...formData, descripcion: e.target.value })} rows={2} /></div>
-              <div className="space-y-2"><Label>Stock <span className="text-red-500">*</span></Label><Input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} required /></div>
+              
+              {formData.tipo_adquisicion !== 'consignacion' ? (
+                <div className="space-y-2">
+                  <Label>Stock <span className="text-red-500">*</span></Label>
+                  <Input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} required />
+                </div>
+              ) : (
+                editingProducto && (
+                  <div className="space-y-2">
+                    <Label>Stock Actual</Label>
+                    <Input type="number" value={formData.stock} onChange={(e) => setFormData({ ...formData, stock: e.target.value })} required />
+                  </div>
+                )
+              )}
+
               <div className="space-y-2"><Label>Precio Neto (Sin IVA) <span className="text-red-500">*</span></Label><Input type="number" step="0.01" value={formData.precio} onChange={(e) => setFormData({ ...formData, precio: e.target.value })} required /></div>
               <div className="space-y-2"><Label>IVA (%)</Label><Input type="number" step="0.01" value={formData.iva_porcentaje} onChange={(e) => setFormData({ ...formData, iva_porcentaje: e.target.value })} /></div>
+              
               <div className="space-y-2">
                 <Label>Tipo de Adquisición</Label>
                 <Select value={formData.tipo_adquisicion} onValueChange={(val) => setFormData({ ...formData, tipo_adquisicion: val as any })}>
@@ -452,6 +574,25 @@ export function ProductosView() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {formData.tipo_adquisicion === 'consignacion' && (
+                <>
+                  <div className="space-y-2">
+                    <Label>Costo Real (Proveedor) <span className="text-red-500">*</span></Label>
+                    <Input type="number" step="0.01" value={formData.costo_real} onChange={(e) => setFormData({ ...formData, costo_real: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Stock Base (Inicial) <span className="text-red-500">*</span></Label>
+                    <Input type="number" value={formData.stock_base} onChange={(e) => setFormData({ ...formData, stock_base: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label>Ganancia Neta Estimada</Label>
+                    <div className="p-3 bg-green-50 text-green-800 rounded-md font-bold text-sm border border-green-200">
+                      {formatCOP(Math.max(0, (parseFloat(formData.precio) || 0) - (parseFloat(formData.costo_real) || 0)))}
+                    </div>
+                  </div>
+                </>
+              )}
               <div className="space-y-2 md:col-span-2">
                 <Label>Imagen del Producto</Label>
                 <div 
@@ -577,6 +718,24 @@ export function ProductosView() {
                     {viewingProducto.tipo_adquisicion === 'consignacion' ? 'Consignación' : 'Compra Directa'}
                   </p>
                 </div>
+                {viewingProducto.tipo_adquisicion === 'consignacion' && (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Costo Real (Proveedor)</Label>
+                      <p className="font-semibold text-slate-700">{formatCOP(viewingProducto.costo_real)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">Stock Base (Inicial)</Label>
+                      <p className="font-semibold text-slate-700">{viewingProducto.stock_base || 0} unidades</p>
+                    </div>
+                    <div className="space-y-1 sm:col-span-2">
+                      <Label className="text-xs text-muted-foreground">Ganancia Neta Estimada</Label>
+                      <p className="font-bold text-green-700 text-lg">
+                        {formatCOP(Math.max(0, (viewingProducto.precio || 0) - (viewingProducto.costo_real || 0)))}
+                      </p>
+                    </div>
+                  </>
+                )}
                 {viewingProducto.descripcion && (
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs text-muted-foreground">Descripción</Label>
@@ -588,6 +747,68 @@ export function ProductosView() {
           )}
           <DialogFooter>
             <Button type="button" onClick={() => setDetailsDialogOpen(false)}>Cerrar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* DIALOG REPOSICION MENSUAL */}
+      <Dialog open={replenishDialogOpen} onOpenChange={setReplenishDialogOpen}>
+        <DialogContent className="max-w-xl">
+          <DialogHeader>
+            <DialogTitle>Cierre Mensual: Reposición de Consignaciones</DialogTitle>
+            <DialogDescription>
+              Este proceso repondrá automáticamente el stock de los productos de consignación que tengan unidades vendidas para devolverlos a su stock base, sin generar costos adicionales.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {productsToReplenish.length === 0 ? (
+            <div className="py-6 text-center text-muted-foreground">
+              Todos los productos en consignación se encuentran en sus niveles de stock base iniciales. No se requiere reposición.
+            </div>
+          ) : (
+            <div className="space-y-4 py-4">
+              <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Producto</TableHead>
+                      <TableHead className="text-right">Stock Actual</TableHead>
+                      <TableHead className="text-right">Stock Base</TableHead>
+                      <TableHead className="text-right text-emerald-600 font-bold">A Reponer</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {productsToReplenish.map((p) => (
+                      <TableRow key={p.id_producto}>
+                        <TableCell className="font-medium">{p.nombre}</TableCell>
+                        <TableCell className="text-right">{p.stock}</TableCell>
+                        <TableCell className="text-right">{p.stock_base || 0}</TableCell>
+                        <TableCell className="text-right text-emerald-600 font-bold">
+                          {(p.stock_base || 0) - (p.stock || 0)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Se actualizarán {productsToReplenish.length} producto(s) en consignación restableciendo su stock al inicial pactado.
+              </p>
+            </div>
+          )}
+          
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setReplenishDialogOpen(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleReplenishConsignments} 
+              disabled={productsToReplenish.length === 0 || replenishing}
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              {replenishing ? 'Reponiendo...' : 'Confirmar Reposición'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
