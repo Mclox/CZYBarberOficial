@@ -86,10 +86,71 @@ export function EmpleadosView() {
   const fetchEmpleados = async () => {
     setLoading(true);
     try {
-      const response = await fetchApi('/employees');
-      if (response.success) {
-        setEmpleados(response.data);
-      }
+      const [resEmployees, resUsers] = await Promise.all([
+        fetchApi('/employees').catch(() => ({ success: false, data: [] })),
+        fetchApi('/users').catch(() => ({ success: false, data: [] }))
+      ]);
+
+      const employeesList = resEmployees.success && Array.isArray(resEmployees.data) ? resEmployees.data : [];
+      const usersList = resUsers.success && Array.isArray(resUsers.data) ? resUsers.data : [];
+
+      // Filtrar usuarios de la BD que tengan rol "Barbero"
+      const barberUsers = usersList.filter((u: any) => {
+        const roleStr = (u.rol_nombre || u.rol || '').toLowerCase();
+        return roleStr.includes('barbero') || u.id_rol === 3;
+      });
+
+      const combinedMap = new Map();
+
+      // 1. Agregar los registros existentes de /employees
+      employeesList.forEach((emp: any) => {
+        const key = emp.id_usuario || emp.id_empleado || emp.documento || emp.email;
+        if (key) {
+          combinedMap.set(String(key), {
+            ...emp,
+            id_empleado: emp.id_empleado || emp.id_usuario,
+            nombre: emp.nombre || emp.primer_nombre || '',
+            tipo_esquema: emp.tipo_esquema || 'porcentaje',
+            porcentaje_comision: emp.porcentaje_comision ?? 60,
+            estado: emp.estado || 'Activo'
+          });
+        }
+      });
+
+      // 2. Integrar usuarios con rol Barbero que no estén en la lista de empleados
+      barberUsers.forEach((u: any) => {
+        const keyById = u.id_usuario ? String(u.id_usuario) : null;
+        const keyByDoc = u.documento ? String(u.documento) : null;
+        const keyByEmail = u.email ? String(u.email) : null;
+
+        const alreadyExists = Array.from(combinedMap.values()).some((e: any) =>
+          (keyById && (String(e.id_usuario) === keyById || String(e.id_empleado) === keyById)) ||
+          (keyByDoc && String(e.documento) === keyByDoc) ||
+          (keyByEmail && String(e.email).toLowerCase() === keyByEmail.toLowerCase())
+        );
+
+        if (!alreadyExists) {
+          const mainKey = keyById || keyByDoc || keyByEmail || Math.random().toString();
+          combinedMap.set(mainKey, {
+            id_empleado: u.id_usuario,
+            id_usuario: u.id_usuario,
+            nombre: u.nombre || '',
+            apellido: u.apellido || '',
+            tipo_documento: u.tipo_documento || 'CC',
+            documento: u.documento || '',
+            telefono: u.telefono || '',
+            direccion: u.direccion || '',
+            email: u.email || '',
+            cargo: u.rol_nombre || 'Barbero',
+            estado: u.estado || 'Activo',
+            tipo_esquema: 'porcentaje',
+            porcentaje_comision: 60,
+            pago_silla_semanal: 0
+          });
+        }
+      });
+
+      setEmpleados(Array.from(combinedMap.values()));
     } catch (error) {
       toast.error('Error al cargar barberos de la BD');
     } finally {
@@ -103,10 +164,13 @@ export function EmpleadosView() {
 
   const filteredEmployees = useMemo(() => {
     if (!employeeSearch.trim()) return empleados;
+    const search = employeeSearch.toLowerCase();
     return empleados.filter(e =>
-      (e.nombre || '').toLowerCase().includes(employeeSearch.toLowerCase()) ||
-      (e.apellido || '').toLowerCase().includes(employeeSearch.toLowerCase()) ||
-      (e.documento || '').toLowerCase().includes(employeeSearch.toLowerCase())
+      (e.nombre || '').toLowerCase().includes(search) ||
+      (e.apellido || '').toLowerCase().includes(search) ||
+      (e.documento || '').toLowerCase().includes(search) ||
+      (e.email || '').toLowerCase().includes(search) ||
+      (e.telefono || '').toLowerCase().includes(search)
     );
   }, [empleados, employeeSearch]);
 
