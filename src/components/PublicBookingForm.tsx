@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { Calendar, Clock, Scissors, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Scissors, CheckCircle2, MessageCircle } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 import { toast } from 'sonner';
 import { formatCOP } from '../lib/format';
@@ -50,26 +50,52 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       const loadPublicData = async () => {
         setLoading(true);
         try {
-          const [resServ, resBarb, resBusy] = await Promise.all([
-            fetchApi('/services/public'),
-            fetchApi('/employees/public'),
-            fetchApi('/appointments/public-busy-slots')
+          const [resServ, resBarb, resEmployees, resUsers, resBusy] = await Promise.all([
+            fetchApi('/services/public').catch(() => ({ success: false, data: [] })),
+            fetchApi('/employees/public').catch(() => ({ success: false, data: [] })),
+            fetchApi('/employees').catch(() => ({ success: false, data: [] })),
+            fetchApi('/users').catch(() => ({ success: false, data: [] })),
+            fetchApi('/appointments/public-busy-slots').catch(() => ({ success: false, data: [] }))
           ]);
-          
-          if (resServ.success) {
+
+          if (resServ.success && Array.isArray(resServ.data)) {
             const normalized = resServ.data.map((s: any) => ({
               id_servicio: s.id_servicio,
               nombre: s.nombre,
-              precio: parseFloat(s.precio_neto || 0),
-              duracion: parseInt(s.duracion_minutos || 30),
+              precio: parseFloat(s.precio_neto || s.precio || 0),
+              duracion: parseInt(s.duracion_minutos || s.duracion || 30),
               estado: s.estado
             }));
-            setServicios(normalized.filter((s: any) => s.estado === 'Activo'));
+            setServicios(normalized.filter((s: any) => (s.estado || 'Activo').toLowerCase() === 'activo'));
           }
-          if (resBarb.success) {
-            setBarberos(resBarb.data.filter((b: any) => b.estado === 'Activo'));
-          }
-          if (resBusy.success) {
+
+          // Combinar barberos desde /employees/public, /employees y /users (con rol Barbero)
+          const rawBarbers = [
+            ...(resBarb.success && Array.isArray(resBarb.data) ? resBarb.data : []),
+            ...(resEmployees.success && Array.isArray(resEmployees.data) ? resEmployees.data : []),
+            ...(resUsers.success && Array.isArray(resUsers.data) ? resUsers.data.filter((u: any) => (u.rol_nombre || u.rol || '').toLowerCase().includes('barbero') || u.id_rol === 3) : [])
+          ];
+
+          const barberMap = new Map();
+          rawBarbers.forEach((b: any) => {
+            const bId = b.id_empleado || b.id_barbero || b.id_usuario;
+            if (bId) {
+              const statusStr = (b.estado || 'Activo').toString().toLowerCase();
+              if (statusStr === 'activo') {
+                barberMap.set(String(bId), {
+                  id_empleado: bId,
+                  nombre: b.nombre || b.primer_nombre || 'Barbero',
+                  apellido: b.apellido || b.primer_apellido || '',
+                  cargo: b.cargo || b.rol_nombre || 'Barbero',
+                  telefono: b.telefono || ''
+                });
+              }
+            }
+          });
+
+          setBarberos(Array.from(barberMap.values()));
+
+          if (resBusy.success && Array.isArray(resBusy.data)) {
             setBusySlots(resBusy.data);
           }
         } catch (error) {
@@ -269,18 +295,27 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       if (empIdNum !== 0) {
         // Barbero específico
         return busySlots.some(c => {
-          if (c.id_barbero !== empIdNum || c.fecha !== fecha) return false;
+          const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
+          if (cBId !== empIdNum || c.fecha !== fecha) return false;
           const cStart = parseTimeToMinutes(c.hora);
           const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
           return start < cEnd && cStart < end;
         });
       } else {
-        // Cualquier barbero disponible: ocupado si TODOS los barberos activos están ocupados
-        if (barberos.length === 0) return true;
+        // Cualquier barbero disponible:
+        if (barberos.length === 0) {
+          return busySlots.some(c => {
+            if (c.fecha !== fecha) return false;
+            const cStart = parseTimeToMinutes(c.hora);
+            const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
+            return start < cEnd && cStart < end;
+          });
+        }
         return barberos.every(barber => {
           const bId = Number(barber.id_empleado);
           return busySlots.some(c => {
-            if (c.id_barbero !== bId || c.fecha !== fecha) return false;
+            const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
+            if (cBId !== bId || c.fecha !== fecha) return false;
             const cStart = parseTimeToMinutes(c.hora);
             const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
             return start < cEnd && cStart < end;
@@ -306,17 +341,26 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     const empIdNum = Number(empleadoId);
     if (empIdNum !== 0) {
       return busySlots.some(c => {
-        if (c.id_barbero !== empIdNum || c.fecha !== fecha) return false;
+        const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
+        if (cBId !== empIdNum || c.fecha !== fecha) return false;
         const cStart = parseTimeToMinutes(c.hora);
         const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
         return start < cEnd && cStart < end;
       });
     } else {
-      if (barberos.length === 0) return true;
+      if (barberos.length === 0) {
+        return busySlots.some(c => {
+          if (c.fecha !== fecha) return false;
+          const cStart = parseTimeToMinutes(c.hora);
+          const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
+          return start < cEnd && cStart < end;
+        });
+      }
       return barberos.every(barber => {
         const bId = Number(barber.id_empleado);
         return busySlots.some(c => {
-          if (c.id_barbero !== bId || c.fecha !== fecha) return false;
+          const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
+          if (cBId !== bId || c.fecha !== fecha) return false;
           const cStart = parseTimeToMinutes(c.hora);
           const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
           return start < cEnd && cStart < end;
@@ -687,51 +731,87 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           </form>
         )}
 
-        {step === 'success' && (
-          <div className="py-6">
-            <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white p-6 rounded-lg space-y-3">
-              <div className="flex items-start gap-3">
-                <Scissors className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Servicios</p>
-                  <p className="font-medium text-sm">{formatSelectedServicesPublic(bookingData)}</p>
+        {step === 'success' && (() => {
+          const selectedBarberObj = barberos.find(b => String(b.id_empleado) === String(bookingData.id_empleado));
+          const barberName = selectedBarberObj ? `${selectedBarberObj.nombre} ${selectedBarberObj.apellido}`.trim() : 'Cualquier barbero disponible';
+          const barberPhone = selectedBarberObj?.telefono || '';
+
+          const fechaFormat = bookingData.fecha ? new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
+            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+          }) : '';
+
+          const messageText = `💈 *Reserva de Cita - CzBarber* 💈\n\n` +
+            `👤 *Cliente:* ${clienteData.nombre}\n` +
+            `📱 *Teléfono:* ${clienteData.telefono}\n` +
+            `✂️ *Servicio(s):* ${formatSelectedServicesPublic(bookingData)}\n` +
+            `📅 *Fecha:* ${fechaFormat}\n` +
+            `⏰ *Hora:* ${bookingData.hora}\n` +
+            `💈 *Barbero:* ${barberName}\n` +
+            `💰 *Total:* ${formatCOP(computeSelectedServicesPrice())}\n\n` +
+            `¡Hola! Acabo de agendar esta cita desde la web. Quedo atento a la confirmación.`;
+
+          const cleanPhone = barberPhone.replace(/[^0-9]/g, '');
+          const whatsappUrl = cleanPhone 
+            ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`
+            : `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
+
+          return (
+            <div className="py-6 space-y-4">
+              <div className="bg-gradient-to-r from-[#1a1a1a] to-[#2d2d2d] text-white p-6 rounded-lg space-y-3">
+                <div className="flex items-start gap-3">
+                  <Scissors className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Servicios</p>
+                    <p className="font-medium text-sm">{formatSelectedServicesPublic(bookingData)}</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Calendar className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Fecha</p>
+                    <p className="font-medium text-sm">
+                      {fechaFormat}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase tracking-wider">Hora y Barbero</p>
+                    <p className="font-medium text-sm">{bookingData.hora} — <span className="text-[#0057FF] font-bold">{barberName}</span></p>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-start gap-3">
-                <Calendar className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Fecha</p>
-                  <p className="font-medium text-sm">
-                    {new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
-                      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
-                    })}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <Clock className="w-5 h-5 text-[#0057FF] flex-shrink-0 mt-1" />
-                <div>
-                  <p className="text-[10px] text-gray-400 uppercase tracking-wider">Hora</p>
-                  <p className="font-medium text-sm">{bookingData.hora}</p>
-                </div>
-              </div>
-            </div>
-            <div className="mt-6 p-4 bg-muted/30 border border-muted rounded-lg">
-              <p className="text-xs text-muted-foreground">
-                <strong className="text-foreground">Nota:</strong> Te enviaremos un recordatorio por correo 24 horas antes de tu cita.
-                Si necesitas cancelar o reprogramar, por favor contáctanos al (555) 123-4567.
-              </p>
-            </div>
-            <DialogFooter className="mt-6">
-              <Button
-                onClick={handleClose}
-                style={{ backgroundColor: '#0057FF', color: '#FFFFFF', fontWeight: 700, border: 'none', width: '100%' }}
+
+              {/* Botón WhatsApp */}
+              <a
+                href={whatsappUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md hover:shadow-emerald-200/50 text-sm"
               >
-                Cerrar
-              </Button>
-            </DialogFooter>
-          </div>
-        )}
+                <MessageCircle className="w-5 h-5 text-white" />
+                Enviar mensaje por WhatsApp al barbero
+              </a>
+
+              <div className="p-4 bg-muted/30 border border-muted rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  <strong className="text-foreground">Nota:</strong> Te enviaremos un recordatorio por correo a <strong>{clienteData.email}</strong>.
+                  También puedes pulsar el botón de WhatsApp arriba para enviar el resumen directamente al barbero.
+                </p>
+              </div>
+
+              <DialogFooter className="mt-4">
+                <Button
+                  onClick={handleClose}
+                  style={{ backgroundColor: '#0057FF', color: '#FFFFFF', fontWeight: 700, border: 'none', width: '100%' }}
+                >
+                  Cerrar
+                </Button>
+              </DialogFooter>
+            </div>
+          );
+        })()}
       </DialogContent>
     </Dialog>
   );
