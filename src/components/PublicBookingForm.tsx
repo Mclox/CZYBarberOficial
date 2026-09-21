@@ -293,6 +293,26 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     };
   };
 
+  const getBarberTimeBlocks = (empId: number) => {
+    const saved = localStorage.getItem(`barber_blocks_${empId}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed.filter((b: any) => b.activo);
+      } catch (e) {}
+    }
+    return [{ id: '1', motivo: 'Almuerzo', hora_inicio: '13:00', hora_fin: '14:00', activo: true }];
+  };
+
+  const isSlotBlockedByTimeBlock = (empId: number, startMins: number, endMins: number) => {
+    const blocks = getBarberTimeBlocks(empId);
+    return blocks.some((b: any) => {
+      const bStart = parseTimeToMinutes(b.hora_inicio);
+      const bEnd = parseTimeToMinutes(b.hora_fin);
+      return startMins < bEnd && bStart < endMins;
+    });
+  };
+
   const getOccupiedTimesPublic = (fecha?: string, empleadoId?: number) => {
     if (!fecha) return [] as string[];
     const desiredDuration = computeSelectedServicesDuration();
@@ -326,6 +346,9 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
         if (start < schedStart || end > schedEnd) return true; // Fuera de horario laborable
 
+        // Verificar si el slot coincide con un Bloqueo de Tiempo (ej. Almuerzo/Diligencia)
+        if (isSlotBlockedByTimeBlock(empIdNum, start, end)) return true;
+
         return busySlots.some(c => {
           const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
           if (cBId !== empIdNum || c.fecha !== fecha) return false;
@@ -344,7 +367,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           });
         }
         
-        // Ocupado si NINGÚN barbero labora en ese slot o todos están ocupados
+        // Ocupado si NINGÚN barbero labora en ese slot o todos están en pausa/ocupados
         const atLeastOneAvailable = barberos.some(barber => {
           const bId = Number(barber.id_empleado);
           const sched = getBarberScheduleForDay(bId, dayOfWeek);
@@ -353,6 +376,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
           const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
           const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
           if (start < schedStart || end > schedEnd) return false;
+
+          if (isSlotBlockedByTimeBlock(bId, start, end)) return false;
 
           const isBusy = busySlots.some(c => {
             const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
@@ -395,6 +420,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
       if (start < schedStart || end > schedEnd) return true;
 
+      if (isSlotBlockedByTimeBlock(empIdNum, start, end)) return true;
+
       return busySlots.some(c => {
         const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
         if (cBId !== empIdNum || c.fecha !== fecha) return false;
@@ -420,6 +447,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
         const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
         if (start < schedStart || end > schedEnd) return false;
+
+        if (isSlotBlockedByTimeBlock(bId, start, end)) return false;
 
         const isBusy = busySlots.some(c => {
           const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);

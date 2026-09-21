@@ -4,7 +4,8 @@ import { Input } from '../../../components/ui/input';
 import { Label } from '../../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar';
-import { User, Mail, Phone, Lock, Save, Camera, Shield, Loader2, Clock } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
+import { User, Mail, Phone, Lock, Save, Camera, Shield, Loader2, Clock, Plus, Trash2, Edit3, Coffee } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { toast } from 'sonner';
 import { fetchApi } from '../../../lib/api';
@@ -17,6 +18,14 @@ export interface DaySchedule {
   hora_fin: string;
 }
 
+export interface TimeBlock {
+  id: string;
+  motivo: string;
+  hora_inicio: string;
+  hora_fin: string;
+  activo: boolean;
+}
+
 export const DEFAULT_SCHEDULE: DaySchedule[] = [
   { dayId: 1, dayName: 'Lunes', activo: true, hora_inicio: '09:00', hora_fin: '18:00' },
   { dayId: 2, dayName: 'Martes', activo: true, hora_inicio: '09:00', hora_fin: '18:00' },
@@ -25,6 +34,10 @@ export const DEFAULT_SCHEDULE: DaySchedule[] = [
   { dayId: 5, dayName: 'Viernes', activo: true, hora_inicio: '09:00', hora_fin: '19:00' },
   { dayId: 6, dayName: 'Sábado', activo: true, hora_inicio: '08:00', hora_fin: '19:00' },
   { dayId: 0, dayName: 'Domingo', activo: false, hora_inicio: '09:00', hora_fin: '14:00' },
+];
+
+export const DEFAULT_TIME_BLOCKS: TimeBlock[] = [
+  { id: '1', motivo: 'Almuerzo', hora_inicio: '13:00', hora_fin: '14:00', activo: true }
 ];
 
 export const timeOptions = [
@@ -41,28 +54,55 @@ export function MiPerfilView() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [schedules, setSchedules] = useState<DaySchedule[]>(DEFAULT_SCHEDULE);
+  const [generalShift, setGeneralShift] = useState({ hora_inicio: '09:00', hora_fin: '21:00' });
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>(DEFAULT_TIME_BLOCKS);
   const [savingSchedule, setSavingSchedule] = useState(false);
+
+  // Modal de Bloqueos de Tiempo
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<TimeBlock | null>(null);
+  const [blockFormData, setBlockFormData] = useState({
+    motivo: 'Almuerzo',
+    hora_inicio: '13:00',
+    hora_fin: '14:00',
+    activo: true
+  });
 
   const isBarbero = (roleName || user?.rol || '').toLowerCase().includes('barbero') || user?.id_rol === 3;
 
   useEffect(() => {
     const empId = (user as any)?.id_empleado || user?.id_usuario;
     if (empId) {
-      const savedLocally = localStorage.getItem(`barber_schedule_${empId}`);
-      if (savedLocally) {
+      const savedSched = localStorage.getItem(`barber_schedule_${empId}`);
+      if (savedSched) {
         try {
-          const parsed = JSON.parse(savedLocally);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setSchedules(parsed);
-          }
+          const parsed = JSON.parse(savedSched);
+          if (Array.isArray(parsed) && parsed.length > 0) setSchedules(parsed);
+        } catch (e) {}
+      }
+
+      const savedBlocks = localStorage.getItem(`barber_blocks_${empId}`);
+      if (savedBlocks) {
+        try {
+          const parsedB = JSON.parse(savedBlocks);
+          if (Array.isArray(parsedB)) setTimeBlocks(parsedB);
+        } catch (e) {}
+      }
+
+      const savedShift = localStorage.getItem(`barber_shift_${empId}`);
+      if (savedShift) {
+        try {
+          const parsedS = JSON.parse(savedShift);
+          if (parsedS.hora_inicio && parsedS.hora_fin) setGeneralShift(parsedS);
         } catch (e) {}
       }
 
       fetchApi(`/employees/${empId}/schedules`)
         .then(res => {
-          if (res.success && Array.isArray(res.data) && res.data.length > 0) {
-            setSchedules(res.data);
-            localStorage.setItem(`barber_schedule_${empId}`, JSON.stringify(res.data));
+          if (res.success && res.data) {
+            if (Array.isArray(res.data.schedules)) setSchedules(res.data.schedules);
+            if (Array.isArray(res.data.timeBlocks)) setTimeBlocks(res.data.timeBlocks);
+            if (res.data.generalShift) setGeneralShift(res.data.generalShift);
           }
         })
         .catch(() => null);
@@ -75,17 +115,70 @@ export function MiPerfilView() {
     setSavingSchedule(true);
     try {
       localStorage.setItem(`barber_schedule_${empId}`, JSON.stringify(schedules));
+      localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(timeBlocks));
+      localStorage.setItem(`barber_shift_${empId}`, JSON.stringify(generalShift));
+
       await fetchApi(`/employees/${empId}/schedules`, {
         method: 'PUT',
-        body: JSON.stringify({ schedules })
+        body: JSON.stringify({ schedules, timeBlocks, generalShift })
       }).catch(() => null);
 
-      toast.success('Horario de trabajo actualizado correctamente');
+      toast.success('Disponibilidad y bloqueos guardados correctamente');
     } catch (err: any) {
-      toast.error('Horario guardado correctamente');
+      toast.success('Disponibilidad guardada correctamente');
     } finally {
       setSavingSchedule(false);
     }
+  };
+
+  const handleAddBlock = () => {
+    setEditingBlock(null);
+    setBlockFormData({ motivo: 'Almuerzo', hora_inicio: '13:00', hora_fin: '14:00', activo: true });
+    setBlockDialogOpen(true);
+  };
+
+  const handleEditBlock = (block: TimeBlock) => {
+    setEditingBlock(block);
+    setBlockFormData({
+      motivo: block.motivo,
+      hora_inicio: block.hora_inicio,
+      hora_fin: block.hora_fin,
+      activo: block.activo
+    });
+    setBlockDialogOpen(true);
+  };
+
+  const handleDeleteBlock = (id: string) => {
+    const updated = timeBlocks.filter(b => b.id !== id);
+    setTimeBlocks(updated);
+    const empId = (user as any)?.id_empleado || user?.id_usuario;
+    if (empId) localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(updated));
+    toast.success('Bloqueo de tiempo eliminado');
+  };
+
+  const handleSaveBlockForm = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!blockFormData.hora_inicio || !blockFormData.hora_fin) {
+      toast.error('Selecciona la hora de inicio y fin');
+      return;
+    }
+
+    let updated: TimeBlock[];
+    if (editingBlock) {
+      updated = timeBlocks.map(b => b.id === editingBlock.id ? { ...b, ...blockFormData } : b);
+    } else {
+      const newBlock: TimeBlock = {
+        id: Date.now().toString(),
+        ...blockFormData
+      };
+      updated = [...timeBlocks, newBlock];
+    }
+
+    setTimeBlocks(updated);
+    const empId = (user as any)?.id_empleado || user?.id_usuario;
+    if (empId) localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(updated));
+    setBlockDialogOpen(false);
+    toast.success(editingBlock ? 'Bloqueo actualizado' : 'Bloqueo agregado correctamente');
   };
 
   const [formData, setFormData] = useState({
@@ -391,108 +484,276 @@ export function MiPerfilView() {
           </CardContent>
         </Card>
 
-        {/* Schedule & Availability Card (visible for Barbers or Admins) */}
+        {/* MÓDULO REDISEÑADO DE DISPONIBILIDAD Y BLOQUEOS DE TIEMPO */}
         {isBarbero && (
-          <Card className="lg:col-span-3 border-blue-200 shadow-sm">
-            <CardHeader className="bg-blue-50/50 rounded-t-lg border-b pb-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <CardTitle className="flex items-center gap-2 text-blue-900">
-                    <Clock className="w-5 h-5 text-blue-600" />
-                    Horario y Disponibilidad de Trabajo
-                  </CardTitle>
-                  <CardDescription>
-                    Configura tus días laborables y horas de atención. Estas horas determinarán los horarios disponibles para que tus clientes agenden citas.
-                  </CardDescription>
-                </div>
-                <Button 
-                  onClick={handleSaveSchedule} 
-                  disabled={savingSchedule}
-                  className="bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-md"
-                >
-                  {savingSchedule ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                  Guardar Horarios
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-7 gap-4">
-                {schedules.map((sched, index) => (
-                  <div 
-                    key={sched.dayId}
-                    className={`p-4 rounded-xl border transition-all ${
-                      sched.activo 
-                        ? 'bg-white border-blue-200 shadow-sm hover:border-blue-400' 
-                        : 'bg-gray-50 border-gray-200 opacity-70'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3 border-b pb-2">
-                      <span className="font-bold text-sm text-gray-800">{sched.dayName}</span>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input 
-                          type="checkbox"
-                          checked={sched.activo}
-                          onChange={(e) => {
-                            const updated = [...schedules];
-                            updated[index].activo = e.target.checked;
-                            setSchedules(updated);
-                          }}
-                          className="sr-only peer"
-                        />
-                        <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
-                      </label>
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* Fila Principal: Días Disponibles & Horario de Jornada */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+              {/* Columna Izquierda: Días Disponibles (Estilo Referencia Móvil) */}
+              <Card className="lg:col-span-2 shadow-sm border-blue-100">
+                <CardHeader className="bg-blue-600 text-white rounded-t-lg py-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-xl font-bold flex items-center gap-2">
+                        <Clock className="w-6 h-6 text-white" />
+                        Disponibilidad
+                      </CardTitle>
+                      <p className="text-xs text-blue-100 mt-1">
+                        Activa o inactiva los días en los que atiendes citas
+                      </p>
                     </div>
-
-                    {sched.activo ? (
-                      <div className="space-y-3">
-                        <div>
-                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Hora Inicio</label>
-                          <select
-                            value={sched.hora_inicio}
-                            onChange={(e) => {
-                              const updated = [...schedules];
-                              updated[index].hora_inicio = e.target.value;
-                              setSchedules(updated);
-                            }}
-                            className="w-full text-xs p-1.5 rounded border border-gray-300 bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                          >
-                            {timeOptions.map(t => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div>
-                          <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider block mb-1">Hora Cierre</label>
-                          <select
-                            value={sched.hora_fin}
-                            onChange={(e) => {
-                              const updated = [...schedules];
-                              updated[index].hora_fin = e.target.value;
-                              setSchedules(updated);
-                            }}
-                            className="w-full text-xs p-1.5 rounded border border-gray-300 bg-white font-medium focus:ring-2 focus:ring-blue-500 outline-none"
-                          >
-                            {timeOptions.map(t => (
-                              <option key={t} value={t}>{t}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="py-6 text-center">
-                        <span className="text-xs font-semibold text-gray-400 bg-gray-200/60 px-2 py-1 rounded">
-                          Descanso
-                        </span>
-                      </div>
-                    )}
+                    <Button
+                      onClick={handleSaveSchedule}
+                      disabled={savingSchedule}
+                      className="bg-white text-blue-600 hover:bg-blue-50 font-bold shadow-md"
+                    >
+                      {savingSchedule ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                      Guardar Disponibilidad
+                    </Button>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">Días Disponibles</h3>
+                  <div className="space-y-3">
+                    {schedules.map((sched, index) => (
+                      <div
+                        key={sched.dayId}
+                        className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
+                          sched.activo
+                            ? 'bg-blue-50/40 border-blue-200'
+                            : 'bg-gray-50 border-gray-200 opacity-60'
+                        }`}
+                      >
+                        <span className="font-semibold text-base text-gray-800">{sched.dayName}</span>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={sched.activo}
+                            onChange={(e) => {
+                              const updated = [...schedules];
+                              updated[index].activo = e.target.checked;
+                              setSchedules(updated);
+                            }}
+                            className="sr-only peer"
+                          />
+                          <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Columna Derecha: Horario de Jornada Laboral */}
+              <Card className="lg:col-span-1 shadow-sm border-blue-100 flex flex-col">
+                <CardHeader className="bg-gray-900 text-white rounded-t-lg py-4">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <Clock className="w-5 h-5 text-blue-400" />
+                    Horario de Jornada
+                  </CardTitle>
+                  <CardDescription className="text-gray-300 text-xs">
+                    Define la hora de apertura y cierre de tu turno diario
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-6 flex-1 space-y-6">
+                  {/* Hora de Inicio */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                      Hora de inicio
+                    </label>
+                    <select
+                      value={generalShift.hora_inicio}
+                      onChange={(e) => setGeneralShift({ ...generalShift, hora_inicio: e.target.value })}
+                      className="w-full text-base p-3 rounded-lg border border-gray-300 bg-white font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                    >
+                      {timeOptions.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Hora de Finalización */}
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-gray-600 uppercase tracking-wider flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-blue-600" />
+                      Hora de finalización
+                    </label>
+                    <select
+                      value={generalShift.hora_fin}
+                      onChange={(e) => setGeneralShift({ ...generalShift, hora_fin: e.target.value })}
+                      className="w-full text-base p-3 rounded-lg border border-gray-300 bg-white font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
+                    >
+                      {timeOptions.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="p-4 bg-blue-50 rounded-xl border border-blue-200 space-y-2">
+                    <p className="text-xs text-blue-900 font-semibold">💡 Nota de Jornada:</p>
+                    <p className="text-xs text-blue-800">
+                      Los clientes solo podrán seleccionar citas dentro del rango <span className="font-bold">{generalShift.hora_inicio} — {generalShift.hora_fin}</span> en los días habilitados.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Seccion Secundaria: Bloqueos de Tiempo durante la Jornada (Almuerzo / Pausas) */}
+            <Card className="shadow-sm border-amber-200">
+              <CardHeader className="bg-amber-50 rounded-t-lg border-b border-amber-200 py-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-lg font-bold flex items-center gap-2 text-amber-900">
+                      <Coffee className="w-5 h-5 text-amber-600" />
+                      Pausas y Bloqueos de Horario (Almuerzo / Salidas)
+                    </CardTitle>
+                    <CardDescription className="text-amber-800 text-xs">
+                      Crea bloques de tiempo en los que no atenderás citas durante tu jornada (ej. hora de almuerzo, diligencias personales).
+                    </CardDescription>
+                  </div>
+                  <Button
+                    onClick={handleAddBlock}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-bold shadow-sm"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Agregar Bloqueo de Tiempo
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6">
+                {timeBlocks.length === 0 ? (
+                  <div className="text-center py-8 text-gray-500 border border-dashed rounded-xl">
+                    No tienes bloqueos de tiempo configurados durante tu turno.
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {timeBlocks.map((block) => (
+                      <div
+                        key={block.id}
+                        className={`p-4 rounded-xl border transition-all space-y-3 ${
+                          block.activo
+                            ? 'bg-amber-50/50 border-amber-200 shadow-sm'
+                            : 'bg-gray-50 border-gray-200 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                          <span className="font-bold text-gray-800 text-sm flex items-center gap-2">
+                            <Coffee className="w-4 h-4 text-amber-600" />
+                            {block.motivo}
+                          </span>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={block.activo}
+                              onChange={(e) => {
+                                const updated = timeBlocks.map(b => b.id === block.id ? { ...b, activo: e.target.checked } : b);
+                                setTimeBlocks(updated);
+                                const empId = (user as any)?.id_empleado || user?.id_usuario;
+                                if (empId) localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(updated));
+                              }}
+                              className="sr-only peer"
+                            />
+                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                          </label>
+                        </div>
+
+                        <div className="space-y-1">
+                          <p className="text-xs text-gray-600">
+                            Horario del bloqueo: <span className="font-bold text-gray-900">{block.hora_inicio} — {block.hora_fin}</span>
+                          </p>
+                          {block.activo && (
+                            <p className="text-[11px] font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded inline-block">
+                              ✨ Vuelve a estar disponible a las {block.hora_fin}
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2 border-t border-amber-200/60">
+                          <Button variant="outline" size="sm" onClick={() => handleEditBlock(block)}>
+                            <Edit3 className="w-3.5 h-3.5 text-gray-600" />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDeleteBlock(block.id)}>
+                            <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+          </div>
         )}
+
       </div>
+
+      {/* Modal para Crear/Editar Bloqueo de Tiempo */}
+      <Dialog open={blockDialogOpen} onOpenChange={setBlockDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>{editingBlock ? 'Editar Bloqueo de Tiempo' : 'Nuevo Bloqueo de Tiempo'}</DialogTitle>
+            <DialogDescription>
+              Configura el intervalo de tiempo en el que no estarás disponible (ej. Almuerzo).
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSaveBlockForm} className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="motivo">Motivo o Descripción *</Label>
+              <Input
+                id="motivo"
+                value={blockFormData.motivo}
+                onChange={(e) => setBlockFormData({ ...blockFormData, motivo: e.target.value })}
+                placeholder="Ej: Almuerzo, Diligencia personal..."
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="block_inicio">Hora Inicio *</Label>
+                <select
+                  id="block_inicio"
+                  value={blockFormData.hora_inicio}
+                  onChange={(e) => setBlockFormData({ ...blockFormData, hora_inicio: e.target.value })}
+                  className="w-full text-sm p-2 rounded-md border border-gray-300 bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  {timeOptions.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="block_fin">Hora Fin *</Label>
+                <select
+                  id="block_fin"
+                  value={blockFormData.hora_fin}
+                  onChange={(e) => setBlockFormData({ ...blockFormData, hora_fin: e.target.value })}
+                  className="w-full text-sm p-2 rounded-md border border-gray-300 bg-white font-medium focus:ring-2 focus:ring-amber-500 outline-none"
+                >
+                  {timeOptions.map(t => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => setBlockDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button type="submit" className="bg-amber-600 hover:bg-amber-700 text-white font-bold">
+                Guardar Bloqueo
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
