@@ -5,7 +5,8 @@ import { Label } from '../../../components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../../components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '../../../components/ui/avatar';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../../components/ui/dialog';
-import { User, Mail, Phone, Lock, Save, Camera, Shield, Loader2, Clock, Plus, Trash2, Edit3, Coffee } from 'lucide-react';
+import { Switch } from '../../../components/ui/switch';
+import { User, Mail, Phone, Lock, Save, Camera, Shield, Loader2, Clock, Plus, Trash2, Edit3, Coffee, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { toast } from 'sonner';
 import { fetchApi } from '../../../lib/api';
@@ -522,24 +523,46 @@ export function MiPerfilView() {
                         key={sched.dayId}
                         className={`flex items-center justify-between p-3.5 rounded-xl border transition-all ${
                           sched.activo
-                            ? 'bg-blue-50/40 border-blue-200'
-                            : 'bg-gray-50 border-gray-200 opacity-60'
+                            ? 'bg-blue-50/50 border-blue-200 shadow-sm'
+                            : 'bg-gray-50 border-gray-200 opacity-70'
                         }`}
                       >
                         <span className="font-semibold text-base text-gray-800">{sched.dayName}</span>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={sched.activo}
-                            onChange={(e) => {
+                        <div className="flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={() => {
                               const updated = [...schedules];
-                              updated[index].activo = e.target.checked;
+                              updated[index].activo = !updated[index].activo;
                               setSchedules(updated);
                             }}
-                            className="sr-only peer"
+                            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-colors cursor-pointer ${
+                              sched.activo
+                                ? 'bg-blue-600 text-white hover:bg-blue-700 shadow-sm'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                          >
+                            {sched.activo ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5" />
+                                Activo
+                              </>
+                            ) : (
+                              <>
+                                <XCircle className="w-3.5 h-3.5" />
+                                Descanso
+                              </>
+                            )}
+                          </button>
+                          <Switch
+                            checked={sched.activo}
+                            onCheckedChange={(checked) => {
+                              const updated = [...schedules];
+                              updated[index].activo = checked;
+                              setSchedules(updated);
+                            }}
                           />
-                          <div className="w-12 h-6 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
-                        </label>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -645,20 +668,15 @@ export function MiPerfilView() {
                             <Coffee className="w-4 h-4 text-amber-600" />
                             {block.motivo}
                           </span>
-                          <label className="relative inline-flex items-center cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={block.activo}
-                              onChange={(e) => {
-                                const updated = timeBlocks.map(b => b.id === block.id ? { ...b, activo: e.target.checked } : b);
-                                setTimeBlocks(updated);
-                                const empId = (user as any)?.id_empleado || user?.id_usuario;
-                                if (empId) localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(updated));
-                              }}
-                              className="sr-only peer"
-                            />
-                            <div className="w-9 h-5 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
-                          </label>
+                          <Switch
+                            checked={block.activo}
+                            onCheckedChange={(checked) => {
+                              const updated = timeBlocks.map(b => b.id === block.id ? { ...b, activo: checked } : b);
+                              setTimeBlocks(updated);
+                              const empId = (user as any)?.id_empleado || user?.id_usuario;
+                              if (empId) localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(updated));
+                            }}
+                          />
                         </div>
 
                         <div className="space-y-1">
