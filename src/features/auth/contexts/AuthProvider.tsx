@@ -60,9 +60,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Intentar cargar perfil actualizado desde el servidor
         const response = await fetchApi('/auth/profile');
         if (response.success && response.user) {
-          setUser(response.user);
-          setRoleName(response.user.rol || response.user.rol_nombre || null);
-          localStorage.setItem('user', JSON.stringify(response.user));
+          const normalized = { ...response.user, avatar: response.user.img || response.user.avatar, img: response.user.img || response.user.avatar };
+          setUser(normalized);
+          setRoleName(normalized.rol || normalized.rol_nombre || null);
+          localStorage.setItem('user', JSON.stringify(normalized));
         } else if (savedUserStr) {
           // El servidor respondió OK pero sin datos: usar caché local
           const userData = JSON.parse(savedUserStr);
@@ -129,11 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userToSave = response.user;
         const token = response.token;
 
-        setUser(userToSave);
-        setRoleName(userToSave.rol || userToSave.rol_nombre);
-
+        const normalized = { ...userToSave, avatar: userToSave.img || userToSave.avatar, img: userToSave.img || userToSave.avatar };
+        setUser(normalized);
+        setRoleName(normalized.rol || normalized.rol_nombre);
         localStorage.setItem('token', token);
-        localStorage.setItem('user', JSON.stringify(userToSave));
+        localStorage.setItem('user', JSON.stringify(normalized));
         localStorage.setItem('currentView', 'dashboard');
         localStorage.removeItem('navigationData');
 
@@ -209,23 +210,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const response = await fetchApi('/auth/profile');
       if (response.success && response.user) {
-        setUser(response.user);
-        setRoleName(response.user.rol || response.user.rol_nombre || null);
-        localStorage.setItem('user', JSON.stringify(response.user));
+          const normalized = { ...response.user, avatar: response.user.img || response.user.avatar, img: response.user.img || response.user.avatar };
+          setUser(normalized);
+          setRoleName(normalized.rol || normalized.rol_nombre || null);
+          localStorage.setItem('user', JSON.stringify(normalized));
       }
     } catch (err) {
       console.error("Error al sincronizar perfil:", err);
     }
   }, []);
 
-  const updateUser = useCallback((updatedData: Partial<Usuario>) => {
+  const updateUser = useCallback(async (updatedData: Partial<Usuario>) => {
+    let currentUserId: any = null;
     setUser((prevUser) => {
       if (!prevUser) return null;
-      const newUser = { ...prevUser, ...updatedData };
+      currentUserId = (prevUser as any).id_usuario || (prevUser as any).id;
+      const newUser = {
+        ...prevUser,
+        ...updatedData,
+        avatar: updatedData.avatar || updatedData.img || prevUser.avatar || prevUser.img,
+        img: updatedData.img || updatedData.avatar || prevUser.img || prevUser.avatar,
+      };
       localStorage.setItem('user', JSON.stringify(newUser));
       return newUser;
     });
-  }, []);
+
+    if (currentUserId) {
+      try {
+        const payload: any = { ...updatedData };
+        if (updatedData.avatar) payload.avatar = updatedData.avatar;
+        if (updatedData.img) payload.img = updatedData.img;
+        await fetchApi(`/users/${currentUserId}`, {
+          method: 'PUT',
+          body: JSON.stringify(payload)
+        });
+        refetchProfile();
+      } catch (err) {
+        console.error('Error enviando actualizacion de usuario al backend:', err);
+      }
+    }
+  }, [refetchProfile]);
 
   return (
     <AuthContext.Provider

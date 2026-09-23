@@ -9,7 +9,7 @@ import { Switch } from '../../../components/ui/switch';
 import { User, Mail, Phone, Lock, Save, Camera, Shield, Loader2, Clock, Plus, Trash2, Edit3, Coffee, CheckCircle2, XCircle } from 'lucide-react';
 import { useAuth } from '../../auth';
 import { toast } from 'sonner';
-import { fetchApi } from '../../../lib/api';
+import { fetchApi, resolveAvatarUrl } from '../../../lib/api';
 
 export interface DaySchedule {
   dayId: number;
@@ -299,7 +299,7 @@ export function MiPerfilView() {
                 className="hidden"
               />
               <Avatar className="w-32 h-32 border-4 border-primary/10 transition-all duration-300 group-hover:border-primary/30">
-                <AvatarImage src={user?.avatar} className="object-cover" />
+                <AvatarImage src={resolveAvatarUrl(user?.img || user?.avatar)} className="object-cover" />
                 <AvatarFallback className="text-3xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
                   {user?.nombre ? getInitials(user.nombre) : 'U'}
                 </AvatarFallback>

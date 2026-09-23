@@ -337,7 +337,7 @@ function SidebarContent({ currentView, onNavigate, onClose, user }: {
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center shadow-md overflow-hidden">
             {currentUser?.avatar ? (
-              <img src={currentUser.avatar} alt={currentUser.nombre} className="w-full h-full object-cover" />
+              <img src={resolveAvatarUrl(currentUser.img || currentUser.avatar)} alt={currentUser.nombre} className="w-full h-full object-cover" />
             ) : (
               <User className="w-5 h-5 text-white" />
             )}
@@ -651,7 +651,7 @@ export function MainLayoutPorProcesos({ children, currentView, onNavigate }: Mai
               >
                 {user?.avatar ? (
                   <Avatar className="w-7 h-7">
-                    <AvatarImage src={user.avatar} className="object-cover" />
+                    <AvatarImage src={resolveAvatarUrl(user.img || user.avatar)} className="object-cover" />
                     <AvatarFallback className="bg-blue-500 text-white text-[10px]">
                       {user?.nombre?.[0]}
                     </AvatarFallback>

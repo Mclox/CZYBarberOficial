@@ -161,3 +161,20 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
 
   return data;
 };
+export const resolveAvatarUrl = (avatarUrl?: string | null): string | undefined => {
+  if (!avatarUrl) return undefined;
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) return avatarUrl;
+  if (avatarUrl.startsWith('data:image/')) return avatarUrl;
+
+  let cleanPath = avatarUrl.replace(/\\/g, '/');
+  if (cleanPath.startsWith('/')) {
+    cleanPath = cleanPath.substring(1);
+  }
+
+  let serverUrl = API_BASE_URL.replace(/\/api\/?$/, '');
+  if (serverUrl.endsWith('/')) {
+    serverUrl = serverUrl.substring(0, serverUrl.length - 1);
+  }
+
+  return ${serverUrl}/;
+};
