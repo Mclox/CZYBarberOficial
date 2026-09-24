@@ -189,9 +189,9 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       },
       bookingData: {
         id_servicios: (bookingData.id_servicios || []).length
-          ? bookingData.id_servicios
-          : [bookingData.id_servicio],
-        id_barbero: bookingData.id_empleado ? parseInt(bookingData.id_empleado) : 0,
+          ? bookingData.id_servicios.map(id => parseInt(id))
+          : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []),
+        id_barbero: bookingData.id_empleado ? parseInt(bookingData.id_empleado) : null,
         fecha: bookingData.fecha,
         hora_inicio: bookingData.hora,
         hora_fin: `${endHH}:${endMM}`,
