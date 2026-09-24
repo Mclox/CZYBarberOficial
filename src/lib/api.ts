@@ -176,5 +176,5 @@ export const resolveAvatarUrl = (avatarUrl?: string | null): string | undefined 
     serverUrl = serverUrl.substring(0, serverUrl.length - 1);
   }
 
-  return ${serverUrl}/;
+  return `${serverUrl}/${cleanPath}`;
 };
