@@ -220,7 +220,15 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       }
     }
 
-    // Construir payload para la reserva pública
+    const primaryServiceId = (bookingData.id_servicios || [])[0] 
+      ? parseInt(bookingData.id_servicios[0]) 
+      : (bookingData.id_servicio ? parseInt(bookingData.id_servicio) : null);
+
+    const serviceIdsArray = (bookingData.id_servicios || []).length
+      ? bookingData.id_servicios.map(id => parseInt(id))
+      : (primaryServiceId ? [primaryServiceId] : []);
+
+    // Construir payload universal y compatible para la reserva pública
     const payload = {
       clienteData: {
         nombre: clienteData.nombre,
@@ -230,15 +238,29 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         documento: clienteData.documento
       },
       bookingData: {
-        id_servicios: (bookingData.id_servicios || []).length
-          ? bookingData.id_servicios.map(id => parseInt(id))
-          : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []),
+        id_servicio: primaryServiceId,
+        id_servicios: serviceIdsArray,
         id_barbero: selectedBarberId,
+        id_empleado: selectedBarberId,
         fecha: bookingData.fecha,
         hora_inicio: bookingData.hora,
         hora_fin: `${endHH}:${endMM}`,
         observaciones: bookingData.observaciones
-      }
+      },
+      // Compatibilidad por si el backend destructura la raíz de req.body
+      nombre: clienteData.nombre,
+      email: clienteData.email,
+      telefono: clienteData.telefono,
+      tipo_documento: clienteData.tipo_documento,
+      documento: clienteData.documento,
+      id_servicio: primaryServiceId,
+      id_servicios: serviceIdsArray,
+      id_barbero: selectedBarberId,
+      id_empleado: selectedBarberId,
+      fecha: bookingData.fecha,
+      hora_inicio: bookingData.hora,
+      hora_fin: `${endHH}:${endMM}`,
+      observaciones: bookingData.observaciones
     };
 
     setLoading(true);
