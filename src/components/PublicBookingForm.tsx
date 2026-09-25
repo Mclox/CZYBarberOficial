@@ -178,6 +178,48 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     const endHH = Math.floor(endMins / 60).toString().padStart(2, '0');
     const endMM = (endMins % 60).toString().padStart(2, '0');
 
+    // Determinar ID de barbero válido (asignación automática si se selecciona "Cualquier barbero")
+    let selectedBarberId: number | null = null;
+    const rawEmpId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : 0;
+
+    if (rawEmpId > 0) {
+      selectedBarberId = rawEmpId;
+    } else {
+      const dObj = new Date(bookingData.fecha + 'T00:00:00');
+      const dayOfWeek = dObj.getDay();
+      const start = parseTimeToMinutes(bookingData.hora);
+      const duration = computeSelectedServicesDuration();
+      const end = start + duration;
+
+      const availableBarber = barberos.find(barber => {
+        const bId = Number(barber.id_empleado);
+        const sched = getBarberScheduleForDay(bId, dayOfWeek);
+        if (!sched.activo) return false;
+
+        const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
+        const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
+        if (start < schedStart || end > schedEnd) return false;
+
+        if (isSlotBlockedByTimeBlock(bId, start, end)) return false;
+
+        const isBusy = busySlots.some(c => {
+          const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
+          if (cBId !== bId || c.fecha !== bookingData.fecha) return false;
+          const cStart = parseTimeToMinutes(c.hora);
+          const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
+          return start < cEnd && cStart < end;
+        });
+
+        return !isBusy;
+      });
+
+      if (availableBarber) {
+        selectedBarberId = Number(availableBarber.id_empleado);
+      } else if (barberos.length > 0) {
+        selectedBarberId = Number(barberos[0].id_empleado);
+      }
+    }
+
     // Construir payload para la reserva pública
     const payload = {
       clienteData: {
@@ -191,7 +233,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         id_servicios: (bookingData.id_servicios || []).length
           ? bookingData.id_servicios.map(id => parseInt(id))
           : (bookingData.id_servicio ? [parseInt(bookingData.id_servicio)] : []),
-        id_barbero: bookingData.id_empleado ? parseInt(bookingData.id_empleado) : null,
+        id_barbero: selectedBarberId,
         fecha: bookingData.fecha,
         hora_inicio: bookingData.hora,
         hora_fin: `${endHH}:${endMM}`,
