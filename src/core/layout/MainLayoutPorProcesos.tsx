@@ -45,7 +45,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '../../components/ui/avatar';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { cn } from '../../components/ui/utils';
-import { fetchApi, API_BASE_URL } from '../../lib/api';
+import { fetchApi, API_BASE_URL, resolveAvatarUrl } from '../../lib/api';
 import { toast } from 'sonner';
 
 interface MainLayoutProps {
