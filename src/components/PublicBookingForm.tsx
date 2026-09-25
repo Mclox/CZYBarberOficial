@@ -78,12 +78,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
           const barberMap = new Map();
           rawBarbers.forEach((b: any) => {
-            const bId = b.id_empleado || b.id_barbero || b.id_usuario;
-            if (bId) {
+            const primaryId = b.id_barbero || b.id_usuario || b.id_empleado;
+            if (primaryId) {
               const statusStr = (b.estado || 'Activo').toString().toLowerCase();
               if (statusStr === 'activo') {
-                barberMap.set(String(bId), {
-                  id_empleado: bId,
+                barberMap.set(String(primaryId), {
+                  id_empleado: b.id_empleado || primaryId,
+                  id_barbero: b.id_barbero || b.id_usuario || primaryId,
+                  id_usuario: b.id_usuario || b.id_barbero || primaryId,
                   nombre: b.nombre || b.primer_nombre || 'Barbero',
                   apellido: b.apellido || b.primer_apellido || '',
                   cargo: b.cargo || b.rol_nombre || 'Barbero',
@@ -180,10 +182,26 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
     // Determinar ID de barbero válido (asignación automática si se selecciona "Cualquier barbero")
     let selectedBarberId: number | null = null;
+    let selectedUserId: number | null = null;
+    let selectedEmployeeId: number | null = null;
+
     const rawEmpId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : 0;
 
     if (rawEmpId > 0) {
-      selectedBarberId = rawEmpId;
+      const match = barberos.find(b => 
+        Number(b.id_barbero) === rawEmpId || 
+        Number(b.id_usuario) === rawEmpId || 
+        Number(b.id_empleado) === rawEmpId
+      );
+      if (match) {
+        selectedBarberId = Number(match.id_barbero || match.id_usuario || match.id_empleado);
+        selectedUserId = Number(match.id_usuario || match.id_barbero || match.id_empleado);
+        selectedEmployeeId = Number(match.id_empleado || match.id_barbero || match.id_usuario);
+      } else {
+        selectedBarberId = rawEmpId;
+        selectedUserId = rawEmpId;
+        selectedEmployeeId = rawEmpId;
+      }
     } else {
       const dObj = new Date(bookingData.fecha + 'T00:00:00');
       const dayOfWeek = dObj.getDay();
@@ -192,7 +210,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       const end = start + duration;
 
       const availableBarber = barberos.find(barber => {
-        const bId = Number(barber.id_empleado);
+        const bId = Number(barber.id_empleado || barber.id_barbero || barber.id_usuario);
         const sched = getBarberScheduleForDay(bId, dayOfWeek);
         if (!sched.activo) return false;
 
@@ -214,9 +232,13 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       });
 
       if (availableBarber) {
-        selectedBarberId = Number(availableBarber.id_empleado);
+        selectedBarberId = Number(availableBarber.id_barbero || availableBarber.id_usuario || availableBarber.id_empleado);
+        selectedUserId = Number(availableBarber.id_usuario || availableBarber.id_barbero || availableBarber.id_empleado);
+        selectedEmployeeId = Number(availableBarber.id_empleado || availableBarber.id_barbero || availableBarber.id_usuario);
       } else if (barberos.length > 0) {
-        selectedBarberId = Number(barberos[0].id_empleado);
+        selectedBarberId = Number(barberos[0].id_barbero || barberos[0].id_usuario || barberos[0].id_empleado);
+        selectedUserId = Number(barberos[0].id_usuario || barberos[0].id_barbero || barberos[0].id_empleado);
+        selectedEmployeeId = Number(barberos[0].id_empleado || barberos[0].id_barbero || barberos[0].id_usuario);
       }
     }
 
@@ -241,7 +263,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         id_servicio: primaryServiceId,
         id_servicios: serviceIdsArray,
         id_barbero: selectedBarberId,
-        id_empleado: selectedBarberId,
+        id_usuario: selectedUserId,
+        id_empleado: selectedEmployeeId,
         fecha: bookingData.fecha,
         hora_inicio: bookingData.hora,
         hora_fin: `${endHH}:${endMM}`,
@@ -256,7 +279,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       id_servicio: primaryServiceId,
       id_servicios: serviceIdsArray,
       id_barbero: selectedBarberId,
-      id_empleado: selectedBarberId,
+      id_usuario: selectedUserId,
+      id_empleado: selectedEmployeeId,
       fecha: bookingData.fecha,
       hora_inicio: bookingData.hora,
       hora_fin: `${endHH}:${endMM}`,
@@ -714,11 +738,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                     </SelectTrigger>
                     <SelectContent className="bg-white z-50">
                       <SelectItem value="0">Cualquier barbero disponible</SelectItem>
-                      {barberos.map((empleado) => (
-                        <SelectItem key={empleado.id_empleado} value={empleado.id_empleado.toString()}>
-                          {empleado.nombre} {empleado.apellido} - {empleado.cargo}
-                        </SelectItem>
-                      ))}
+                      {barberos.map((empleado) => {
+                        const empVal = (empleado.id_barbero || empleado.id_usuario || empleado.id_empleado).toString();
+                        return (
+                          <SelectItem key={empVal} value={empVal}>
+                            {empleado.nombre} {empleado.apellido}{empleado.cargo ? ` - ${empleado.cargo}` : ''}
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                 </div>
