@@ -43,9 +43,9 @@ const defaultConfig: LandingConfig = {
   aboutDescription2: 'Combinamos técnicas tradicionales con las últimas tendencias para crear looks únicos y personalizados.',
   yearsExperience: '10+',
   happyClients: '5000+',
-  contactAddress: 'Calle Principal 123\nCentro, Ciudad',
-  contactPhone: '+1 (555) 123-4567',
-  contactEmail: 'info@czbarber.com',
+  contactAddress: 'Carrera 74 #20c-13\nParis Bello',
+  contactPhone: '3028318855',
+  contactEmail: 'cracybarber@gmail.com',
 };
 
 export function ConfiguracionLandingView() {
@@ -56,7 +56,11 @@ export function ConfiguracionLandingView() {
     // Cargar configuración guardada
     const savedConfig = localStorage.getItem('landingConfig');
     if (savedConfig) {
-      setConfig(JSON.parse(savedConfig));
+      const parsed = JSON.parse(savedConfig);
+      if (parsed.contactAddress?.includes('Calle Principal 123')) parsed.contactAddress = defaultConfig.contactAddress;
+      if (parsed.contactPhone === '+1 (555) 123-4567') parsed.contactPhone = defaultConfig.contactPhone;
+      if (parsed.contactEmail === 'info@czbarber.com') parsed.contactEmail = defaultConfig.contactEmail;
+      setConfig(parsed);
     }
   }, []);
 

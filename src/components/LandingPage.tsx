@@ -44,9 +44,9 @@ const defaultConfig: LandingConfig = {
   aboutDescription2: 'Combinamos técnicas tradicionales con las últimas tendencias para crear looks únicos y personalizados.',
   yearsExperience: '10+',
   happyClients: '5000+',
-  contactAddress: 'Calle Principal 123\nCentro, Ciudad',
-  contactPhone: '+1 (555) 123-4567',
-  contactEmail: 'info@czbarber.com',
+  contactAddress: 'Carrera 74 #20c-13\nParis Bello',
+  contactPhone: '3028318855',
+  contactEmail: 'cracybarber@gmail.com',
 };
 
 export function LandingPage({ onGetStarted, config: providedConfig }: LandingPageProps) {
@@ -75,6 +75,11 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
           // Asegurar que el título de la sección "Acerca de" sea siempre "Sobre CrazyBarber"
           if (parsed.aboutTitle === 'Sobre CzBarber') parsed.aboutTitle = 'Sobre CrazyBarber';
           
+          // Migración de datos de contacto por defecto si aún tienen los antiguos de demostración
+          if (parsed.contactAddress?.includes('Calle Principal 123')) parsed.contactAddress = defaultConfig.contactAddress;
+          if (parsed.contactPhone === '+1 (555) 123-4567') parsed.contactPhone = defaultConfig.contactPhone;
+          if (parsed.contactEmail === 'info@czbarber.com') parsed.contactEmail = defaultConfig.contactEmail;
+
           setConfig(parsed);
         } catch {
           setConfig(defaultConfig);
@@ -402,15 +407,15 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
               <ul style={{ display: 'flex', flexDirection: 'column', gap: '12px' }} className="text-sm text-blue-100/80">
                 <li style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                   <span>Lunes - Viernes:</span> 
-                  <span className="font-semibold text-white">9:00 AM - 7:00 PM</span>
+                  <span className="font-semibold text-white">10:00 AM - 8:00 PM</span>
                 </li>
                 <li style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                   <span>Sábados:</span> 
-                  <span className="font-semibold text-white">9:00 AM - 6:00 PM</span>
+                  <span className="font-semibold text-white">9:00 AM - 8:00 PM</span>
                 </li>
                 <li style={{ display: 'flex', justifyContent: 'space-between', gap: '16px' }}>
                   <span>Domingos:</span> 
-                  <span className="text-red-200 font-semibold">Cerrado</span>
+                  <span className="font-semibold text-white">10:00 AM - 2:00 PM</span>
                 </li>
               </ul>
             </div>
