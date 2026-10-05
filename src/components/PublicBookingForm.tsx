@@ -37,6 +37,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   const [barberos, setBarberos] = useState<any[]>([]);
   const [busySlots, setBusySlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
@@ -69,29 +70,64 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
             setServicios(normalized.filter((s: any) => (s.estado || 'Activo').toLowerCase() === 'activo'));
           }
 
-          // Combinar barberos desde /employees/public, /employees y /users (con rol Barbero)
+          // Combinar barberos desde /employees/public, /employees y /users (rol Barbero)
           const rawBarbers = [
             ...(resBarb.success && Array.isArray(resBarb.data) ? resBarb.data : []),
             ...(resEmployees.success && Array.isArray(resEmployees.data) ? resEmployees.data : []),
-            ...(resUsers.success && Array.isArray(resUsers.data) ? resUsers.data.filter((u: any) => (u.rol_nombre || u.rol || '').toLowerCase().includes('barbero') || u.id_rol === 3) : [])
+            ...(resUsers.success && Array.isArray(resUsers.data) ? resUsers.data.filter((u: any) => {
+              const rolName = (u.rol_nombre || u.rol || u.nombre_rol || '').toLowerCase();
+              return rolName.includes('barbero') || u.id_rol === 2;
+            }) : [])
           ];
 
-          const barberMap = new Map();
+          // Deduplicar estrictamente por identificador canónico único de persona
+          const barberMap = new Map<string, any>();
           rawBarbers.forEach((b: any) => {
-            const primaryId = b.id_barbero || b.id_usuario || b.id_empleado;
-            if (primaryId) {
-              const statusStr = (b.estado || 'Activo').toString().toLowerCase();
-              if (statusStr === 'activo') {
-                barberMap.set(String(primaryId), {
-                  id_empleado: b.id_empleado || primaryId,
-                  id_barbero: b.id_barbero || b.id_usuario || primaryId,
-                  id_usuario: b.id_usuario || b.id_barbero || primaryId,
-                  nombre: b.nombre || b.primer_nombre || 'Barbero',
-                  apellido: b.apellido || b.primer_apellido || '',
-                  cargo: b.cargo || b.rol_nombre || 'Barbero',
-                  telefono: b.telefono || ''
-                });
-              }
+            const statusStr = (b.estado || 'Activo').toString().toLowerCase();
+            if (statusStr !== 'activo') return;
+
+            const cleanName = `${b.nombre || b.primer_nombre || ''} ${b.apellido || b.primer_apellido || ''}`
+              .toLowerCase()
+              .replace(/\s+/g, ' ')
+              .trim();
+
+            // Identificador único de persona (id_usuario, documento o nombre normalizado)
+            const personKey = b.id_usuario 
+              ? `usr_${b.id_usuario}` 
+              : (b.documento ? `doc_${b.documento}` : `name_${cleanName}`);
+
+            // Buscar si ya existe una entrada para esta misma persona
+            const existingKey = Array.from(barberMap.keys()).find(k => {
+              if (k === personKey) return true;
+              const v = barberMap.get(k);
+              if (b.id_usuario && v.id_usuario === b.id_usuario) return true;
+              if (b.documento && v.documento === b.documento) return true;
+              const vName = `${v.nombre} ${v.apellido}`.toLowerCase().replace(/\s+/g, ' ').trim();
+              return cleanName && cleanName === vName;
+            });
+
+            const existing = existingKey ? barberMap.get(existingKey) : null;
+
+            // Priorizar siempre el id_barbero de la entidad Barberos si está disponible
+            const idBarberoFinal = b.id_barbero || existing?.id_barbero || b.id_usuario || b.id_empleado;
+            const idUsuarioFinal = b.id_usuario || existing?.id_usuario;
+            const idEmpleadoFinal = b.id_empleado || existing?.id_empleado || idBarberoFinal;
+
+            const unifiedBarber = {
+              id_barbero: idBarberoFinal,
+              id_usuario: idUsuarioFinal,
+              id_empleado: idEmpleadoFinal,
+              nombre: (b.nombre || b.primer_nombre || existing?.nombre || 'Barbero').trim(),
+              apellido: (b.apellido || b.primer_apellido || existing?.apellido || '').trim(),
+              cargo: 'Barbero',
+              telefono: b.telefono || existing?.telefono || '',
+              documento: b.documento || existing?.documento || ''
+            };
+
+            if (existingKey) {
+              barberMap.set(existingKey, unifiedBarber);
+            } else {
+              barberMap.set(personKey, unifiedBarber);
             }
           });
 
@@ -317,6 +353,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         body: JSON.stringify(payload)
       });
       if (res.success) {
+        setEmailSent(Boolean(res.email_enviado));
         setStep('success');
         toast.success('¡Cita agendada exitosamente!');
       }
@@ -329,6 +366,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
   const handleClose = () => {
     setStep('info');
+    setEmailSent(false);
     setClienteData({ nombre: '', email: '', telefono: '', tipo_documento: 'CC', documento: '' });
     setBookingData({
       id_servicio: '',
@@ -630,7 +668,11 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
               </div>
               <DialogTitle className="text-center">¡Cita Agendada Exitosamente!</DialogTitle>
               <DialogDescription className="text-center">
-                Hemos enviado un correo de confirmación a <strong>{clienteData.email}</strong>
+                {emailSent ? (
+                  <>Hemos enviado un correo de confirmación a <strong>{clienteData.email}</strong></>
+                ) : (
+                  <>Tu cita ha quedado registrada correctamente en el sistema.</>
+                )}
               </DialogDescription>
             </>
           )}
@@ -955,7 +997,11 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         )}
 
         {step === 'success' && (() => {
-          const selectedBarberObj = barberos.find(b => String(b.id_empleado) === String(bookingData.id_empleado));
+          const selectedBarberObj = barberos.find(b => 
+            String(b.id_barbero) === String(bookingData.id_empleado) ||
+            String(b.id_empleado) === String(bookingData.id_empleado) ||
+            String(b.id_usuario) === String(bookingData.id_empleado)
+          );
           const barberName = selectedBarberObj ? `${selectedBarberObj.nombre} ${selectedBarberObj.apellido}`.trim() : 'Cualquier barbero disponible';
           const barberPhone = selectedBarberObj?.telefono || '';
 
@@ -1006,21 +1052,42 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                 </div>
               </div>
 
-              {/* Botón WhatsApp */}
+              {/* Botón WhatsApp claramente identificable */}
               <a
                 href={whatsappUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition-all shadow-md hover:shadow-emerald-200/50 text-sm"
+                style={{
+                  backgroundColor: '#25D366',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 14px 0 rgba(37, 211, 102, 0.38)',
+                  textDecoration: 'none'
+                }}
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl font-bold transition-all hover:brightness-105 active:scale-[0.99] text-sm cursor-pointer border border-emerald-500/20"
               >
-                <MessageCircle className="w-5 h-5 text-white" />
-                Enviar mensaje por WhatsApp al barbero
+                <svg
+                  className="w-5 h-5 flex-shrink-0 fill-current"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.82 9.82 0 0 0 12.04 2zm.01 1.67c4.54 0 8.24 3.7 8.24 8.24 0 2.2-.86 4.28-2.42 5.83a8.18 8.18 0 0 1-5.83 2.42c-1.48 0-2.93-.39-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.18 8.18 0 0 1-1.25-4.39c0-4.54 3.7-8.24 8.25-8.24zm4.52 11.64c-.25-.12-1.47-.72-1.7-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.24-1.47-1.39-1.72-.14-.25-.02-.38.11-.5.11-.11.25-.29.37-.43.12-.15.17-.25.25-.41.08-.17.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07s.89 2.4 1.01 2.57c.12.17 1.75 2.67 4.24 3.75.59.26 1.05.41 1.41.53.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.06-.12-.22-.19-.47-.31z" />
+                </svg>
+                <span>Enviar recordatorio al barbero por WhatsApp</span>
               </a>
 
               <div className="p-4 bg-muted/30 border border-muted rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  <strong className="text-foreground">Nota:</strong> Te enviaremos un recordatorio por correo a <strong>{clienteData.email}</strong>.
-                  También puedes pulsar el botón de WhatsApp arriba para enviar el resumen directamente al barbero.
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  {emailSent ? (
+                    <>
+                      <strong className="text-foreground">Nota:</strong> Hemos enviado un correo de confirmación a <strong>{clienteData.email}</strong>.
+                      También puedes pulsar el botón de WhatsApp arriba para enviar el recordatorio directamente al barbero.
+                    </>
+                  ) : (
+                    <>
+                      <strong className="text-foreground">Nota:</strong> Tu cita ha quedado reservada exitosamente en el sistema.
+                      Pulsa el botón de WhatsApp arriba para enviar el recordatorio de la cita directamente al barbero.
+                    </>
+                  )}
                 </p>
               </div>
 
