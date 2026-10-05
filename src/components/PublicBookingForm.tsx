@@ -111,6 +111,19 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     }
   }, [open]);
 
+  // Normalizar teléfono con prefijo +57 evitando duplicados
+  const formatPhoneWithPrefix = (phone: string) => {
+    let cleaned = (phone || '').trim().replace(/\s+/g, '');
+    if (!cleaned) return '';
+    if (cleaned.startsWith('+57')) {
+      return cleaned;
+    }
+    if (cleaned.startsWith('57') && cleaned.length > 10) {
+      return `+${cleaned}`;
+    }
+    return `+57${cleaned}`;
+  };
+
   const monthDays = (() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
@@ -118,8 +131,9 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     const daysInMonth = new Date(year, month + 1, 0).getDate();
     const days: Array<{ day: number; dateStr: string }> = [];
     for (let i = 1; i <= daysInMonth; i++) {
-      const d = new Date(year, month, i);
-      const dateStr = d.toISOString().slice(0, 10);
+      const mStr = String(month + 1).padStart(2, '0');
+      const dStr = String(i).padStart(2, '0');
+      const dateStr = `${year}-${mStr}-${dStr}`;
       days.push({ day: i, dateStr });
     }
     return { firstDay, days };
@@ -147,6 +161,13 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(clienteData.email)) {
       toast.error('Por favor ingresa un email válido');
+      return;
+    }
+
+    // Validar teléfono básico (al menos 7 dígitos)
+    const phoneDigits = clienteData.telefono.replace(/\D/g, '');
+    if (phoneDigits.length < 7) {
+      toast.error('Por favor ingresa un número de teléfono válido (ej: 3147658972)');
       return;
     }
 
@@ -250,12 +271,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       ? bookingData.id_servicios.map(id => parseInt(id))
       : (primaryServiceId ? [primaryServiceId] : []);
 
+    const finalTelefono = formatPhoneWithPrefix(clienteData.telefono);
+
     // Construir payload universal y compatible para la reserva pública
     const payload = {
       clienteData: {
         nombre: clienteData.nombre,
         email: clienteData.email,
-        telefono: clienteData.telefono,
+        telefono: finalTelefono,
         tipo_documento: clienteData.tipo_documento,
         documento: clienteData.documento
       },
@@ -273,7 +296,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       // Compatibilidad por si el backend destructura la raíz de req.body
       nombre: clienteData.nombre,
       email: clienteData.email,
-      telefono: clienteData.telefono,
+      telefono: finalTelefono,
       tipo_documento: clienteData.tipo_documento,
       documento: clienteData.documento,
       id_servicio: primaryServiceId,
@@ -410,11 +433,13 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const currentMins = today.getHours() * 60 + today.getMinutes();
 
-    const dObj = new Date(fecha + 'T00:00:00');
-    const dayOfWeek = dObj.getDay();
+    const cleanFecha = fecha.split('T')[0].trim();
+    const [y, m, d] = cleanFecha.split('-').map(Number);
+    const dayOfWeek = (y && m && d) ? new Date(y, m - 1, d, 12, 0, 0).getDay() : new Date().getDay();
 
     return timeSlots.filter(slot => {
-      if (fecha === todayStrLocal) {
+      // Solo filtrar horas pasadas si la fecha seleccionada es estrictamente hoy
+      if (cleanFecha === todayStrLocal) {
         const slotMins = parseTimeToMinutes(slot);
         if (slotMins < currentMins) {
           return true; // Considerado ocupado si ya pasó
@@ -439,7 +464,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
         return busySlots.some(c => {
           const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
-          if (cBId !== empIdNum || c.fecha !== fecha) return false;
+          const cFecha = (c.fecha || '').split('T')[0].trim();
+          if (cBId !== empIdNum || cFecha !== cleanFecha) return false;
           const cStart = parseTimeToMinutes(c.hora);
           const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
           return start < cEnd && cStart < end;
@@ -448,7 +474,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         // Cualquier barbero disponible:
         if (barberos.length === 0) {
           return busySlots.some(c => {
-            if (c.fecha !== fecha) return false;
+            const cFecha = (c.fecha || '').split('T')[0].trim();
+            if (cFecha !== cleanFecha) return false;
             const cStart = parseTimeToMinutes(c.hora);
             const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
             return start < cEnd && cStart < end;
@@ -469,7 +496,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
           const isBusy = busySlots.some(c => {
             const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
-            if (cBId !== bId || c.fecha !== fecha) return false;
+            const cFecha = (c.fecha || '').split('T')[0].trim();
+            if (cBId !== bId || cFecha !== cleanFecha) return false;
             const cStart = parseTimeToMinutes(c.hora);
             const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
             return start < cEnd && cStart < end;
@@ -492,12 +520,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     const today = new Date();
     const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
     const currentMins = today.getHours() * 60 + today.getMinutes();
-    if (fecha === todayStrLocal && start < currentMins) {
+    const cleanFecha = (fecha || '').split('T')[0].trim();
+
+    if (cleanFecha === todayStrLocal && start < currentMins) {
       return true;
     }
 
-    const dObj = new Date(fecha + 'T00:00:00');
-    const dayOfWeek = dObj.getDay();
+    const [y, m, d] = cleanFecha.split('-').map(Number);
+    const dayOfWeek = (y && m && d) ? new Date(y, m - 1, d, 12, 0, 0).getDay() : new Date().getDay();
 
     const empIdNum = Number(empleadoId);
     if (empIdNum !== 0) {
@@ -512,7 +542,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
       return busySlots.some(c => {
         const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
-        if (cBId !== empIdNum || c.fecha !== fecha) return false;
+        const cFecha = (c.fecha || '').split('T')[0].trim();
+        if (cBId !== empIdNum || cFecha !== cleanFecha) return false;
         const cStart = parseTimeToMinutes(c.hora);
         const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
         return start < cEnd && cStart < end;
@@ -520,7 +551,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     } else {
       if (barberos.length === 0) {
         return busySlots.some(c => {
-          if (c.fecha !== fecha) return false;
+          const cFecha = (c.fecha || '').split('T')[0].trim();
+          if (cFecha !== cleanFecha) return false;
           const cStart = parseTimeToMinutes(c.hora);
           const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
           return start < cEnd && cStart < end;
@@ -540,7 +572,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
 
         const isBusy = busySlots.some(c => {
           const cBId = Number(c.id_barbero || c.id_empleado || c.id_usuario);
-          if (cBId !== bId || c.fecha !== fecha) return false;
+          const cFecha = (c.fecha || '').split('T')[0].trim();
+          if (cBId !== bId || cFecha !== cleanFecha) return false;
           const cStart = parseTimeToMinutes(c.hora);
           const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
           return start < cEnd && cStart < end;
@@ -667,11 +700,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                 <Input
                   id="telefono"
                   type="tel"
-                  placeholder="555-1234"
+                  placeholder="3147658972"
                   value={clienteData.telefono}
                   onChange={(e) => setClienteData({ ...clienteData, telefono: e.target.value })}
                   required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Ejemplo: 3147658972 (no es necesario incluir +57, se agregará automáticamente)
+                </p>
               </div>
             </div>
             <DialogFooter>
