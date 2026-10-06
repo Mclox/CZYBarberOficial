@@ -245,8 +245,24 @@ export function CitasView() {
     }
 
     if (calendarEmpleadoFilter && calendarEmpleadoFilter !== 'all') {
-      const empId = parseInt(calendarEmpleadoFilter);
-      list = list.filter(c => c.id_barbero === empId || c.id_usuario === empId || c.id_empleado === empId);
+      if (calendarEmpleadoFilter === 'mine') {
+        const miBarbero = barberos.find(b => b.id_usuario === user?.id_usuario);
+        const myBarbId = miBarbero ? (miBarbero.id_barbero || miBarbero.id_empleado) : null;
+        list = list.filter(c => 
+          (myBarbId && c.id_barbero === myBarbId) || 
+          (user?.id_usuario && (c.id_usuario === user.id_usuario || c.barbero_id_usuario === user.id_usuario || c.id_barbero === user.id_usuario))
+        );
+      } else {
+        const empId = parseInt(calendarEmpleadoFilter);
+        const matchedB = barberos.find(b => b.id_empleado === empId || b.id_barbero === empId || b.id_usuario === empId);
+        const barbIds = [empId];
+        if (matchedB) {
+          if (matchedB.id_barbero) barbIds.push(matchedB.id_barbero);
+          if (matchedB.id_empleado) barbIds.push(matchedB.id_empleado);
+          if (matchedB.id_usuario) barbIds.push(matchedB.id_usuario);
+        }
+        list = list.filter(c => barbIds.includes(c.id_barbero) || (c.barbero_id_usuario && barbIds.includes(c.barbero_id_usuario)) || (c.id_usuario && barbIds.includes(c.id_usuario)));
+      }
     }
 
     const statsObj = {
@@ -266,7 +282,7 @@ export function CitasView() {
     });
 
     return { citasByDate: byDate, stats: statsObj };
-  }, [citas, calendarEmpleadoFilter, user, clientes]);
+  }, [citas, calendarEmpleadoFilter, user, clientes, barberos]);
 
   // --- VALIDACIONES DE REGLAS DE NEGOCIO (SERVICIOS) ---
   const validateServiceAddition = (serviceId: number): string | null => {
@@ -683,10 +699,14 @@ export function CitasView() {
                           <Select value={calendarEmpleadoFilter} onValueChange={setCalendarEmpleadoFilter}>
                             <SelectTrigger className="w-48 h-9"><SelectValue /></SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="all">Todos los barberos</SelectItem>
+                              <SelectItem value="all">Todos los barberos (Vista global)</SelectItem>
+                              {isAdmin && (
+                                <SelectItem value="mine">👤 Mis citas asignadas</SelectItem>
+                              )}
                               {barberos.map(b => {
                                 const bId = (b.id_empleado || b.id_barbero || b.id_usuario).toString();
-                                return <SelectItem key={bId} value={bId}>{b.nombre}</SelectItem>
+                                const isMe = user?.id_usuario && b.id_usuario === user.id_usuario;
+                                return <SelectItem key={bId} value={bId}>{b.nombre}{isMe ? ' (Mis citas)' : ''}</SelectItem>
                               })}
                             </SelectContent>
                           </Select>

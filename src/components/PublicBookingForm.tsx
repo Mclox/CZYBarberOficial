@@ -76,7 +76,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
             ...(resEmployees.success && Array.isArray(resEmployees.data) ? resEmployees.data : []),
             ...(resUsers.success && Array.isArray(resUsers.data) ? resUsers.data.filter((u: any) => {
               const rolName = (u.rol_nombre || u.rol || u.nombre_rol || '').toLowerCase();
-              return rolName.includes('barbero') || u.id_rol === 2;
+              return rolName.includes('barbero') || rolName.includes('admin') || [1, 2].includes(u.id_rol);
             }) : [])
           ];
 
