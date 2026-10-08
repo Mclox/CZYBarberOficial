@@ -747,9 +747,6 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                   onChange={(e) => setClienteData({ ...clienteData, telefono: e.target.value })}
                   required
                 />
-                <p className="text-xs text-muted-foreground">
-                  Ejemplo: 3147658972 (no es necesario incluir +57, se agregará automáticamente)
-                </p>
               </div>
             </div>
             <DialogFooter>
@@ -912,9 +909,10 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                              type="button"
                              disabled={isPast}
                              onClick={() => setBookingData({ ...bookingData, fecha: dateStr, hora: '' })}
+                             style={isSelected ? { color: '#000000', fontWeight: 'bold' } : undefined}
                              className={`
                                h-8 w-full rounded-md text-xs font-medium transition-all
-                               ${isSelected ? 'bg-[#0057FF] text-white scale-105 shadow-lg shadow-[#0057FF]/20' : 'hover:bg-[#0057FF]/20'}
+                               ${isSelected ? 'bg-[#0057FF] text-black font-bold scale-105 shadow-lg shadow-[#0057FF]/20' : 'hover:bg-[#0057FF]/20'}
                                ${isToday && !isSelected ? 'border border-[#0057FF] text-[#0057FF]' : ''}
                                ${isPast ? 'opacity-20 cursor-not-allowed text-muted-foreground' : 'cursor-pointer px-1'}
                              `}
@@ -1019,7 +1017,10 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
             `💰 *Total:* ${formatCOP(computeSelectedServicesPrice())}\n\n` +
             `¡Hola! Acabo de agendar esta cita desde la web. Quedo atento a la confirmación.`;
 
-          const cleanPhone = barberPhone.replace(/[^0-9]/g, '');
+          let cleanPhone = barberPhone.replace(/[^0-9]/g, '');
+          if (cleanPhone.length === 10 && !cleanPhone.startsWith('57')) {
+            cleanPhone = '57' + cleanPhone;
+          }
           const whatsappUrl = cleanPhone 
             ? `https://api.whatsapp.com/send?phone=${cleanPhone}&text=${encodeURIComponent(messageText)}`
             : `https://api.whatsapp.com/send?text=${encodeURIComponent(messageText)}`;
@@ -1061,7 +1062,8 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                   backgroundColor: '#25D366',
                   color: '#FFFFFF',
                   boxShadow: '0 4px 14px 0 rgba(37, 211, 102, 0.38)',
-                  textDecoration: 'none'
+                  textDecoration: 'none',
+                  display: 'flex'
                 }}
                 className="w-full flex items-center justify-center gap-2.5 py-3.5 px-4 rounded-xl font-bold transition-all hover:brightness-105 active:scale-[0.99] text-sm cursor-pointer border border-emerald-500/20"
               >
