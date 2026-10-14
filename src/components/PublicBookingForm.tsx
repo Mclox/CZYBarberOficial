@@ -724,27 +724,27 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
 
         {step === 'info' && (
           <form onSubmit={handleClienteSubmit}>
-            <div className="space-y-4 py-4">
+            <div className="space-y-4 py-3">
               {/* Opción B: Banner destacado para Crear cuenta / Iniciar sesión */}
-              <div className="p-4 rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white shadow-xs">
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="p-1.5 bg-[#0057FF]/10 text-[#0057FF] rounded-lg">
-                        <UserPlus className="w-4 h-4" />
-                      </span>
-                      <p className="text-sm font-bold text-gray-900">
-                        ¿Quieres gestionar tus citas y perfil?
-                      </p>
-                    </div>
-                    <p className="text-xs text-muted-foreground pl-0 sm:pl-8 leading-tight">
+              <div className="rounded-xl border border-blue-200/80 bg-gradient-to-br from-blue-50/70 via-indigo-50/30 to-white p-4 shadow-xs">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-[#0057FF]/10 text-[#0057FF] flex items-center justify-center shrink-0 mt-0.5">
+                    <UserPlus className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold text-gray-900 leading-snug">
+                      ¿Quieres gestionar tus citas y perfil?
+                    </h3>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       Regístrate para ver tu historial de citas y gestionar tu perfil.
                     </p>
                   </div>
+                </div>
+                <div className="mt-3 pt-3 border-t border-blue-100/70 flex justify-end">
                   <button
                     type="button"
                     onClick={() => handleNavigateToAuth('register')}
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95 shadow-sm cursor-pointer whitespace-nowrap border-none"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-xs font-bold text-white transition-all hover:brightness-110 active:scale-[0.98] shadow-xs cursor-pointer border-none"
                     style={{ backgroundColor: '#0057FF' }}
                   >
                     <span>Crear cuenta / Iniciar sesión</span>
@@ -753,16 +753,20 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
                 </div>
               </div>
 
-              {/* Separador sutil hacia el formulario de cliente temporal (invitado) */}
-              <div className="relative flex items-center justify-center my-1 pt-1 pb-1">
-                <div className="border-t border-gray-200 w-full" />
-                <span className="bg-white px-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider absolute">
-                  O continúa como invitado
-                </span>
+              {/* Separador con espacio vertical natural hacia el formulario de invitado */}
+              <div className="relative py-3 my-2 flex items-center justify-center">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center">
+                  <span className="bg-white px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground select-none">
+                    O continúa como invitado
+                  </span>
+                </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre Completo *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="nombre" className="text-xs font-medium text-gray-700">Nombre Completo *</Label>
                 <Input
                   id="nombre"
                   placeholder="Juan Pérez"
@@ -771,8 +775,9 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
                   required
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Correo Electrónico *</Label>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-xs font-medium text-gray-700">Correo Electrónico *</Label>
                 <Input
                   id="email"
                   type="email"
@@ -781,14 +786,14 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
                   onChange={(e) => setClienteData({ ...clienteData, email: e.target.value })}
                   required
                 />
-                <p className="text-xs text-muted-foreground">
+                <p className="text-[11px] text-muted-foreground">
                   Te enviaremos un recordatorio de tu cita a este correo
                 </p>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tipo_documento">Tipo de Documento *</Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="tipo_documento" className="text-xs font-medium text-gray-700">Tipo de Documento *</Label>
                   <Select
                     value={clienteData.tipo_documento}
                     onValueChange={(val) => setClienteData({ ...clienteData, tipo_documento: val })}
@@ -805,8 +810,8 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="documento">Documento de Identidad *</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="documento" className="text-xs font-medium text-gray-700">Documento de Identidad *</Label>
                   <Input
                     id="documento"
                     placeholder="Ej: 1020304050"
@@ -817,8 +822,8 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="telefono">Teléfono *</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="telefono" className="text-xs font-medium text-gray-700">Teléfono *</Label>
                 <Input
                   id="telefono"
                   type="tel"
@@ -829,28 +834,27 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
                 />
               </div>
 
-              {/* Enlace simple: ¿Ya tienes cuenta? Inicia sesión aquí */}
-              <div className="text-center pt-2 pb-1">
-                <p className="text-xs text-muted-foreground">
-                  ¿Ya tienes cuenta?{' '}
-                  <button
-                    type="button"
-                    onClick={() => handleNavigateToAuth('login')}
-                    className="text-[#0057FF] font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 focus:outline-hidden"
-                  >
-                    <LogIn className="w-3.5 h-3.5 inline" />
-                    Inicia sesión aquí
-                  </button>
-                </p>
+              {/* Enlace simétrico y alineado: ¿Ya tienes cuenta? Inicia sesión aquí */}
+              <div className="flex items-center justify-center gap-1.5 text-xs text-muted-foreground pt-3 pb-1 border-t border-gray-100">
+                <span>¿Ya tienes cuenta?</span>
+                <button
+                  type="button"
+                  onClick={() => handleNavigateToAuth('login')}
+                  className="inline-flex items-center gap-1 font-bold text-[#0057FF] hover:text-blue-700 hover:underline cursor-pointer bg-transparent border-none p-0 transition-colors"
+                >
+                  <span>Inicia sesión aquí</span>
+                  <LogIn className="w-3.5 h-3.5" />
+                </button>
               </div>
             </div>
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={handleClose}>
+            <DialogFooter className="pt-2 gap-2 sm:gap-0">
+              <Button type="button" variant="outline" onClick={handleClose} className="w-full sm:w-auto">
                 Cancelar
               </Button>
               <Button
                 type="submit"
-                style={{ backgroundColor: '#0057FF', color: '#FFFFFF', fontWeight: 700, border: 'none', minWidth: '110px' }}
+                className="w-full sm:w-auto font-bold"
+                style={{ backgroundColor: '#0057FF', color: '#FFFFFF', minWidth: '120px' }}
               >
                 Continuar
               </Button>
