@@ -1,10 +1,12 @@
 import { Button } from './ui/button';
-import { Scissors, Calendar, Users, Star, Clock, MapPin, Phone, Mail } from 'lucide-react';
+import { Scissors, Calendar, Users, Star, Clock, MapPin, Phone, Mail, Sparkles, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { useState, useEffect } from 'react';
 import { PublicBookingForm } from './PublicBookingForm';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { CatalogProducts } from './CatalogProducts';
+import { fetchApi } from '../lib/api';
+import { formatCOP } from '../lib/format';
 
 interface LandingPageProps {
   onGetStarted?: () => void;
@@ -88,12 +90,74 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
     }
   }, [providedConfig]);
 
-  const services = [
-    { icon: Scissors, title: 'Corte de Cabello', description: 'Cortes modernos y clásicos' },
-    { icon: Scissors, title: 'Barba & Afeitado', description: 'Cuidado y estilo de barba profesional' },
-    { icon: Star, title: 'Tinte & Color', description: 'Coloración profesional' },
-    { icon: Clock, title: 'Tratamientos', description: 'Tratamientos capilares premium' },
-  ];
+  interface RealService {
+    id_servicio: number;
+    nombre: string;
+    descripcion?: string;
+    precio: number;
+    duracion: number;
+    estado?: string;
+  }
+
+  const [services, setServices] = useState<RealService[]>([]);
+  const [loadingServices, setLoadingServices] = useState<boolean>(true);
+  const [errorServices, setErrorServices] = useState<string | null>(null);
+
+  const fetchRealServices = async () => {
+    setLoadingServices(true);
+    setErrorServices(null);
+    try {
+      let res: any = await fetchApi('/services/public').catch(() => null);
+
+      if (!res || (!res.success && !Array.isArray(res))) {
+        res = await fetchApi('/services').catch(() => null);
+      }
+
+      if (res && (res.success || Array.isArray(res))) {
+        const rawList = Array.isArray(res) ? res : (Array.isArray(res.data) ? res.data : []);
+        const activeServices: RealService[] = rawList
+          .filter((s: any) => (s?.estado || 'Activo').toLowerCase() === 'activo')
+          .map((s: any) => ({
+            id_servicio: s.id_servicio || s.id,
+            nombre: s.nombre || 'Servicio',
+            descripcion: s.descripcion || '',
+            precio: parseFloat(s.precio_neto ?? s.precio ?? 0),
+            duracion: parseInt(s.duracion_minutos ?? s.duracion ?? 30, 10),
+            estado: s.estado || 'Activo',
+          }));
+        setServices(activeServices);
+      } else {
+        throw new Error('No se pudo conectar con el servicio de datos');
+      }
+    } catch (err: any) {
+      console.error('Error al cargar servicios en landing:', err);
+      setErrorServices(err?.message || 'Error al conectar con el servidor para obtener los servicios.');
+      setServices([]);
+    } finally {
+      setLoadingServices(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealServices();
+  }, []);
+
+  const getServiceIcon = (name: string = '') => {
+    const lower = name.toLowerCase();
+    if (lower.includes('barba') || lower.includes('afeitad') || lower.includes('bigote')) {
+      return Scissors;
+    }
+    if (lower.includes('ceja') || lower.includes('facial') || lower.includes('diseño') || lower.includes('limpieza')) {
+      return Sparkles;
+    }
+    if (lower.includes('tinte') || lower.includes('color') || lower.includes('mechas') || lower.includes('decolor')) {
+      return Star;
+    }
+    if (lower.includes('tratamiento') || lower.includes('masaje') || lower.includes('terapia') || lower.includes('spa')) {
+      return Clock;
+    }
+    return Scissors;
+  };
 
   // Testimonials removed per client request
 
@@ -211,21 +275,98 @@ export function LandingPage({ onGetStarted, config: providedConfig }: LandingPag
             <h2 className="text-4xl font-bold mb-4" style={{ color: '#000000', letterSpacing: '-0.01em' }}>Nuestros Servicios</h2>
             <p className="text-lg" style={{ color: '#000000', fontWeight: 600, textShadow: '0 0 4px rgba(255, 255, 255, 0.8), 1px 1px 2px rgba(255, 75, 43, 0.5)' }}>Servicios premium para el caballero moderno</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {services.map((service, index) => (
-              <Card key={index} className="backdrop-blur-sm transition-all duration-300" style={{ background: '#E8EDF2', border: '1px solid #d0d8e4', borderRadius: '16px' }}
-                onMouseEnter={e => { (e.currentTarget as HTMLElement).style.border = '1.5px solid #0057FF'; e.currentTarget.style.transform = 'translateY(-5px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,87,255,0.1)'; }}
-                onMouseLeave={e => { (e.currentTarget as HTMLElement).style.border = '1px solid #d0d8e4'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none'; }}>
-                <CardContent className="p-8 text-center">
-                  <div className="mb-6 inline-flex items-center justify-center w-16 h-16 rounded-full" style={{ background: 'rgba(0,87,255,0.12)' }}>
-                    <service.icon className="w-8 h-8" style={{ color: '#0057FF' }} />
-                  </div>
-                  <h3 className="text-xl font-bold mb-3" style={{ color: '#000000' }}>{service.title}</h3>
-                  <p style={{ color: '#555555', lineHeight: 1.6 }}>{service.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+
+          {loadingServices ? (
+            <div className="flex flex-col items-center justify-center py-16 text-center">
+              <Loader2 className="w-10 h-10 text-[#0057FF] animate-spin mb-4" />
+              <p className="text-base font-semibold text-gray-800">Cargando servicios...</p>
+              <p className="text-sm text-gray-500 mt-1">Obteniendo los servicios disponibles en tiempo real</p>
+            </div>
+          ) : errorServices ? (
+            <div className="flex flex-col items-center justify-center py-12 px-6 max-w-md mx-auto text-center bg-red-50/80 border border-red-200 rounded-2xl shadow-sm">
+              <AlertCircle className="w-10 h-10 text-red-500 mb-3" />
+              <h4 className="text-lg font-bold text-gray-900 mb-1">No se pudieron cargar los servicios</h4>
+              <p className="text-sm text-gray-600 mb-5">{errorServices}</p>
+              <Button
+                onClick={fetchRealServices}
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2 border-red-300 text-red-600 hover:bg-red-100 font-semibold px-4 py-2 rounded-lg"
+              >
+                <RefreshCw className="w-4 h-4" /> Reintentar
+              </Button>
+            </div>
+          ) : services.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 px-4 text-center max-w-md mx-auto bg-slate-50 border border-slate-200 rounded-2xl">
+              <Scissors className="w-12 h-12 text-gray-400 mb-3 opacity-60" />
+              <h4 className="text-lg font-bold text-gray-800 mb-1">No hay servicios disponibles</h4>
+              <p className="text-sm text-gray-500">Actualmente no hay servicios registrados en el sistema.</p>
+            </div>
+          ) : (
+            <div className={`grid gap-6 ${
+              services.length === 1
+                ? 'grid-cols-1 max-w-md mx-auto'
+                : services.length === 2
+                ? 'grid-cols-1 sm:grid-cols-2 max-w-3xl mx-auto'
+                : services.length === 3
+                ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-5xl mx-auto'
+                : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+            }`}>
+              {services.map((service, index) => {
+                const IconComponent = getServiceIcon(service.nombre);
+                return (
+                  <Card
+                    key={service.id_servicio || index}
+                    className="backdrop-blur-sm transition-all duration-300 flex flex-col h-full group cursor-pointer"
+                    style={{ background: '#E8EDF2', border: '1px solid #d0d8e4', borderRadius: '16px' }}
+                    onClick={() => setBookingOpen(true)}
+                    onMouseEnter={e => {
+                      (e.currentTarget as HTMLElement).style.border = '1.5px solid #0057FF';
+                      e.currentTarget.style.transform = 'translateY(-5px)';
+                      e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,87,255,0.12)';
+                    }}
+                    onMouseLeave={e => {
+                      (e.currentTarget as HTMLElement).style.border = '1px solid #d0d8e4';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  >
+                    <CardContent className="p-7 text-center flex flex-col flex-1 justify-between">
+                      <div className="flex flex-col items-center">
+                        <div
+                          className="mb-5 inline-flex items-center justify-center w-16 h-16 rounded-full transition-transform duration-300 group-hover:scale-110"
+                          style={{ background: 'rgba(0,87,255,0.12)' }}
+                        >
+                          <IconComponent className="w-8 h-8" style={{ color: '#0057FF' }} />
+                        </div>
+                        <h3 className="text-xl font-bold mb-2 tracking-tight text-center" style={{ color: '#000000' }}>
+                          {service.nombre}
+                        </h3>
+                        {service.descripcion && (
+                          <p className="text-sm line-clamp-3 mb-4" style={{ color: '#555555', lineHeight: 1.6 }}>
+                            {service.descripcion}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Información de Duración y Precio */}
+                      <div className="w-full pt-4 mt-2 border-t border-slate-300/70 flex items-center justify-between gap-2">
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white text-slate-700 text-xs font-semibold shadow-xs border border-slate-200/80">
+                          <Clock className="w-3.5 h-3.5 text-[#0057FF]" />
+                          <span>{service.duracion} min</span>
+                        </div>
+                        <div className="inline-flex items-center px-3 py-1 rounded-full bg-blue-50/90 border border-blue-200/80 text-[#0057FF]">
+                          <span className="text-base font-extrabold tracking-tight">
+                            {formatCOP(service.precio)}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </div>
       </section>
 
