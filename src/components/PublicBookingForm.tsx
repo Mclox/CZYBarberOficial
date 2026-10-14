@@ -5,7 +5,7 @@ import { Label } from './ui/label';
 import { Textarea } from './ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from './ui/dialog';
-import { Calendar, Clock, Scissors, CheckCircle2 } from 'lucide-react';
+import { Calendar, Clock, Scissors, CheckCircle2, UserPlus, LogIn, ArrowRight } from 'lucide-react';
 import { fetchApi } from '../lib/api';
 import { toast } from 'sonner';
 import { formatCOP } from '../lib/format';
@@ -13,9 +13,11 @@ import { formatCOP } from '../lib/format';
 interface PublicBookingFormProps {
   open: boolean;
   onClose: () => void;
+  onLoginClick?: () => void;
+  onRegisterClick?: () => void;
 }
 
-export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
+export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick }: PublicBookingFormProps) {
   const [step, setStep] = useState<'info' | 'booking' | 'success'>('info');
   const [clienteData, setClienteData] = useState({
     nombre: '',
@@ -391,6 +393,36 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     onClose();
   };
 
+  const handleNavigateToAuth = (target: 'login' | 'register' = 'login') => {
+    handleClose();
+    if (target === 'register' && onRegisterClick) {
+      onRegisterClick();
+      return;
+    }
+    if (onLoginClick) {
+      onLoginClick();
+      return;
+    }
+    // Si estamos en la Landing Page, buscar el botón "Acceder" de la barra superior para iniciar el flujo de autenticación
+    const accederButtons = Array.from(document.querySelectorAll('button'));
+    const accederBtn = accederButtons.find(b => b.textContent?.trim().toLowerCase() === 'acceder');
+    if (accederBtn) {
+      accederBtn.click();
+      if (target === 'register') {
+        setTimeout(() => {
+          const regButtons = Array.from(document.querySelectorAll('button'));
+          const regBtn = regButtons.find(b => 
+            b.textContent?.toLowerCase().includes('registrarse') || 
+            b.textContent?.toLowerCase().includes('crear cuenta')
+          );
+          if (regBtn) regBtn.click();
+        }, 60);
+      }
+    } else {
+      window.location.href = target === 'register' ? '#register' : '#login';
+    }
+  };
+
   const formatDurationPublic = (minutes: number) => {
     if (!minutes) return '0 min';
     const h = Math.floor(minutes / 60);
@@ -693,6 +725,42 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         {step === 'info' && (
           <form onSubmit={handleClienteSubmit}>
             <div className="space-y-4 py-4">
+              {/* Opción B: Banner destacado para Crear cuenta / Iniciar sesión */}
+              <div className="p-4 rounded-xl border border-blue-200/90 bg-gradient-to-r from-blue-50/80 via-indigo-50/40 to-white shadow-xs">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="p-1.5 bg-[#0057FF]/10 text-[#0057FF] rounded-lg">
+                        <UserPlus className="w-4 h-4" />
+                      </span>
+                      <p className="text-sm font-bold text-gray-900">
+                        ¿Quieres gestionar tus citas y perfil?
+                      </p>
+                    </div>
+                    <p className="text-xs text-muted-foreground pl-0 sm:pl-8 leading-tight">
+                      Regístrate para ver tu historial de citas y gestionar tu perfil.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleNavigateToAuth('register')}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-bold text-white transition-all hover:brightness-110 active:scale-95 shadow-sm cursor-pointer whitespace-nowrap border-none"
+                    style={{ backgroundColor: '#0057FF' }}
+                  >
+                    <span>Crear cuenta / Iniciar sesión</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Separador sutil hacia el formulario de cliente temporal (invitado) */}
+              <div className="relative flex items-center justify-center my-1 pt-1 pb-1">
+                <div className="border-t border-gray-200 w-full" />
+                <span className="bg-white px-3 text-[11px] font-semibold text-gray-400 uppercase tracking-wider absolute">
+                  O continúa como invitado
+                </span>
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="nombre">Nombre Completo *</Label>
                 <Input
@@ -759,6 +827,21 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
                   onChange={(e) => setClienteData({ ...clienteData, telefono: e.target.value })}
                   required
                 />
+              </div>
+
+              {/* Enlace simple: ¿Ya tienes cuenta? Inicia sesión aquí */}
+              <div className="text-center pt-2 pb-1">
+                <p className="text-xs text-muted-foreground">
+                  ¿Ya tienes cuenta?{' '}
+                  <button
+                    type="button"
+                    onClick={() => handleNavigateToAuth('login')}
+                    className="text-[#0057FF] font-semibold hover:underline inline-flex items-center gap-1 cursor-pointer bg-transparent border-none p-0 focus:outline-hidden"
+                  >
+                    <LogIn className="w-3.5 h-3.5 inline" />
+                    Inicia sesión aquí
+                  </button>
+                </p>
               </div>
             </div>
             <DialogFooter>
