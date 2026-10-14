@@ -38,6 +38,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   const [busySlots, setBusySlots] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const [confirmedBarber, setConfirmedBarber] = useState<any | null>(null);
 
   const [calendarMonth, setCalendarMonth] = useState(() => {
     const d = new Date();
@@ -241,6 +242,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
     let selectedBarberId: number | null = null;
     let selectedUserId: number | null = null;
     let selectedEmployeeId: number | null = null;
+    let availableBarber: any = null;
 
     const rawEmpId = bookingData.id_empleado ? parseInt(bookingData.id_empleado) : 0;
 
@@ -266,7 +268,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       const duration = computeSelectedServicesDuration();
       const end = start + duration;
 
-      const availableBarber = barberos.find(barber => {
+      availableBarber = barberos.find(barber => {
         const bId = Number(barber.id_empleado || barber.id_barbero || barber.id_usuario);
         const sched = getBarberScheduleForDay(bId, dayOfWeek);
         if (!sched.activo) return false;
@@ -346,6 +348,14 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
       observaciones: bookingData.observaciones
     };
 
+    const finalSelectedBarber = (rawEmpId > 0
+      ? barberos.find(b => 
+          Number(b.id_barbero) === selectedBarberId || 
+          Number(b.id_usuario) === selectedUserId || 
+          Number(b.id_empleado) === selectedEmployeeId
+        )
+      : null) || availableBarber || (barberos.length > 0 ? barberos[0] : null);
+
     setLoading(true);
     try {
       const res = await fetchApi('/appointments/public-booking', {
@@ -353,6 +363,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         body: JSON.stringify(payload)
       });
       if (res.success) {
+        setConfirmedBarber(finalSelectedBarber);
         setEmailSent(Boolean(res.email_enviado));
         setStep('success');
         toast.success('¡Cita agendada exitosamente!');
@@ -367,6 +378,7 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
   const handleClose = () => {
     setStep('info');
     setEmailSent(false);
+    setConfirmedBarber(null);
     setClienteData({ nombre: '', email: '', telefono: '', tipo_documento: 'CC', documento: '' });
     setBookingData({
       id_servicio: '',
@@ -995,12 +1007,12 @@ export function PublicBookingForm({ open, onClose }: PublicBookingFormProps) {
         )}
 
         {step === 'success' && (() => {
-          const selectedBarberObj = barberos.find(b => 
+          const selectedBarberObj = confirmedBarber || barberos.find(b => 
             String(b.id_barbero) === String(bookingData.id_empleado) ||
             String(b.id_empleado) === String(bookingData.id_empleado) ||
             String(b.id_usuario) === String(bookingData.id_empleado)
           );
-          const barberName = selectedBarberObj ? `${selectedBarberObj.nombre} ${selectedBarberObj.apellido}`.trim() : 'Cualquier barbero disponible';
+          const barberName = selectedBarberObj ? `${selectedBarberObj.nombre} ${selectedBarberObj.apellido}`.trim() : 'Barbero Asignado';
           const barberPhone = selectedBarberObj?.telefono || '';
 
           const fechaFormat = bookingData.fecha ? new Date(bookingData.fecha + 'T00:00:00').toLocaleDateString('es-ES', {
