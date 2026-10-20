@@ -52,10 +52,10 @@ const getStatusConfig = (status: string) => {
 };
 
 const timeSlots = [
-  '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+  '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
   '12:00', '12:30', '13:00', '13:30', '14:00', '14:30',
   '15:00', '15:30', '16:00', '16:30', '17:00', '17:30',
-  '18:00', '18:30', '19:00', '19:30'
+  '18:00', '18:30', '19:00', '19:30', '20:00', '20:30'
 ];
 
 export function CitasView() {
@@ -437,12 +437,19 @@ export function CitasView() {
 
   const getOccupiedTimes = (fecha?: string, empId?: number, excludingId?: number) => {
     if (!fecha || !empId) return [];
+    const cleanFecha = fecha.split('T')[0];
+    const isToday = cleanFecha === todayStr;
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+
     return timeSlots.filter(slot => {
       const start = parseTimeToMinutes(slot);
+      if (isToday && start <= currentMins) return true;
       const end = start + (duracionTotal || 30);
       return citas.some(c => {
         const cBarbero = c.id_barbero || c.id_usuario || c.id_empleado;
-        if (cBarbero !== empId || c.fecha?.split('T')[0] !== fecha || c.id_cita === excludingId) return false;
+        if (cBarbero !== empId || c.fecha?.split('T')[0] !== cleanFecha || c.id_cita === excludingId) return false;
+        if (['cancelada', 'cancelado'].includes(c.estado?.toLowerCase())) return false;
         const cStart = parseTimeToMinutes(c.hora_inicio_corta);
         const cEnd = parseTimeToMinutes(c.hora_fin_corta);
         return start < cEnd && cStart < end;

@@ -28,18 +28,16 @@ export interface TimeBlock {
 }
 
 export const DEFAULT_SCHEDULE: DaySchedule[] = [
-  { dayId: 1, dayName: 'Lunes', activo: true, hora_inicio: '09:00', hora_fin: '18:00' },
-  { dayId: 2, dayName: 'Martes', activo: true, hora_inicio: '09:00', hora_fin: '18:00' },
-  { dayId: 3, dayName: 'Miércoles', activo: true, hora_inicio: '09:00', hora_fin: '18:00' },
-  { dayId: 4, dayName: 'Jueves', activo: true, hora_inicio: '09:00', hora_fin: '18:00' },
-  { dayId: 5, dayName: 'Viernes', activo: true, hora_inicio: '09:00', hora_fin: '19:00' },
-  { dayId: 6, dayName: 'Sábado', activo: true, hora_inicio: '08:00', hora_fin: '19:00' },
+  { dayId: 1, dayName: 'Lunes', activo: true, hora_inicio: '09:00', hora_fin: '21:00' },
+  { dayId: 2, dayName: 'Martes', activo: true, hora_inicio: '09:00', hora_fin: '21:00' },
+  { dayId: 3, dayName: 'Miércoles', activo: true, hora_inicio: '09:00', hora_fin: '21:00' },
+  { dayId: 4, dayName: 'Jueves', activo: true, hora_inicio: '09:00', hora_fin: '21:00' },
+  { dayId: 5, dayName: 'Viernes', activo: true, hora_inicio: '09:00', hora_fin: '21:00' },
+  { dayId: 6, dayName: 'Sábado', activo: true, hora_inicio: '08:00', hora_fin: '21:00' },
   { dayId: 0, dayName: 'Domingo', activo: false, hora_inicio: '09:00', hora_fin: '14:00' },
 ];
 
-export const DEFAULT_TIME_BLOCKS: TimeBlock[] = [
-  { id: '1', motivo: 'Almuerzo', hora_inicio: '13:00', hora_fin: '14:00', activo: true }
-];
+export const DEFAULT_TIME_BLOCKS: TimeBlock[] = [];
 
 export const timeOptions = [
   '06:00', '06:30', '07:00', '07:30', '08:00', '08:30', '09:00', '09:30',
@@ -111,7 +109,7 @@ export function MiPerfilView() {
   }, [user]);
 
   const handleSaveSchedule = async () => {
-    const empId = (user as any)?.id_empleado || user?.id_usuario;
+    const empId = (user as any)?.id_barbero || (user as any)?.id_empleado || user?.id_usuario;
     if (!empId) return;
     setSavingSchedule(true);
     try {

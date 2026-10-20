@@ -124,7 +124,11 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
               apellido: (b.apellido || b.primer_apellido || existing?.apellido || '').trim(),
               cargo: 'Barbero',
               telefono: b.telefono || existing?.telefono || '',
-              documento: b.documento || existing?.documento || ''
+              documento: b.documento || existing?.documento || '',
+              hora_inicio: b.hora_inicio || existing?.hora_inicio || '09:00',
+              hora_fin: b.hora_fin || existing?.hora_fin || '21:00',
+              dias_laborales: b.dias_laborales || existing?.dias_laborales || null,
+              bloqueos: b.bloqueos || existing?.bloqueos || null
             };
 
             if (existingKey) {
@@ -178,13 +182,31 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
     return { firstDay, days };
   })();
 
-  const getLocalTodayStr = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+  const getColombiaTodayParts = () => {
+    try {
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Bogota',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+      });
+      const parts = formatter.formatToParts(new Date());
+      const getPart = (type: string) => parts.find(p => p.type === type)?.value || '00';
+      const dateStr = `${getPart('year')}-${getPart('month')}-${getPart('day')}`;
+      const mins = (parseInt(getPart('hour'), 10) || 0) * 60 + (parseInt(getPart('minute'), 10) || 0);
+      return { dateStr, mins };
+    } catch (e) {
+      const d = new Date();
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const mins = d.getHours() * 60 + d.getMinutes();
+      return { dateStr, mins };
+    }
   };
+
+  const getLocalTodayStr = () => getColombiaTodayParts().dateStr;
   const todayStr = getLocalTodayStr();
 
   const handleClienteSubmit = (e: React.FormEvent) => {
@@ -264,19 +286,19 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
         selectedEmployeeId = rawEmpId;
       }
     } else {
-      const dObj = new Date(bookingData.fecha + 'T00:00:00');
-      const dayOfWeek = dObj.getDay();
+      const [y, m, d] = (bookingData.fecha || '').split('-').map(Number);
+      const dayOfWeek = (y && m && d) ? new Date(y, m - 1, d, 12, 0, 0).getDay() : new Date().getDay();
       const start = parseTimeToMinutes(bookingData.hora);
       const duration = computeSelectedServicesDuration();
       const end = start + duration;
 
       availableBarber = barberos.find(barber => {
-        const bId = Number(barber.id_empleado || barber.id_barbero || barber.id_usuario);
+        const bId = Number(barber.id_barbero || barber.id_usuario || barber.id_empleado);
         const sched = getBarberScheduleForDay(bId, dayOfWeek);
         if (!sched.activo) return false;
 
         const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
-        const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
+        const schedEnd = parseTimeToMinutes(sched.hora_fin || '21:00');
         if (start < schedStart || end > schedEnd) return false;
 
         if (isSlotBlockedByTimeBlock(bId, start, end)) return false;
@@ -438,11 +460,12 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
     return ids.map(id => servicios.find(s => s.id_servicio === id)?.nombre || 'N/A').join(', ');
   };
 
-  // Generar horarios disponibles
+  // Generar horarios disponibles (incluyendo 13:00, 13:30 y jornada hasta las 21:00)
   const timeSlots = [
-    '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
-    '12:00', '12:30', '14:00', '14:30', '15:00', '15:30',
-    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30'
+    '08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30',
+    '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30',
+    '16:00', '16:30', '17:00', '17:30', '18:00', '18:30', '19:00', '19:30',
+    '20:00', '20:30'
   ];
 
   const parseTimeToMinutes = (time: string) => {
@@ -465,41 +488,79 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
   };
 
   const getBarberScheduleForDay = (empId: number, dayOfWeek: number) => {
+    // 1. Buscar en los datos del barbero cargados del backend
+    const barber = barberos.find(b => 
+      Number(b.id_barbero) === empId || 
+      Number(b.id_usuario) === empId || 
+      Number(b.id_empleado) === empId
+    );
+
+    const barberStart = barber?.hora_inicio ? barber.hora_inicio.substring(0, 5) : '09:00';
+    const barberEnd = barber?.hora_fin ? barber.hora_fin.substring(0, 5) : '21:00';
+
+    // 2. Si tiene dias_laborales configurados por el barbero en BD, respetarlos
+    if (barber && Array.isArray(barber.dias_laborales) && barber.dias_laborales.length > 0) {
+      const match = barber.dias_laborales.find((s: any) => Number(s.dayId) === Number(dayOfWeek));
+      if (match) {
+        return {
+          dayId: dayOfWeek,
+          activo: Boolean(match.activo),
+          hora_inicio: match.hora_inicio || barberStart,
+          hora_fin: match.hora_fin || barberEnd
+        };
+      }
+    }
+
+    // 3. Fallback a almacenamiento local
     const saved = localStorage.getItem(`barber_schedule_${empId}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
+        if (Array.isArray(parsed) && parsed.length > 0) {
           const match = parsed.find((s: any) => Number(s.dayId) === Number(dayOfWeek));
           if (match) return match;
         }
       } catch (e) {}
     }
+
+    // 4. Domingo descanso por defecto a menos que se haya habilitado
     if (dayOfWeek === 0) {
       return { dayId: 0, dayName: 'Domingo', activo: false, hora_inicio: '09:00', hora_fin: '14:00' };
     }
+
     return {
       dayId: dayOfWeek,
       activo: true,
-      hora_inicio: dayOfWeek === 6 ? '08:00' : '09:00',
-      hora_fin: dayOfWeek === 6 ? '19:00' : '18:00'
+      hora_inicio: dayOfWeek === 6 ? '08:00' : barberStart,
+      hora_fin: barberEnd
     };
   };
 
   const getBarberTimeBlocks = (empId: number) => {
+    const barber = barberos.find(b => 
+      Number(b.id_barbero) === empId || 
+      Number(b.id_usuario) === empId || 
+      Number(b.id_empleado) === empId
+    );
+
+    if (barber && Array.isArray(barber.bloqueos) && barber.bloqueos.length > 0) {
+      return barber.bloqueos.filter((b: any) => b.activo === true);
+    }
+
     const saved = localStorage.getItem(`barber_blocks_${empId}`);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed.filter((b: any) => b.activo);
+        if (Array.isArray(parsed)) return parsed.filter((b: any) => b.activo === true);
       } catch (e) {}
     }
-    return [{ id: '1', motivo: 'Almuerzo', hora_inicio: '13:00', hora_fin: '14:00', activo: true }];
+    return [];
   };
 
   const isSlotBlockedByTimeBlock = (empId: number, startMins: number, endMins: number) => {
     const blocks = getBarberTimeBlocks(empId);
     return blocks.some((b: any) => {
+      if (b.activo === false) return false;
       const bStart = parseTimeToMinutes(b.hora_inicio);
       const bEnd = parseTimeToMinutes(b.hora_fin);
       return startMins < bEnd && bStart < endMins;
@@ -510,26 +571,28 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
     if (!fecha) return [] as string[];
     const desiredDuration = computeSelectedServicesDuration();
     
-    // Si la fecha es hoy, filtrar horarios pasados
-    const today = new Date();
-    const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const currentMins = today.getHours() * 60 + today.getMinutes();
-
+    const { dateStr: todayStrLocal, mins: currentMins } = getColombiaTodayParts();
     const cleanFecha = fecha.split('T')[0].trim();
+
+    // Si la fecha seleccionada es anterior a hoy, todos los horarios están ocupados/deshabilitados
+    if (cleanFecha < todayStrLocal) {
+      return [...timeSlots];
+    }
+
+    const isToday = cleanFecha === todayStrLocal;
     const [y, m, d] = cleanFecha.split('-').map(Number);
+    // Usar las 12:00 del mediodía evita desfasajes de fecha por zona horaria
     const dayOfWeek = (y && m && d) ? new Date(y, m - 1, d, 12, 0, 0).getDay() : new Date().getDay();
 
     return timeSlots.filter(slot => {
-      // Solo filtrar horas pasadas si la fecha seleccionada es estrictamente hoy
-      if (cleanFecha === todayStrLocal) {
-        const slotMins = parseTimeToMinutes(slot);
-        if (slotMins < currentMins) {
-          return true; // Considerado ocupado si ya pasó
-        }
-      }
-
       const start = parseTimeToMinutes(slot);
       const end = start + desiredDuration;
+
+      // Solo filtrar horas pasadas si la fecha seleccionada es estrictamente hoy
+      if (isToday && start <= currentMins) {
+        return true;
+      }
+
       const empIdNum = empleadoId !== undefined ? Number(empleadoId) : 0;
 
       if (empIdNum !== 0) {
@@ -538,10 +601,10 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
         if (!sched.activo) return true; // Día de descanso
 
         const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
-        const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
+        const schedEnd = parseTimeToMinutes(sched.hora_fin || '21:00');
         if (start < schedStart || end > schedEnd) return true; // Fuera de horario laborable
 
-        // Verificar si el slot coincide con un Bloqueo de Tiempo (ej. Almuerzo/Diligencia)
+        // Verificar si el slot coincide con un Bloqueo de Tiempo activo (ej. Almuerzo/Diligencia)
         if (isSlotBlockedByTimeBlock(empIdNum, start, end)) return true;
 
         return busySlots.some(c => {
@@ -564,14 +627,14 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
           });
         }
         
-        // Ocupado si NINGÚN barbero labora en ese slot o todos están en pausa/ocupados
+        // Disponible si AL MENOS UN barbero labora en ese slot y no está ocupado
         const atLeastOneAvailable = barberos.some(barber => {
-          const bId = Number(barber.id_empleado);
+          const bId = Number(barber.id_barbero || barber.id_usuario || barber.id_empleado);
           const sched = getBarberScheduleForDay(bId, dayOfWeek);
           if (!sched.activo) return false;
 
           const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
-          const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
+          const schedEnd = parseTimeToMinutes(sched.hora_fin || '21:00');
           if (start < schedStart || end > schedEnd) return false;
 
           if (isSlotBlockedByTimeBlock(bId, start, end)) return false;
@@ -598,13 +661,14 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
     const duration = computeSelectedServicesDuration();
     const end = start + duration;
     
-    // Validar si es hoy y la hora ya pasó
-    const today = new Date();
-    const todayStrLocal = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const currentMins = today.getHours() * 60 + today.getMinutes();
+    const { dateStr: todayStrLocal, mins: currentMins } = getColombiaTodayParts();
     const cleanFecha = (fecha || '').split('T')[0].trim();
 
-    if (cleanFecha === todayStrLocal && start < currentMins) {
+    if (cleanFecha < todayStrLocal) {
+      return true;
+    }
+
+    if (cleanFecha === todayStrLocal && start <= currentMins) {
       return true;
     }
 
@@ -617,7 +681,7 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       if (!sched.activo) return true;
 
       const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
-      const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
+      const schedEnd = parseTimeToMinutes(sched.hora_fin || '21:00');
       if (start < schedStart || end > schedEnd) return true;
 
       if (isSlotBlockedByTimeBlock(empIdNum, start, end)) return true;
@@ -642,12 +706,12 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       }
       
       const atLeastOneAvailable = barberos.some(barber => {
-        const bId = Number(barber.id_empleado);
+        const bId = Number(barber.id_barbero || barber.id_usuario || barber.id_empleado);
         const sched = getBarberScheduleForDay(bId, dayOfWeek);
         if (!sched.activo) return false;
 
         const schedStart = parseTimeToMinutes(sched.hora_inicio || '09:00');
-        const schedEnd = parseTimeToMinutes(sched.hora_fin || '18:00');
+        const schedEnd = parseTimeToMinutes(sched.hora_fin || '21:00');
         if (start < schedStart || end > schedEnd) return false;
 
         if (isSlotBlockedByTimeBlock(bId, start, end)) return false;
