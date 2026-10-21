@@ -116,19 +116,29 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
             const idUsuarioFinal = b.id_usuario || existing?.id_usuario;
             const idEmpleadoFinal = b.id_empleado || existing?.id_empleado || idBarberoFinal;
 
+            let parsedDias = b.dias_laborales !== undefined ? b.dias_laborales : (existing?.dias_laborales ?? null);
+            if (typeof parsedDias === 'string') {
+              try { parsedDias = JSON.parse(parsedDias); } catch (e) { parsedDias = null; }
+            }
+
+            let parsedBloqueos = b.bloqueos !== undefined ? b.bloqueos : (existing?.bloqueos ?? null);
+            if (typeof parsedBloqueos === 'string') {
+              try { parsedBloqueos = JSON.parse(parsedBloqueos); } catch (e) { parsedBloqueos = null; }
+            }
+
             const unifiedBarber = {
               id_barbero: idBarberoFinal,
               id_usuario: idUsuarioFinal,
               id_empleado: idEmpleadoFinal,
               nombre: (b.nombre || b.primer_nombre || existing?.nombre || 'Barbero').trim(),
               apellido: (b.apellido || b.primer_apellido || existing?.apellido || '').trim(),
-              cargo: 'Barbero',
+              cargo: b.cargo || existing?.cargo || 'Barbero',
               telefono: b.telefono || existing?.telefono || '',
               documento: b.documento || existing?.documento || '',
-              hora_inicio: b.hora_inicio || existing?.hora_inicio || '09:00',
-              hora_fin: b.hora_fin || existing?.hora_fin || '21:00',
-              dias_laborales: b.dias_laborales || existing?.dias_laborales || null,
-              bloqueos: b.bloqueos || existing?.bloqueos || null
+              hora_inicio: (b.hora_inicio || existing?.hora_inicio || '09:00').substring(0, 5),
+              hora_fin: (b.hora_fin || existing?.hora_fin || '21:00').substring(0, 5),
+              dias_laborales: parsedDias,
+              bloqueos: parsedBloqueos
             };
 
             if (existingKey) {
@@ -499,14 +509,18 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
     const barberEnd = barber?.hora_fin ? barber.hora_fin.substring(0, 5) : '21:00';
 
     // 2. Si tiene dias_laborales configurados por el barbero en BD, respetarlos
-    if (barber && Array.isArray(barber.dias_laborales) && barber.dias_laborales.length > 0) {
-      const match = barber.dias_laborales.find((s: any) => Number(s.dayId) === Number(dayOfWeek));
+    let diasLab = barber?.dias_laborales;
+    if (typeof diasLab === 'string') {
+      try { diasLab = JSON.parse(diasLab); } catch (e) { diasLab = null; }
+    }
+    if (barber && Array.isArray(diasLab) && diasLab.length > 0) {
+      const match = diasLab.find((s: any) => Number(s.dayId) === Number(dayOfWeek));
       if (match) {
         return {
           dayId: dayOfWeek,
           activo: Boolean(match.activo),
-          hora_inicio: match.hora_inicio || barberStart,
-          hora_fin: match.hora_fin || barberEnd
+          hora_inicio: (match.hora_inicio || barberStart).substring(0, 5),
+          hora_fin: (match.hora_fin || barberEnd).substring(0, 5)
         };
       }
     }
@@ -518,7 +532,14 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
           const match = parsed.find((s: any) => Number(s.dayId) === Number(dayOfWeek));
-          if (match) return match;
+          if (match) {
+            return {
+              dayId: dayOfWeek,
+              activo: Boolean(match.activo),
+              hora_inicio: (match.hora_inicio || barberStart).substring(0, 5),
+              hora_fin: (match.hora_fin || barberEnd).substring(0, 5)
+            };
+          }
         }
       } catch (e) {}
     }
@@ -543,8 +564,13 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       Number(b.id_empleado) === empId
     );
 
-    if (barber && Array.isArray(barber.bloqueos) && barber.bloqueos.length > 0) {
-      return barber.bloqueos.filter((b: any) => b.activo === true);
+    let blocks = barber?.bloqueos;
+    if (typeof blocks === 'string') {
+      try { blocks = JSON.parse(blocks); } catch (e) { blocks = []; }
+    }
+
+    if (barber && Array.isArray(blocks) && blocks.length > 0) {
+      return blocks.filter((b: any) => b.activo === true);
     }
 
     const saved = localStorage.getItem(`barber_blocks_${empId}`);

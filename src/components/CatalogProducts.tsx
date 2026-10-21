@@ -20,7 +20,7 @@ interface Product {
   codigo?: string;
 }
 
-const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:4000/api';
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://barbersite-backend.onrender.com/api';
 
 export function CatalogProducts() {
   const [productos, setProductos] = useState<Product[]>([]);
