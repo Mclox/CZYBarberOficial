@@ -31,24 +31,32 @@ const formatDuration = (minutes: number) => {
   return h > 0 ? `${h}h ${m}m` : `${m} min`;
 };
 
+export const isMatchingStatus = (current: string = '', target: string = ''): boolean => {
+  const normCurrent = (current || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  const normTarget = (target || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (normTarget.includes('ejecucion')) return normCurrent.includes('ejecucion');
+  if (normTarget.includes('confirmad')) return normCurrent.includes('confirmad');
+  if (normTarget.includes('completad')) return normCurrent.includes('completad');
+  if (normTarget.includes('cancelad')) return normCurrent.includes('cancelad');
+  if (normTarget.includes('pendiente')) return normCurrent.includes('pendiente') || !normCurrent;
+  return normCurrent === normTarget;
+};
+
 const getStatusConfig = (status: string) => {
-  switch (status?.toLowerCase()) {
-    case 'completada':
-    case 'completado': 
-      return { label: 'Completada', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle };
-    case 'cancelada':
-    case 'cancelado': 
-      return { label: 'Cancelada', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle };
-    case 'en-ejecucion':
-    case 'en ejecucion':
-    case 'en_ejecucion':
-      return { label: 'En Ejecución', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: Clock };
-    case 'confirmada':
-    case 'confirmado':
-      return { label: 'Confirmada', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle };
-    default: 
-      return { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock };
+  const norm = (status || '').toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (norm.includes('ejecucion')) {
+    return { label: 'En Ejecución', color: 'bg-orange-100 text-orange-700 border-orange-200', icon: Clock };
   }
+  if (norm.includes('confirmad')) {
+    return { label: 'Confirmada', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle };
+  }
+  if (norm.includes('completad')) {
+    return { label: 'Completada', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle };
+  }
+  if (norm.includes('cancelad')) {
+    return { label: 'Cancelada', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle };
+  }
+  return { label: 'Pendiente', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock };
 };
 
 const timeSlots = [
@@ -75,6 +83,7 @@ export function CitasView() {
   const [editingCita, setEditingCita] = useState<any | null>(null);
   const [viewingCita, setViewingCita] = useState<any | null>(null);
   const [citaToDelete, setCitaToDelete] = useState<number | null>(null);
+  const [statusUpdating, setStatusUpdating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [calendarEmpleadoFilter, setCalendarEmpleadoFilter] = useState<string>('all');
@@ -118,11 +127,11 @@ export function CitasView() {
     setLoading(true);
     try {
       const [resCitas, resClientes, resBarberos, resServicios, resProductos] = await Promise.all([
-        fetchApi('/appointments').catch(() => ({ success: false, data: [] })),
-        fetchApi('/clients').catch(() => ({ success: false, data: [] })),
-        fetchApi(isBarbero || isCliente ? '/employees/public' : '/employees').catch(() => ({ success: false, data: [] })),
-        fetchApi(isBarbero || isCliente ? '/services/public' : '/services').catch(() => ({ success: false, data: [] })),
-        fetchApi(isBarbero || isCliente ? '/products/public' : '/products').catch(() => ({ success: false, data: [] }))
+        fetchApi(`/appointments?_t=${Date.now()}`).catch(() => ({ success: false, data: [] })),
+        fetchApi(`/clients?_t=${Date.now()}`).catch(() => ({ success: false, data: [] })),
+        fetchApi(isBarbero || isCliente ? `/employees/public?_t=${Date.now()}` : `/employees?_t=${Date.now()}`).catch(() => ({ success: false, data: [] })),
+        fetchApi(isBarbero || isCliente ? `/services/public?_t=${Date.now()}` : `/services?_t=${Date.now()}`).catch(() => ({ success: false, data: [] })),
+        fetchApi(isBarbero || isCliente ? `/products/public?_t=${Date.now()}` : `/products?_t=${Date.now()}`).catch(() => ({ success: false, data: [] }))
       ]);
 
       if (resCitas.success) {
@@ -138,13 +147,18 @@ export function CitasView() {
             return str.substring(0, 5);
           };
 
+          const clienteTel = c.cliente_telefono || c.telefono || clObj?.telefono_final || clObj?.telefono || '';
+          const clienteDoc = c.cliente_documento || (clObj?.documento ? `${clObj.tipo_documento || 'CC'} - ${clObj.documento}` : '');
+
           return {
             ...c,
             hora_inicio_corta: extractTime(c.hora_inicio),
             hora_fin_corta: extractTime(c.hora_fin),
             precio_neto: c.precio_neto || sObj?.precio_neto || 0,
             servicio_nombre: c.servicio_nombre || sObj?.nombre || 'Servicio',
-            cliente_nombre: c.cliente_nombre || clObj?.nombre_final || clObj?.nombre || 'Cliente'
+            cliente_nombre: c.cliente_nombre || clObj?.nombre_final || clObj?.nombre || 'Cliente',
+            cliente_telefono: clienteTel,
+            cliente_documento: clienteDoc
           };
         });
         setCitas(formattedCitas);
@@ -266,11 +280,11 @@ export function CitasView() {
     }
 
     const statsObj = {
-      pendiente: list.filter(c => c.estado?.toLowerCase() === 'pendiente').length,
-      confirmada: list.filter(c => ['confirmada', 'confirmado'].includes(c.estado?.toLowerCase())).length,
-      'en-ejecucion': list.filter(c => ['en-ejecucion', 'en ejecucion', 'en_ejecucion'].includes(c.estado?.toLowerCase())).length,
-      completada: list.filter(c => ['completada', 'completado'].includes(c.estado?.toLowerCase())).length,
-      cancelada: list.filter(c => ['cancelada', 'cancelado'].includes(c.estado?.toLowerCase())).length,
+      pendiente: list.filter(c => isMatchingStatus(c.estado, 'pendiente')).length,
+      confirmada: list.filter(c => isMatchingStatus(c.estado, 'confirmada')).length,
+      'en-ejecucion': list.filter(c => isMatchingStatus(c.estado, 'en-ejecucion')).length,
+      completada: list.filter(c => isMatchingStatus(c.estado, 'completada')).length,
+      cancelada: list.filter(c => isMatchingStatus(c.estado, 'cancelada')).length,
     };
 
     const byDate: Record<string, any[]> = {};
@@ -577,24 +591,51 @@ export function CitasView() {
   };
 
   const handleStatusChange = async (id: number, status: string) => {
-    const statusLabel = getStatusConfig(status).label;
-    if (!window.confirm(`¿Desea cambiar el estado de la cita a ${statusLabel}?`)) {
+    if (statusUpdating) return;
+    const targetStatus = status.toLowerCase();
+    
+    // Evitar actualización duplicada si ya tiene este mismo estado
+    if (viewingCita && isMatchingStatus(viewingCita.estado, targetStatus)) {
       return;
     }
+
+    const statusLabel = getStatusConfig(targetStatus).label;
+    setStatusUpdating(true);
+
     try {
-      await fetchApi(`/appointments/${id}/status`, { method: 'PUT', body: JSON.stringify({ estado: status }) });
-      toast.success(`Cita marcada como ${status}`);
-      setDetailsDialogOpen(false);
+      await fetchApi(`/appointments/${id}/status`, { 
+        method: 'PUT', 
+        body: JSON.stringify({ estado: targetStatus }) 
+      });
+
+      // Actualización optimista local inmediata para sincronizar UI al instante
+      setCitas(prev => prev.map(c => c.id_cita === id ? { ...c, estado: targetStatus } : c));
+      if (viewingCita && viewingCita.id_cita === id) {
+        setViewingCita((prev: any) => ({ ...prev, estado: targetStatus }));
+      }
+
+      toast.success(`Cita #${id} actualizada a: ${statusLabel}`);
       fetchData();
-    } catch (e: any) { toast.error(e.message || 'Error de conexión'); }
+    } catch (e: any) { 
+      toast.error(e.message || 'Error al actualizar el estado de la cita'); 
+    } finally {
+      setStatusUpdating(false);
+    }
   };
 
   const viewingClienteObj = viewingCita 
     ? clientes.find(cl => cl.id_cliente === parseInt(viewingCita.id_cliente)) 
     : null;
-  const viewingClienteDoc = viewingClienteObj?.documento 
+  const viewingClienteDoc = viewingCita?.cliente_documento || (viewingClienteObj?.documento 
     ? `${viewingClienteObj.tipo_documento || 'CC'} - ${viewingClienteObj.documento}` 
-    : 'No registrado';
+    : 'No registrado');
+  const viewingClienteTelefono = viewingCita?.cliente_telefono || 
+    viewingCita?.telefono || 
+    viewingClienteObj?.telefono_final || 
+    viewingClienteObj?.telefono || 
+    getClienteInfo(viewingCita?.id_cliente)?.telefono_final || 
+    getClienteInfo(viewingCita?.id_cliente)?.telefono || 
+    'Sin teléfono';
 
   const viewingBarberId = viewingCita 
     ? parseInt(viewingCita.id_barbero || viewingCita.id_usuario || viewingCita.id_empleado) 
@@ -1072,7 +1113,7 @@ export function CitasView() {
 
                       <div className="space-y-2">
                         <Label>Teléfono Cliente</Label>
-                        <Input value={getClienteInfo(viewingCita.id_cliente).telefono || 'Sin teléfono'} readOnly className="bg-muted" />
+                        <Input value={viewingClienteTelefono} readOnly className="bg-muted" />
                       </div>
                       <div className="space-y-2">
                         {/* Spacing alignment */}
@@ -1144,7 +1185,7 @@ export function CitasView() {
                     </div>
 
                     {/* Indicador de Atención en curso */}
-                    {['en-ejecucion', 'en ejecucion', 'en_ejecucion'].includes(viewingCita.estado?.toLowerCase()) && (
+                    {isMatchingStatus(viewingCita.estado, 'en-ejecucion') && (
                       <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-2 text-orange-800 text-xs font-bold animate-pulse">
                         <Clock className="w-4 h-4 text-orange-600 shrink-0" />
                         <span>Atención en curso: este servicio se está realizando en este momento.</span>
@@ -1186,81 +1227,52 @@ export function CitasView() {
                         </div>
                       );
                     })()}
+
+                    {/* CAMBIAR ESTADO DE LA CITA (5 ESTADOS DISPONIBLES) */}
+                    <div className="space-y-3 border-t pt-4 mt-6">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-blue-800">
+                          Cambiar Estado de la Cita
+                        </Label>
+                        <span className="text-xs text-muted-foreground font-medium">
+                          Estado actual: <span className="font-bold text-foreground">{getStatusConfig(viewingCita.estado).label}</span>
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                        {[
+                          { key: 'pendiente', label: 'Pendiente', activeColor: 'bg-yellow-500 hover:bg-yellow-600 border-yellow-500 text-white shadow-md', inactiveColor: 'border-yellow-300 text-yellow-700 hover:bg-yellow-50', icon: Clock },
+                          { key: 'confirmada', label: 'Confirmada', activeColor: 'bg-blue-600 hover:bg-blue-700 border-blue-600 text-white shadow-md', inactiveColor: 'border-blue-300 text-blue-700 hover:bg-blue-50', icon: CheckCircle },
+                          { key: 'en-ejecucion', label: 'En Ejecución', activeColor: 'bg-orange-500 hover:bg-orange-600 border-orange-500 text-white shadow-md', inactiveColor: 'border-orange-300 text-orange-700 hover:bg-orange-50', icon: Clock },
+                          { key: 'completada', label: 'Completada', activeColor: 'bg-green-600 hover:bg-green-700 border-green-600 text-white shadow-md', inactiveColor: 'border-green-300 text-green-700 hover:bg-green-50', icon: CheckCircle },
+                          { key: 'cancelada', label: 'Cancelada', activeColor: 'bg-red-600 hover:bg-red-700 border-red-600 text-white shadow-md', inactiveColor: 'border-red-300 text-red-700 hover:bg-red-50', icon: XCircle }
+                        ].map((st) => {
+                          const isCurrent = isMatchingStatus(viewingCita.estado, st.key);
+                          const StIcon = st.icon;
+                          return (
+                            <Button
+                              key={st.key}
+                              type="button"
+                              size="sm"
+                              variant={isCurrent ? "default" : "outline"}
+                              disabled={isCurrent || statusUpdating}
+                              onClick={() => handleStatusChange(viewingCita.id_cita, st.key)}
+                              className={cn(
+                                "h-11 text-xs font-bold transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2",
+                                isCurrent ? `${st.activeColor} ring-2 ring-offset-2 ring-primary/30 font-black cursor-default` : st.inactiveColor,
+                                isCurrent && "opacity-100"
+                              )}
+                            >
+                              <StIcon className="w-4 h-4 shrink-0" />
+                              <span>{st.label}</span>
+                              {isCurrent && <span className="text-[10px] bg-white/30 px-1 rounded ml-1">Activo</span>}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )}
-                <DialogFooter className="flex-col sm:flex-row gap-2 flex-wrap sm:justify-between items-center w-full">
-                  <div className="flex gap-2 w-full sm:w-auto">
-                    {/* Botones para Administrador y Barbero */}
-                    {canUpdate && !isCliente && (
-                      <>
-                        {/* Si está Pendiente */}
-                        {viewingCita?.estado?.toLowerCase() === 'pendiente' && (
-                          <>
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'confirmada')}>
-                              <CheckCircle className="w-4 h-4 mr-2" /> Confirmar
-                            </Button>
-                            <Button className="bg-orange-600 hover:bg-orange-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'en-ejecucion')}>
-                              <Clock className="w-4 h-4 mr-2" /> Iniciar
-                            </Button>
-                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completada')}>
-                              <CheckCircle className="w-4 h-4 mr-2" /> Completar
-                            </Button>
-                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
-                              <XCircle className="w-4 h-4 mr-2" /> Cancelar
-                            </Button>
-                          </>
-                        )}
-                        {/* Si está Confirmada */}
-                        {['confirmada', 'confirmado'].includes(viewingCita?.estado?.toLowerCase()) && (
-                          <>
-                            <Button className="bg-orange-600 hover:bg-orange-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'en-ejecucion')}>
-                              <Clock className="w-4 h-4 mr-2" /> Iniciar
-                            </Button>
-                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completada')}>
-                              <CheckCircle className="w-4 h-4 mr-2" /> Completar
-                            </Button>
-                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
-                              <XCircle className="w-4 h-4 mr-2" /> Cancelar
-                            </Button>
-                          </>
-                        )}
-                        {/* Si está En Ejecución */}
-                        {['en-ejecucion', 'en ejecucion', 'en_ejecucion'].includes(viewingCita?.estado?.toLowerCase()) && (
-                          <>
-                            <Button className="bg-green-600 hover:bg-green-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'completada')}>
-                              <CheckCircle className="w-4 h-4 mr-2" /> Completar
-                            </Button>
-                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
-                              <XCircle className="w-4 h-4 mr-2" /> Cancelar
-                            </Button>
-                          </>
-                        )}
-                      </>
-                    )}
-
-                    {/* Botones para Cliente */}
-                    {isCliente && (
-                      <>
-                        {/* Si está Pendiente */}
-                        {viewingCita?.estado?.toLowerCase() === 'pendiente' && (
-                          <>
-                            <Button className="bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'confirmada')}>
-                              <CheckCircle className="w-4 h-4 mr-2" /> Confirmar Cita
-                            </Button>
-                            <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
-                              <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
-                            </Button>
-                          </>
-                        )}
-                        {/* Si está Confirmada */}
-                        {['confirmada', 'confirmado'].includes(viewingCita?.estado?.toLowerCase()) && (
-                          <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 flex-1 sm:flex-none" onClick={() => handleStatusChange(viewingCita.id_cita, 'cancelada')}>
-                            <XCircle className="w-4 h-4 mr-2" /> Cancelar Cita
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
+                <DialogFooter className="flex justify-end items-center w-full pt-4 border-t">
                   <Button variant="outline" onClick={() => setDetailsDialogOpen(false)} className="w-full sm:w-auto">
                     Cerrar
                   </Button>

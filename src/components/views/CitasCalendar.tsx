@@ -6,16 +6,21 @@ import type { EventInput, EventClickArg } from '@fullcalendar/core';
 import type { DateClickArg } from '@fullcalendar/interaction';
 
 // ---------- Status color map ----------
-const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-    pendiente: { bg: '#eab308', border: '#ca8a04', text: '#000000' },
-    confirmada: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
-    confirmado: { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' },
-    'en-ejecucion': { bg: '#f97316', border: '#ea580c', text: '#ffffff' },
-    'en ejecucion': { bg: '#f97316', border: '#ea580c', text: '#ffffff' },
-    completada: { bg: '#22c55e', border: '#16a34a', text: '#000000' },
-    completado: { bg: '#22c55e', border: '#16a34a', text: '#000000' },
-    cancelado: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
-    cancelada: { bg: '#ef4444', border: '#dc2626', text: '#ffffff' },
+const getCalendarStatusColors = (status: string = '') => {
+    const norm = status.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (norm.includes('ejecucion')) {
+        return { bg: '#f97316', border: '#ea580c', text: '#ffffff' };
+    }
+    if (norm.includes('confirmad')) {
+        return { bg: '#3b82f6', border: '#2563eb', text: '#ffffff' };
+    }
+    if (norm.includes('completad')) {
+        return { bg: '#22c55e', border: '#16a34a', text: '#ffffff' };
+    }
+    if (norm.includes('cancelad')) {
+        return { bg: '#ef4444', border: '#dc2626', text: '#ffffff' };
+    }
+    return { bg: '#eab308', border: '#ca8a04', text: '#000000' };
 };
 
 // ---------- Props ----------
@@ -38,7 +43,7 @@ export function CitasCalendar({
         const result: EventInput[] = [];
         for (const [date, citas] of Object.entries(citasByDate)) {
             for (const cita of citas) {
-                const colors = STATUS_COLORS[cita.estado?.toLowerCase()] || STATUS_COLORS.pendiente;
+                const colors = getCalendarStatusColors(cita.estado);
                 result.push({
                     id: String(cita.id_cita),
                     title: `${cita.hora_inicio_corta} — ${cita.cliente_nombre || 'Cliente'}`,

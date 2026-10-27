@@ -136,7 +136,10 @@ export const fetchApi = async (endpoint: string, options: RequestInit = {}) => {
     ...options.headers,
   };
 
+  const method = options.method?.toUpperCase() || 'GET';
+
   const response = await fetch(`${API_URL}${endpoint}`, {
+    cache: options.cache || (method === 'GET' ? 'no-store' : undefined),
     ...options,
     headers,
   });
