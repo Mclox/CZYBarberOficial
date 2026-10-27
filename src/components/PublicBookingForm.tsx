@@ -55,11 +55,11 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
         setLoading(true);
         try {
           const [resServ, resBarb, resEmployees, resUsers, resBusy] = await Promise.all([
-            fetchApi('/services/public').catch(() => ({ success: false, data: [] })),
-            fetchApi('/employees/public').catch(() => ({ success: false, data: [] })),
+            fetchApi(`/services/public?_t=${Date.now()}`).catch(() => ({ success: false, data: [] })),
+            fetchApi(`/employees/public?_t=${Date.now()}`).catch(() => ({ success: false, data: [] })),
             fetchApi('/employees').catch(() => ({ success: false, data: [] })),
             fetchApi('/users').catch(() => ({ success: false, data: [] })),
-            fetchApi('/appointments/public-busy-slots').catch(() => ({ success: false, data: [] }))
+            fetchApi(`/appointments/public-busy-slots?_t=${Date.now()}`).catch(() => ({ success: false, data: [] }))
           ]);
 
           if (resServ.success && Array.isArray(resServ.data)) {
@@ -73,13 +73,16 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
             setServicios(normalized.filter((s: any) => (s.estado || 'Activo').toLowerCase() === 'activo'));
           }
 
-          // Combinar barberos desde /employees/public, /employees y /users (rol Barbero)
+          // Priorizar SIEMPRE los barberos reales de la entidad Barberos (/employees/public)
           const rawBarbers = [
             ...(resBarb.success && Array.isArray(resBarb.data) ? resBarb.data : []),
-            ...(resEmployees.success && Array.isArray(resEmployees.data) ? resEmployees.data : []),
+            ...(resEmployees.success && Array.isArray(resEmployees.data) ? resEmployees.data.filter((e: any) => {
+              const cargoStr = (e.cargo || e.rol || '').toLowerCase();
+              return cargoStr.includes('barbero');
+            }) : []),
             ...(resUsers.success && Array.isArray(resUsers.data) ? resUsers.data.filter((u: any) => {
               const rolName = (u.rol_nombre || u.rol || u.nombre_rol || '').toLowerCase();
-              return rolName.includes('barbero') || rolName.includes('admin') || [1, 2].includes(u.id_rol);
+              return rolName.includes('barbero') && !rolName.includes('admin') && u.id_rol !== 1;
             }) : [])
           ];
 
@@ -525,26 +528,7 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       }
     }
 
-    // 3. Fallback a almacenamiento local
-    const saved = localStorage.getItem(`barber_schedule_${empId}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const match = parsed.find((s: any) => Number(s.dayId) === Number(dayOfWeek));
-          if (match) {
-            return {
-              dayId: dayOfWeek,
-              activo: Boolean(match.activo),
-              hora_inicio: (match.hora_inicio || barberStart).substring(0, 5),
-              hora_fin: (match.hora_fin || barberEnd).substring(0, 5)
-            };
-          }
-        }
-      } catch (e) {}
-    }
-
-    // 4. Domingo descanso por defecto a menos que se haya habilitado
+    // 3. Domingo descanso por defecto a menos que se haya habilitado en dias_laborales
     if (dayOfWeek === 0) {
       return { dayId: 0, dayName: 'Domingo', activo: false, hora_inicio: '09:00', hora_fin: '14:00' };
     }
@@ -573,13 +557,6 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       return blocks.filter((b: any) => b.activo === true);
     }
 
-    const saved = localStorage.getItem(`barber_blocks_${empId}`);
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed.filter((b: any) => b.activo === true);
-      } catch (e) {}
-    }
     return [];
   };
 
@@ -644,13 +621,7 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       } else {
         // Cualquier barbero disponible:
         if (barberos.length === 0) {
-          return busySlots.some(c => {
-            const cFecha = (c.fecha || '').split('T')[0].trim();
-            if (cFecha !== cleanFecha) return false;
-            const cStart = parseTimeToMinutes(c.hora);
-            const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
-            return start < cEnd && cStart < end;
-          });
+          return true;
         }
         
         // Disponible si AL MENOS UN barbero labora en ese slot y no está ocupado
@@ -722,13 +693,7 @@ export function PublicBookingForm({ open, onClose, onLoginClick, onRegisterClick
       });
     } else {
       if (barberos.length === 0) {
-        return busySlots.some(c => {
-          const cFecha = (c.fecha || '').split('T')[0].trim();
-          if (cFecha !== cleanFecha) return false;
-          const cStart = parseTimeToMinutes(c.hora);
-          const cEnd = parseTimeToMinutes(c.hora_fin || c.hora);
-          return start < cEnd && cStart < end;
-        });
+        return true;
       }
       
       const atLeastOneAvailable = barberos.some(barber => {

@@ -70,38 +70,20 @@ export function MiPerfilView() {
   const isBarbero = (roleName || user?.rol || '').toLowerCase().includes('barbero') || user?.id_rol === 3;
 
   useEffect(() => {
-    const empId = (user as any)?.id_empleado || user?.id_usuario;
+    const empId = (user as any)?.id_barbero || (user as any)?.id_empleado || user?.id_usuario;
     if (empId) {
-      const savedSched = localStorage.getItem(`barber_schedule_${empId}`);
-      if (savedSched) {
-        try {
-          const parsed = JSON.parse(savedSched);
-          if (Array.isArray(parsed) && parsed.length > 0) setSchedules(parsed);
-        } catch (e) {}
-      }
-
-      const savedBlocks = localStorage.getItem(`barber_blocks_${empId}`);
-      if (savedBlocks) {
-        try {
-          const parsedB = JSON.parse(savedBlocks);
-          if (Array.isArray(parsedB)) setTimeBlocks(parsedB);
-        } catch (e) {}
-      }
-
-      const savedShift = localStorage.getItem(`barber_shift_${empId}`);
-      if (savedShift) {
-        try {
-          const parsedS = JSON.parse(savedShift);
-          if (parsedS.hora_inicio && parsedS.hora_fin) setGeneralShift(parsedS);
-        } catch (e) {}
-      }
-
-      fetchApi(`/employees/${empId}/schedules`)
+      fetchApi(`/employees/${empId}/schedules?_t=${Date.now()}`)
         .then(res => {
           if (res.success && res.data) {
-            if (Array.isArray(res.data.schedules)) setSchedules(res.data.schedules);
-            if (Array.isArray(res.data.timeBlocks)) setTimeBlocks(res.data.timeBlocks);
-            if (res.data.generalShift) setGeneralShift(res.data.generalShift);
+            if (Array.isArray(res.data.schedules) && res.data.schedules.length > 0) {
+              setSchedules(res.data.schedules);
+            }
+            if (Array.isArray(res.data.timeBlocks)) {
+              setTimeBlocks(res.data.timeBlocks);
+            }
+            if (res.data.generalShift && res.data.generalShift.hora_inicio && res.data.generalShift.hora_fin) {
+              setGeneralShift(res.data.generalShift);
+            }
           }
         })
         .catch(() => null);
@@ -110,21 +92,31 @@ export function MiPerfilView() {
 
   const handleSaveSchedule = async () => {
     const empId = (user as any)?.id_barbero || (user as any)?.id_empleado || user?.id_usuario;
-    if (!empId) return;
+    if (!empId) {
+      toast.error('No se pudo identificar al usuario barbero');
+      return;
+    }
     setSavingSchedule(true);
     try {
-      localStorage.setItem(`barber_schedule_${empId}`, JSON.stringify(schedules));
-      localStorage.setItem(`barber_blocks_${empId}`, JSON.stringify(timeBlocks));
-      localStorage.setItem(`barber_shift_${empId}`, JSON.stringify(generalShift));
+      const updatedSchedules = schedules.map(s => ({
+        ...s,
+        hora_inicio: (s.hora_inicio || generalShift.hora_inicio || '09:00').substring(0, 5),
+        hora_fin: (s.hora_fin || generalShift.hora_fin || '21:00').substring(0, 5)
+      }));
 
-      await fetchApi(`/employees/${empId}/schedules`, {
+      const res = await fetchApi(`/employees/${empId}/schedules`, {
         method: 'PUT',
-        body: JSON.stringify({ schedules, timeBlocks, generalShift })
-      }).catch(() => null);
+        body: JSON.stringify({ schedules: updatedSchedules, timeBlocks, generalShift })
+      });
 
-      toast.success('Disponibilidad y bloqueos guardados correctamente');
+      if (res && res.success === false) {
+        throw new Error(res.error || res.message || 'Error al guardar en el servidor');
+      }
+
+      setSchedules(updatedSchedules);
+      toast.success('Disponibilidad y bloqueos guardados correctamente en el servidor');
     } catch (err: any) {
-      toast.success('Disponibilidad guardada correctamente');
+      toast.error(err.message || 'Error al guardar disponibilidad en el servidor');
     } finally {
       setSavingSchedule(false);
     }
@@ -587,7 +579,11 @@ export function MiPerfilView() {
                     </label>
                     <select
                       value={generalShift.hora_inicio}
-                      onChange={(e) => setGeneralShift({ ...generalShift, hora_inicio: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setGeneralShift(prev => ({ ...prev, hora_inicio: val }));
+                        setSchedules(prev => prev.map(s => ({ ...s, hora_inicio: val })));
+                      }}
                       className="w-full text-base p-3 rounded-lg border border-gray-300 bg-white font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
                     >
                       {timeOptions.map(t => (
@@ -604,7 +600,11 @@ export function MiPerfilView() {
                     </label>
                     <select
                       value={generalShift.hora_fin}
-                      onChange={(e) => setGeneralShift({ ...generalShift, hora_fin: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setGeneralShift(prev => ({ ...prev, hora_fin: val }));
+                        setSchedules(prev => prev.map(s => ({ ...s, hora_fin: val })));
+                      }}
                       className="w-full text-base p-3 rounded-lg border border-gray-300 bg-white font-bold text-gray-800 focus:ring-2 focus:ring-blue-500 outline-none shadow-sm"
                     >
                       {timeOptions.map(t => (
